@@ -10,7 +10,7 @@
  * Uso: npm run seed
  */
 import 'dotenv/config';
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, ReleaseCategory, Role } from '@prisma/client';
 import { hash } from '@node-rs/argon2';
 
 const prisma = new PrismaClient();
@@ -309,6 +309,110 @@ async function main(): Promise<void> {
     });
   }
 
+  // -------------------------------------------------------------------------
+  // Releases — changelog do sistema (historico real ate a data do seed)
+  // -------------------------------------------------------------------------
+  interface DemoRelease {
+    id: string;
+    version: string;
+    title: string;
+    summary: string;
+    releasedAt: Date;
+    current: boolean;
+    items: { category: ReleaseCategory; description: string }[];
+  }
+
+  const releases: DemoRelease[] = [
+    {
+      id: 'rel-0-1-0',
+      version: '0.1.0',
+      title: 'MVP — Technical Capability Management',
+      summary: 'Primeira versão: gestão de profissionais, tecnologias, certificações e roadmap.',
+      releasedAt: new Date('2026-09-30T00:00:00.000Z'),
+      current: false,
+      items: [
+        { category: 'FEATURE', description: 'Cadastro de profissionais, fabricantes, tecnologias e certificações' },
+        { category: 'FEATURE', description: 'Vinculo profissional x certificacao com status dinâmico (ativa, expirando, vencida, sem validade)' },
+        { category: 'FEATURE', description: 'Roadmap com lista, Kanban e timeline, com filtro de atrasados' },
+        { category: 'FEATURE', description: 'Dashboard com KPIs, próximos vencimentos, cobertura tecnológica e alertas' },
+        { category: 'FEATURE', description: 'Relatórios com exportação CSV' },
+        { category: 'FEATURE', description: 'Importação de profissionais e certificações por CSV (prévia + confirmação)' },
+        { category: 'FEATURE', description: 'Autenticação JWT com refresh rotativo e RBAC (ADMIN/MANAGER/CONSULTANT)' },
+        { category: 'INFRA', description: 'Docker Compose (db, api, web), migrations e seed DEMO' },
+      ],
+    },
+    {
+      id: 'rel-0-1-1',
+      version: '0.1.1',
+      title: 'Autoatendimento do consultor',
+      summary: 'Ajuste pós-QA: o consultor mantém os próprios vínculos de certificação.',
+      releasedAt: new Date('2026-09-30T12:00:00.000Z'),
+      current: false,
+      items: [
+        { category: 'IMPROVEMENT', description: 'O consultor passa a criar, editar, renovar e remover os próprios vínculos de certificação (D-019)' },
+      ],
+    },
+    {
+      id: 'rel-0-2-0',
+      version: '0.2.0',
+      title: 'Tec News',
+      summary: 'Novidades dos canais oficiais dos fabricantes, com ingestão automática e curadoria.',
+      releasedAt: new Date('2026-10-01T00:00:00.000Z'),
+      current: false,
+      items: [
+        { category: 'FEATURE', description: 'Nova área Tec News com as novidades dos fabricantes' },
+        { category: 'FEATURE', description: 'Ingestão automática de feeds RSS/Atom oficiais (Red Hat, Nutanix, Veeam, ExaGrid, SUSE)' },
+        { category: 'FEATURE', description: 'Curadoria manual de novidades pela gestão' },
+        { category: 'FEATURE', description: 'Marcação de lida/salva por usuário e destaques' },
+        { category: 'IMPROVEMENT', description: 'Classificação automática por tipo (release, certificação, funcionalidade, segurança, evento)' },
+      ],
+    },
+    {
+      id: 'rel-0-2-1',
+      version: '0.2.1',
+      title: 'Deploy seguro (HTTPS)',
+      summary: 'Publicação na VM com HTTPS, versionamento do projeto e ajustes de infraestrutura.',
+      releasedAt: new Date('2026-10-01T10:00:00.000Z'),
+      current: false,
+      items: [
+        { category: 'INFRA', description: 'HTTPS no nginx (TLS + redirecionamento 80 -> 443)' },
+        { category: 'INFRA', description: 'Deploy na VM via Docker Compose' },
+        { category: 'INFRA', description: 'Disco raiz (LVM) ampliado para 20 GB' },
+        { category: 'IMPROVEMENT', description: 'Projeto versionado em Git e .dockerignore para builds mais leves' },
+      ],
+    },
+    {
+      id: 'rel-0-3-0',
+      version: '0.3.0',
+      title: 'Releases (changelog do sistema)',
+      summary: 'Área que documenta as mudanças de cada versão do sistema.',
+      releasedAt: new Date('2026-10-01T12:00:00.000Z'),
+      current: true,
+      items: [
+        { category: 'FEATURE', description: 'Nova área de Releases com o histórico de versões e mudanças' },
+        { category: 'FEATURE', description: 'Gestão das releases por ADMIN/MANAGER, com destaque da versão atual' },
+        { category: 'IMPROVEMENT', description: 'Versão do sistema exibida no rodapé da navegação' },
+      ],
+    },
+  ];
+
+  for (const r of releases) {
+    const release = await prisma.release.upsert({
+      where: { id: r.id },
+      update: { version: r.version, title: r.title, summary: r.summary, releasedAt: r.releasedAt, current: r.current, hidden: false },
+      create: { id: r.id, version: r.version, title: r.title, summary: r.summary, releasedAt: r.releasedAt, current: r.current },
+    });
+    await prisma.releaseItem.deleteMany({ where: { releaseId: release.id } });
+    await prisma.releaseItem.createMany({
+      data: r.items.map((item, index) => ({
+        releaseId: release.id,
+        category: item.category,
+        description: item.description,
+        position: index,
+      })),
+    });
+  }
+
   console.log('Seed DEMO concluido.');
   console.log(`  Profissionais: ${professionals.length}`);
   console.log(`  Fabricantes:   ${vendors.length}`);
@@ -318,6 +422,7 @@ async function main(): Promise<void> {
   console.log(`  Itens de roadmap:  ${roadmapItems.length}`);
   console.log(`  Fontes Tec News:   ${newsSources.length}`);
   console.log(`  Novidades (DEMO):  ${newsItems.length}`);
+  console.log(`  Releases:          ${releases.length}`);
   console.log('');
   console.log('Acessos DEMO:');
   console.log(`  ADMIN    -> ${adminEmail} / ${adminPassword}`);

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# Suite de aceite do Suporte Skills (Fase 8 + Tec News) — 111 verificacoes
+# Suite de aceite do Suporte Skills (Fase 8 + Tec News + Releases) — 123 verificacoes
 #
 # Uso:
 #   bash scripts/acceptance.sh
@@ -510,10 +510,44 @@ call GET "/news?search=QA%20Novidade%20$TS" "$ADMIN"
 check "$([ "$(q 'o.data.length')" = '0' ]; echo $?)" 'novidade removida some da lista' "itens=$(q 'o.data.length')"
 
 # ---------------------------------------------------------------------------
+echo "--- 11c. Releases (D-021) ---"
+call GET /releases "$ADMIN"
+check "$([ "$CODE" = '200' ] && [ "$(q 'o.meta.total')" -ge 5 ]; echo $?)" 'ADMIN lista releases' "http=$CODE total=$(q 'o.meta.total')"
+check "$([ "$(q "o.data.filter(r=>r.current).length")" = '1' ]; echo $?)" 'exatamente uma versao atual' "currents=$(q "o.data.filter(r=>r.current).length")"
+
+call GET /releases "$CONSULTANT"
+check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa releases -> 403' "http=$CODE"
+call POST /releases "$CONSULTANT" '{"version":"9.9.9","title":"x","releasedAt":"2026-10-01"}'
+check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao cria release -> 403' "http=$CODE"
+
+call POST /releases "$ADMIN" "{\"version\":\"9.9.$TS\",\"title\":\"QA Release $TS\",\"summary\":\"teste\",\"releasedAt\":\"2026-10-01\",\"items\":[{\"category\":\"FEATURE\",\"description\":\"nova\"},{\"category\":\"FIX\",\"description\":\"correcao\"}]}"
+QA_REL=$(q 'o.id')
+check "$([ "$CODE" = '201' ] && [ "$(q 'o.items.length')" = '2' ]; echo $?)" 'criar release com itens -> 201' "http=$CODE itens=$(q 'o.items.length')"
+
+call POST /releases "$ADMIN" "{\"version\":\"9.9.$TS\",\"title\":\"dup\",\"releasedAt\":\"2026-10-01\"}"
+check "$([ "$CODE" = '409' ]; echo $?)" 'versao duplicada -> 409' "http=$CODE"
+call POST /releases "$ADMIN" '{"version":"1.2","title":"invalida","releasedAt":"2026-10-01"}'
+check "$([ "$CODE" = '400' ]; echo $?)" 'versao fora do formato X.Y.Z -> 400' "http=$CODE"
+
+call PATCH "/releases/$QA_REL/current" "$ADMIN"
+check "$([ "$CODE" = '200' ] && [ "$(q 'o.current')" = 'true' ]; echo $?)" 'tornar versao atual' "http=$CODE"
+call GET "/releases?current=true" "$ADMIN"
+check "$([ "$(q 'o.data.length')" = '1' ] && [ "$(q 'o.data[0].version')" = "9.9.$TS" ]; echo $?)" 'apenas uma versao atual apos a troca' "versao=$(q 'o.data[0].version')"
+
+call PUT "/releases/$QA_REL" "$ADMIN" '{"title":"QA Release v2","items":[{"category":"SECURITY","description":"ajuste"}]}'
+check "$([ "$CODE" = '200' ] && [ "$(q 'o.title')" = 'QA Release v2' ] && [ "$(q 'o.items.length')" = '1' ]; echo $?)" 'editar release (substitui itens)' "http=$CODE itens=$(q 'o.items.length')"
+
+call DELETE "/releases/$QA_REL" "$ADMIN"
+check "$([ "$CODE" = '204' ]; echo $?)" 'remover release -> 204' "http=$CODE"
+call GET "/releases?search=9.9.$TS" "$ADMIN"
+check "$([ "$(q 'o.meta.total')" = '0' ]; echo $?)" 'release removida some da lista' "total=$(q 'o.meta.total')"
+
+# ---------------------------------------------------------------------------
 echo "--- 12. Limpeza: restaura o estado DEMO ---"
 if [ "$RESET_DEMO" = '1' ]; then
   "$PSQL_BIN" -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -q -c "
 DELETE FROM audit_logs;
+DELETE FROM releases;
 DELETE FROM news_read_states;
 DELETE FROM news_items;
 DELETE FROM news_sources;
@@ -525,8 +559,8 @@ DELETE FROM vendors;
 DELETE FROM refresh_tokens;
 DELETE FROM professionals;"
   ( cd "$BACKEND_DIR" && "$NPM_BIN" run seed >/dev/null 2>&1 )
-  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ]; echo $?)"
-  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes"
+  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM releases')" = '5' ]; echo $?)"
+  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 5 releases"
 else
   echo "[SKIP] restauracao do seed (RESET_DEMO=0)"
 fi

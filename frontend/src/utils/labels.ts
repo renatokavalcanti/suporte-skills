@@ -5,6 +5,7 @@ import type {
   NewsConnectorType,
   NewsKind,
   PartnershipStatus,
+  ReleaseCategory,
   ProfessionalRole,
   ProfessionalType,
   RoadmapPriority,
@@ -233,4 +234,25 @@ export const newsConnectorLabels: Record<NewsConnectorType, string> = {
   RSS: 'RSS',
   ATOM: 'Atom',
   MANUAL: 'Manual',
+};
+
+export const releaseCategoryLabels: Record<ReleaseCategory, string> = {
+  FEATURE: 'Novidade',
+  IMPROVEMENT: 'Melhoria',
+  FIX: 'Correção',
+  SECURITY: 'Segurança',
+  INFRA: 'Infraestrutura',
+  OTHER: 'Outro',
+};
+
+export const releaseCategoryVariant: Record<
+  ReleaseCategory,
+  'neutral' | 'info' | 'warning' | 'success' | 'danger'
+> = {
+  FEATURE: 'info',
+  IMPROVEMENT: 'success',
+  FIX: 'warning',
+  SECURITY: 'danger',
+  INFRA: 'neutral',
+  OTHER: 'neutral',
 };

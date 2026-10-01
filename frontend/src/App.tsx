@@ -10,6 +10,7 @@ import { VendorsPage } from '@/features/vendors/vendors-page';
 import { TechnologiesPage } from '@/features/technologies/technologies-page';
 import { CertificationsPage } from '@/features/certifications/certifications-page';
 import { NewsPage } from '@/features/news/news-page';
+import { ReleasesPage } from '@/features/releases/releases-page';
 import { ImportsPage } from '@/features/imports/imports-page';
 import { RoadmapPage } from '@/features/roadmap/roadmap-page';
 import { ReportsPage } from '@/features/reports/reports-page';
@@ -54,6 +55,14 @@ export function App() {
           element={
             <RequireRole roles={['ADMIN', 'MANAGER']}>
               <ReportsPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="releases"
+          element={
+            <RequireRole roles={['ADMIN', 'MANAGER']}>
+              <ReleasesPage />
             </RequireRole>
           }
         />

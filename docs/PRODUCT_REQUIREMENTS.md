@@ -35,6 +35,7 @@ Profissional → Competências → Tecnologias → Certificações → Experiên
 | 9 | Importação CSV | 7 |
 | 10 | Alertas básicos | 5 |
 | 11 | Tec News (novidades dos fabricantes) | pós-MVP |
+| 12 | Releases (changelog do sistema) | pós-MVP |
 
 Fora do MVP (arquitetura preparada, **não implementar**): Skills com níveis,
 Treinamentos, Projetos, Parcerias e requisitos, Gap Analysis, Capacity Planning,
@@ -54,6 +55,14 @@ funcionalidades, avisos de segurança), combinando:
 Requisitos: filtros por fabricante, tecnologia, tipo e período; busca; marcação de
 **lida/salva por usuário**; destaque (pin); vínculo com o `Vendor`/`Technology` existentes;
 escrita restrita a ADMIN/MANAGER e leitura liberada a todos os papéis.
+
+### 3.2 Releases (módulo pós-MVP, D-021)
+
+Área que **documenta o que mudou em cada versão do sistema**. Cada release tem versão
+(`X.Y.Z`), título, resumo, data e itens categorizados (Novidade, Melhoria, Correção,
+Segurança, Infraestrutura, Outro). Exatamente uma é a **versão atual**, exibida no rodapé
+da navegação. Gerenciável por ADMIN/MANAGER (criar, editar, tornar atual, remover); o seed
+traz o histórico real do projeto.
 
 ## 4. Regras de negócio essenciais
 
@@ -96,5 +105,5 @@ dashboard real; relatórios; CSV; importações; autenticação; permissões; Do
 migrations; seed; documentação).
 
 **Situação:** todos atendidos e verificados na Fase 8 — evidências, achados e
-limitações em [`QA.md`](./QA.md) (suíte de aceite com 111 verificações e 0 falhas, já
-incluindo o bloco do módulo **Tec News**).
+limitações em [`QA.md`](./QA.md) (suíte de aceite com 123 verificações e 0 falhas, já
+incluindo os blocos dos módulos **Tec News** e **Releases**).

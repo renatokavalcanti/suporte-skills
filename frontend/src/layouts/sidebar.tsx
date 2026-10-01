@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { visibleNavItems } from './navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { APP_VERSION } from '@/config/version';
 import { cn } from '@/lib/utils';
 
 function Brand() {
@@ -87,7 +88,7 @@ export function Sidebar({
         <Brand />
         <NavItems />
         <div className="border-t border-slate-200 px-5 py-3 text-[11px] text-slate-400 dark:border-slate-800">
-          v0.1.0 · MVP
+          v{APP_VERSION} · Suporte Skills
         </div>
       </aside>
 

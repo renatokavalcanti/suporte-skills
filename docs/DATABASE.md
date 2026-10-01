@@ -18,6 +18,7 @@ Vendor 1─N NewsSource N─1 Technology (opcional)
 Vendor 1─N NewsItem N─1 Technology (opcional)
 NewsSource 1─N NewsItem
 NewsItem 1─N NewsReadState N─1 Professional   (N:N)
+Release 1─N ReleaseItem
 ```
 
 Decisão **D-003**: `users` e `professionals` são a **mesma tabela**
@@ -78,6 +79,16 @@ aqui.
 `id, news_item_id, professional_id, read_at (nullable), saved_at (nullable), timestamps`
 Único: `(news_item_id, professional_id)`. Estado de leitura/salvo **por usuário** (D-020).
 
+### releases
+`id, version (único), title, summary (nullable), released_at, current, hidden, timestamps`
+Changelog do sistema (D-021). No máximo uma linha com `current = true`; `hidden` faz o
+soft delete.
+
+### release_items
+`id, release_id, category [FEATURE|IMPROVEMENT|FIX|SECURITY|INFRA|OTHER], description,
+position, timestamps`
+Itens de uma release; `position` define a ordem de exibição (cascade ao remover a release).
+
 ## 3. Enums
 
 | Enum | Valores |
@@ -95,6 +106,7 @@ aqui.
 | AuditAction | CREATE, UPDATE, DELETE |
 | NewsConnectorType | RSS, ATOM, MANUAL |
 | NewsKind | RELEASE, CERTIFICATION, FEATURE, SECURITY, EVENT, GENERAL |
+| ReleaseCategory | FEATURE, IMPROVEMENT, FIX, SECURITY, INFRA, OTHER |
 
 ## 4. Status de certificação (derivado — não é coluna)
 
@@ -111,6 +123,8 @@ Calculado por `CertificationStatusService` a partir de `expires_at` e de
 - `news_items`: `url` (único), `vendor_id`, `technology_id`, `kind`, `published_at`,
   `pinned`, `hidden`.
 - `news_read_states`: `(news_item_id, professional_id)` (único), `professional_id`.
+- `releases`: `version` (único), `hidden`, `released_at`.
+- `release_items`: `release_id`.
 
 ## 6. Migrations
 
@@ -118,3 +132,4 @@ Calculado por `CertificationStatusService` a partir de `expires_at` e de
 |-----------|----------|
 | `20260930000000_init` | Criação de todos os enums e tabelas do MVP. |
 | `20261001000000_tec_news` | Tabelas do Tec News (`news_sources`, `news_items`, `news_read_states`) e enums `NewsConnectorType`/`NewsKind`. |
+| `20261001120000_releases` | Tabelas de Releases (`releases`, `release_items`) e enum `ReleaseCategory`. |

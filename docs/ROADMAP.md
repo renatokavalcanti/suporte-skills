@@ -16,6 +16,7 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 | 7 | Importação | CSV, validação, preview, confirmação, relatório de erros | ✅ Concluída |
 | 8 | QA | Testes funcionais/API/permissões/regras, formulários, responsividade, segurança, UX | ✅ Concluída |
 | 9 | Tec News | Novidades dos fabricantes: fontes RSS/Atom, ingestão agendada, curadoria manual, filtros, destaques, leitura/salvo por usuário | ✅ Concluída (pós-MVP) |
+| 10 | Releases | Changelog do sistema: versões com itens por categoria, versão atual, gestão pela administração | ✅ Concluída (pós-MVP) |
 
 ## Critérios de aceite da Fase 8
 
@@ -45,8 +46,11 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 
 > **Módulo pós-MVP (D-020) — Tec News:** novidades dos canais oficiais dos fabricantes
 > (Red Hat, Nutanix, Veeam, ExaGrid, SUSE), com ingestão automática de RSS/Atom (opt-in) e
-> curadoria manual, leitura/salvo por usuário e destaques. Migration `20261001000000_tec_news`;
-> suíte de aceite ampliada para **111 verificações, 0 falhas**.
+> curadoria manual, leitura/salvo por usuário e destaques. Migration `20261001000000_tec_news`.
+
+> **Módulo pós-MVP (D-021) — Releases:** changelog do próprio sistema, gerenciável por
+> ADMIN/MANAGER, com versão atual destacada e itens por categoria. Migration
+> `20261001120000_releases`. Suíte de aceite ampliada para **123 verificações, 0 falhas**.
 
 ## Critérios de aceite da Fase 1 (histórico)
 

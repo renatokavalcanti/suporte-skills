@@ -13,6 +13,7 @@ import { HealthModule } from './modules/health/health.module';
 import { ImportsModule } from './modules/imports/imports.module';
 import { NewsModule } from './modules/news/news.module';
 import { ProfessionalsModule } from './modules/professionals/professionals.module';
+import { ReleasesModule } from './modules/releases/releases.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { RoadmapModule } from './modules/roadmap/roadmap.module';
 import { TechnologiesModule } from './modules/technologies/technologies.module';
@@ -43,6 +44,7 @@ import { RolesGuard } from './shared/guards/roles.guard';
     ReportsModule,
     ImportsModule,
     NewsModule,
+    ReleasesModule,
   ],
   providers: [
     // Autenticacao global: rotas so sao abertas se marcadas com @Public().

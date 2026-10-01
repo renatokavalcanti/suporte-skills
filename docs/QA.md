@@ -8,7 +8,7 @@ segurança, e uma suíte de regressão automatizada de ponta a ponta.
 
 | Frente | Como foi verificado |
 |--------|---------------------|
-| API e regras de negócio | Suíte `scripts/acceptance.sh` — **111 verificações**, 100% aprovadas |
+| API e regras de negócio | Suíte `scripts/acceptance.sh` — **123 verificações**, 100% aprovadas |
 | Permissões (RBAC) | Matriz ADMIN/MANAGER/CONSULTANT em dashboard, cadastros, roadmap, relatórios, importação e dados de terceiros |
 | Segurança | Headers (Helmet), CORS, força bruta no login, reuso de refresh token, injeção em CSV, validação de entrada, exposição de erro |
 | Regras de negócio | Status dinâmico, cobertura, vencimentos, auditoria, renovação, duplicidade |
@@ -17,13 +17,13 @@ segurança, e uma suíte de regressão automatizada de ponta a ponta.
 
 ## 2. Suíte de regressão
 
-A suíte vive no repositório: **`scripts/acceptance.sh`** (111 verificações). Ela exige a
+A suíte vive no repositório: **`scripts/acceptance.sh`** (123 verificações). Ela exige a
 API e o frontend no ar e o **seed DEMO aplicado**; ao final limpa os dados de teste e
 reaplica o seed (`RESET_DEMO=0` desativa essa restauração).
 
 ```bash
 npm run seed --prefix backend      # garante o estado DEMO
-bash scripts/acceptance.sh         # 111 PASS / 0 FAIL
+bash scripts/acceptance.sh         # 123 PASS / 0 FAIL
 ```
 
 Parâmetros aceitos: `API_URL`, `WEB_URL`, `NODE_BIN`, `CURL_BIN`, `PSQL_BIN`, `NPM_BIN`,
@@ -48,8 +48,9 @@ caminhos são normalizados via `cygpath` (node/curl/psql nativos do Windows).
 | 10. Importação CSV | 9 |
 | 11. Frontend e proxy | 2 |
 | 11b. Tec News (D-020) | 19 |
+| 11c. Releases (D-021) | 12 |
 | 12. Limpeza e restauração do seed | 1 |
-| **Total** | **111** |
+| **Total** | **123** |
 
 Suítes das fases anteriores, reexecutadas após as correções: F2 23/23, F3 15/15,
 F4 16/16, F5 13/13, F7 6/6.
@@ -153,6 +154,17 @@ a sincronização criou 10 itens, marcou a fonte como `OK` e, no segundo disparo
 ingestão ao vivo (dependeria de rede e seria não determinística); cobre apenas as rotas e o
 RBAC.
 
+## 5c. Módulo Releases — changelog (D-021)
+
+Validado na suíte (bloco 11c, 12 verificações): listagem por ADMIN com **exatamente uma**
+versão atual; `403` do CONSULTANT ao acessar e ao criar; criação com itens (`201`); versão
+duplicada (`409`) e formato fora de `X.Y.Z` (`400`); troca da versão atual permanecendo
+única; edição que **substitui** os itens; remoção (soft) que some da lista. A limpeza da
+suíte passou a apagar `releases` e confere 5 releases no estado DEMO final.
+
+> A constante `APP_VERSION` do frontend (`config/version.ts`) acompanha a release marcada
+> como atual; é uma duplicação consciente para exibir o rodapé sem chamada extra.
+
 ## 6. Limitações conhecidas (aceitas no MVP)
 
 1. **Estado em memória**: o limitador de login e o cache não usam store compartilhado —
@@ -174,6 +186,9 @@ RBAC.
    `last_error`). O parser é tolerante e cobre os campos essenciais — não extrai o conteúdo
    completo da página (decisão D-020) nem segue links. A classificação de tipo é por
    palavras-chave (substituível por IA).
+9. **Releases:** "apenas uma versão atual" é garantido na aplicação (transação), sem
+   constraint única parcial; e a versão exibida no rodapé (`APP_VERSION`) é mantida à mão,
+   precisando acompanhar a release atual marcada no banco.
 
 ## 7. Achados encaminhados para fases futuras (fora do MVP)
 
@@ -185,3 +200,5 @@ RBAC.
   padrão de rota aninhada + aba no perfil definido na D-019.
 - Tec News: extração do conteúdo completo da página (scraping) e classificação por IA;
   fontes adicionais (segurança/CVE por fabricante) e notificação das novidades.
+- Releases: gerar o rascunho da release a partir dos commits/tags do git (hoje é cadastro
+  manual) e derivar `APP_VERSION` da release atual em vez de constante.

@@ -127,6 +127,19 @@ enum NewsKind {
 }
 
 // ---------------------------------------------------------------------------
+// Releases (changelog do proprio sistema)
+// ---------------------------------------------------------------------------
+
+enum ReleaseCategory {
+  FEATURE
+  IMPROVEMENT
+  FIX
+  SECURITY
+  INFRA
+  OTHER
+}
+
+// ---------------------------------------------------------------------------
 // Identidade / acesso
 // Decisao D-003: users e professionals sao UMA unica entidade.
 // Profissional sem password_hash existe no cadastro, mas nao autentica.
@@ -405,4 +418,39 @@ model NewsReadState {
   @@unique([newsItemId, professionalId])
   @@index([professionalId])
   @@map("news_read_states")
+}
+
+// ---------------------------------------------------------------------------
+// Releases — changelog do sistema (versao + itens por categoria)
+// ---------------------------------------------------------------------------
+
+model Release {
+  id         String        @id @default(cuid())
+  version    String        @unique
+  title      String
+  summary    String?
+  releasedAt DateTime      @map("released_at")
+  current    Boolean       @default(false)
+  hidden     Boolean       @default(false)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  items      ReleaseItem[]
+
+  @@index([hidden])
+  @@index([releasedAt])
+  @@map("releases")
+}
+
+model ReleaseItem {
+  id          String          @id @default(cuid())
+  releaseId   String          @map("release_id")
+  category    ReleaseCategory @default(FEATURE)
+  description String
+  position    Int             @default(0)
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  release     Release         @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+
+  @@index([releaseId])
+  @@map("release_items")
 }

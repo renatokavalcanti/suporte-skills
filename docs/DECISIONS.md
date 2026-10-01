@@ -270,6 +270,26 @@ id, resumo, autor, data) e ignora entradas malformadas.
 
 ---
 
+## D-021 — Releases: changelog do sistema dentro do aplicativo
+**Data:** 01/10/2026
+**Decisão:** criar a área **Releases**, um changelog do próprio sistema mantido no
+banco (`Release` + `ReleaseItem`) e gerenciável por **ADMIN/MANAGER**. Cada release tem
+versão (`X.Y.Z`, única), título, resumo, data, flag `current` (a versão em uso) e itens
+categorizados (`FEATURE | IMPROVEMENT | FIX | SECURITY | INFRA | OTHER`). **Exatamente
+uma** release pode ser a atual; definir uma nova desmarca as demais. Acesso restrito à
+gestão; soft delete (`hidden`); toda escrita auditada. A versão exibida no rodapé da
+navegação acompanha a release atual (constante `APP_VERSION` no frontend).
+**Contexto:** faltava, dentro do app, um lugar que explicasse e documentasse o que mudou
+em cada versão — para a gestão consultar sem depender do repositório/git.
+**Consequências:** o histórico deixa de viver só no git/docs e passa a ser conteúdo
+gerenciável, com renderização amigável (timeline por versão, itens agrupados por
+categoria). A constante `APP_VERSION` precisa ser atualizada junto com a release marcada
+como atual — pequena duplicação consciente, para exibir a versão sem uma chamada extra.
+O seed popula o histórico real (0.1.0 → 0.3.0). Não altera o comportamento dos demais
+módulos.
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.

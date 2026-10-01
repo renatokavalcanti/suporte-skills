@@ -137,6 +137,22 @@ Os cabeçalhos aceitam aliases em português (ex.: `nome`, `fabricante`, `senior
 > fonte com erro não interrompe as demais (o motivo fica em `last_error`). O escopo inicial
 > cobre Red Hat, Nutanix, Veeam, ExaGrid e SUSE (fontes já cadastradas no seed).
 
+### Releases (D-021)
+
+Todas as rotas são restritas a **ADMIN/MANAGER**.
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/releases` | Lista paginada (mais recentes primeiro). Filtros: `search` (versão/título), `current`. |
+| GET | `/releases/:id` | Detalhe, com itens ordenados. |
+| POST | `/releases` | Cria release (`version` `X.Y.Z` única, `title`, `summary?`, `releasedAt`, `current?`, `items[]`). Versão duplicada → `409`; formato inválido → `400`. |
+| PUT | `/releases/:id` | Atualiza. Se `items` for enviado, **substitui** a lista de itens. |
+| PATCH | `/releases/:id/current` | Marca como versão atual (desmarca as demais). |
+| DELETE | `/releases/:id` | Soft delete (`hidden`). |
+
+> Cada item tem `category` (`FEATURE|IMPROVEMENT|FIX|SECURITY|INFRA|OTHER`) e
+> `description`. Só pode haver uma release com `current = true`.
+
 ### Exemplos
 
 ```bash

@@ -28,7 +28,7 @@ suporte-skills/
 │   ├── prisma/       # schema, migrations, seed
 │   └── src/
 │       ├── modules/  # auth, health, professionals, vendors, technologies,
-│       │             # certifications, roadmap, dashboard, reports, imports, news
+│       │             # certifications, roadmap, dashboard, reports, imports, news, releases
 │       ├── shared/   # domain, guards, decorators, filters, common
 │       ├── database/ # PrismaService/Module
 │       └── config/   # configuration + env.validation
@@ -69,6 +69,17 @@ O módulo `news` combina **ingestão automática** e **curadoria manual** (D-020
 - Leitura/salvo são **por usuário** (`news_read_states`); o escopo de escrita é
   ADMIN/MANAGER, exceto ler/salvar itens, disponível a qualquer autenticado.
 
+### 3.2 Releases (changelog do sistema)
+
+Módulo `releases`: changelog do próprio sistema, restrito a ADMIN/MANAGER (D-021).
+`Release` (versão `X.Y.Z` única, título, resumo, data, flag `current`) agrupa
+`ReleaseItem` por categoria (`FEATURE|IMPROVEMENT|FIX|SECURITY|INFRA|OTHER`). No máximo uma
+release é a **atual** — definir uma nova desmarca as demais, em transação. `PUT` com
+`items` substitui a lista (deleteMany + createMany). Itens usam soft delete (`hidden`) e
+todas as escritas são auditadas. O rodapé da navegação exibe a versão atual via constante
+`APP_VERSION` (`frontend/src/config/version.ts`), mantida à mão em sincronia com a release
+marcada como atual.
+
 ## 4. Segurança
 
 - `JwtAuthGuard` global: toda rota exige autenticação, exceto `@Public()`.
@@ -91,6 +102,8 @@ O módulo `news` combina **ingestão automática** e **curadoria manual** (D-020
   ADMIN/MANAGER (`@Roles`); ler/marcar lido/salvar liberado a qualquer autenticado. A
   ingestão agendada é opt-in e requer saída HTTPS para os fabricantes (desligável). O
   parser não executa conteúdo do feed; links externos abrem com `rel="noreferrer"`.
+- **Releases:** todas as rotas restritas a ADMIN/MANAGER (`@Roles` no controller) e
+  reforçadas no frontend por `RequireRole`.
 
 ## 5. Autenticação (fluxo)
 
@@ -130,7 +143,8 @@ distintos entre si, e `CORS_ORIGIN` vazio cai no valor padrão.
 - `components/protected-route.tsx` (sessão) e `components/require-role.tsx`
   (área por papel) — a autorização real é sempre no backend.
 - `features/`: uma pasta por módulo (dashboard, professionals, vendors,
-  technologies, certifications, roadmap, reports, imports, news, auth).
+  technologies, certifications, roadmap, reports, imports, news, releases, auth).
+- `config/version.ts`: versão exibida na interface (acompanha a release atual).
 
 ## 8. Decisões
 

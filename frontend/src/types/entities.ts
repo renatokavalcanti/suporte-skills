@@ -396,6 +396,34 @@ export interface SyncSourceResult {
   updated: number;
 }
 
+export type ReleaseCategory =
+  | 'FEATURE'
+  | 'IMPROVEMENT'
+  | 'FIX'
+  | 'SECURITY'
+  | 'INFRA'
+  | 'OTHER';
+
+export interface ReleaseItem {
+  id: string;
+  category: ReleaseCategory;
+  description: string;
+  position: number;
+}
+
+export interface Release {
+  id: string;
+  version: string;
+  title: string;
+  summary: string | null;
+  releasedAt: string;
+  current: boolean;
+  hidden: boolean;
+  createdAt: string;
+  updatedAt: string;
+  items: ReleaseItem[];
+}
+
 export interface AuditLogEntry {
   id: string;
   action: AuditAction;

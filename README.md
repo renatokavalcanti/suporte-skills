@@ -76,7 +76,7 @@ npm run dev                    # http://localhost:5173 (proxy /api -> :4000)
 
 | Onde | Comando | O que faz |
 |------|---------|-----------|
-| raiz | `bash scripts/acceptance.sh` | **Suíte de aceite** (111 verificações) contra a API no ar; restaura o seed ao final |
+| raiz | `bash scripts/acceptance.sh` | **Suíte de aceite** (123 verificações) contra a API no ar; restaura o seed ao final |
 | backend | `npm run typecheck` | Checagem de tipos |
 | backend | `npm run build` | Compila para `dist/` |
 | backend | `npm run seed` | Seed DEMO |
@@ -111,6 +111,7 @@ suporte-skills/
 | **Certificações do profissional** | Vínculo com obtenção/validade, **status dinâmico** (ACTIVE/EXPIRING/EXPIRED/NO_EXPIRATION), renovação com histórico e comprovante por URL |
 | **Roadmap técnico** | Lista com filtros, Kanban com drag-and-drop, timeline e marcação de atrasados |
 | **Tec News** | Novidades dos canais oficiais (RSS/Atom) dos fabricantes, com ingestão automática, curadoria manual, filtros por fabricante/tecnologia/tipo, destaques e leitura/salvo por usuário |
+| **Releases** | Changelog do sistema: versões com mudanças por categoria (novidade, melhoria, correção, segurança, infra) e destaque da versão atual |
 | **Relatórios** | Certificações, vencimentos, roadmap e por fabricante — em tela e **exportação CSV** (UTF-8 BOM, separador `;`) |
 | **Importação CSV** | Prévia validada linha a linha, confirmação e relatório de erros para profissionais e certificações |
 | **Acessos** | ADMIN/MANAGER com acesso total; CONSULTANT restrito ao próprio perfil, onde mantém os próprios vínculos de certificação |
@@ -150,9 +151,10 @@ para execução local). Principais:
 ## Status
 
 **MVP concluído** — fases 0 a 8 (arquitetura, fundação, cadastros, relacionamentos,
-roadmap, dashboard, relatórios, importação e QA) implementadas e validadas, mais o módulo
-**Tec News** (D-020). Suíte de aceite com **111 verificações, 0 falhas**
-(ver [`docs/QA.md`](./docs/QA.md)), typecheck e build limpos em backend e frontend.
+roadmap, dashboard, relatórios, importação e QA) implementadas e validadas, mais os módulos
+**Tec News** (D-020) e **Releases** (D-021). Suíte de aceite com **123 verificações,
+0 falhas** (ver [`docs/QA.md`](./docs/QA.md)), typecheck e build limpos em backend e
+frontend.
 
 A ingestão automática do Tec News é **opt-in** (`NEWS_SYNC_ENABLED=true`): sem ela, o
 módulo funciona com a curadoria manual e o botão "Sincronizar". Os cinco fabricantes do

@@ -7,6 +7,7 @@ import {
   Map,
   Newspaper,
   Settings,
+  Tag,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -49,6 +50,12 @@ export const navItems: NavItem[] = [
     to: '/relatorios',
     label: 'Relatórios',
     icon: BarChart3,
+    roles: ['ADMIN', 'MANAGER'],
+  },
+  {
+    to: '/releases',
+    label: 'Releases',
+    icon: Tag,
     roles: ['ADMIN', 'MANAGER'],
   },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
