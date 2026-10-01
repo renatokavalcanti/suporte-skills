@@ -38,7 +38,9 @@ Parâmetros aceitos: `API_URL`, `WEB_URL`, `NODE_BIN`, `CURL_BIN`, `PSQL_BIN`, `
 > dados** e reaplica o seed. Para não destruir dados reais, a suíte **aborta antes de
 > qualquer teste** ao encontrar registros fora do seed DEMO (id que não começa pelo prefixo
 > do seed, ex.: `prof-`, `ven-`), a menos que `ALLOW_DATA_LOSS=1` seja informado. Em ambiente
-> com dados reais, prefira `RESET_DEMO=0` ou o teste de fumaça (§2.1).
+> com dados reais, prefira `RESET_DEMO=0` ou o teste de fumaça (§2.1). Antes de apagar, a
+> suíte gera **automaticamente um dump** em `backups/` (`scripts/backup-db.sh`;
+> `SKIP_BACKUP=1` desativa) e **aborta se o backup falhar** com dados reais.
 
 ### 2.1 Teste de fumaça (não-destrutivo)
 

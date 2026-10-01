@@ -77,6 +77,7 @@ npm run dev                    # http://localhost:5173 (proxy /api -> :4000)
 | Onde | Comando | O que faz |
 |------|---------|-----------|
 | raiz | `bash scripts/smoke.sh` | **Teste de fumaça não-destrutivo** (health, login, leituras) — ideal depois de um deploy |
+| raiz | `bash scripts/backup-db.sh` | **Backup do banco** (dump SQL em `backups/`) — não-destrutivo |
 | raiz | `bash scripts/acceptance.sh` | **Suíte de aceite** (137 verificações) contra a API no ar; **apaga os dados e restaura o seed DEMO** |
 | backend | `npm run typecheck` | Checagem de tipos |
 | backend | `npm run build` | Compila para `dist/` |
@@ -106,6 +107,13 @@ Por isso, **em ambiente com dados reais não rode a suíte de aceite**: use
 (não-destrutivo). A suíte ainda **aborta** antes de qualquer teste se encontrar
 registros que não pertencem ao seed, exigindo `ALLOW_DATA_LOSS=1` para prosseguir.
 
+Como rede de segurança, a limpeza da suíte gera **automaticamente um dump** em
+`backups/` antes de apagar (`SKIP_BACKUP=1` desativa); se o backup falhar com dados
+reais, ela aborta. Para backup manual a qualquer momento: `bash scripts/backup-db.sh`
+(mantém os 10 mais recentes). **Restaurar:** `psql -U suporte -h localhost -d suporte_skills
+< backups/arquivo.sql` (ou `docker compose exec -T db psql -U suporte -d suporte_skills <
+backups/arquivo.sql`).
+
 ## Estrutura
 
 ```
@@ -114,7 +122,7 @@ suporte-skills/
 ├── backend/    API NestJS (prisma/)
 ├── database/   Scripts de banco
 ├── docs/       Documentação (ver docs/ARCHITECTURE.md)
-├── scripts/    Teste de fumaça e suíte de aceite (scripts/smoke.sh, acceptance.sh)
+├── scripts/    Operações e QA (smoke.sh, backup-db.sh, acceptance.sh)
 └── docker-compose.yml
 ```
 

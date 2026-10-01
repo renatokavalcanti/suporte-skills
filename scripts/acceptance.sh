@@ -21,6 +21,7 @@
 #   DB_USER/DB_HOST/DB_PORT/DB_NAME   (padrao suporte/localhost/5432/suporte_skills)
 #   RESET_DEMO 1|0 — ao final, limpa o banco e reaplica o seed (padrao 1)
 #   ALLOW_DATA_LOSS 1 — autoriza a limpeza mesmo com dados que nao sao do seed
+#   SKIP_BACKUP 1 — nao gera o dump de seguranca antes da limpeza (padrao 0)
 #
 # A suite cria e remove dados proprios (prefixo QA) e, com RESET_DEMO=1,
 # deixa o banco exatamente no estado DEMO documentado.
@@ -626,6 +627,25 @@ check "$([ "$(q 'o.aiEnabled')" = 'false' ]; echo $?)" 'desligar e limpar a chav
 # ---------------------------------------------------------------------------
 echo "--- 12. Limpeza: restaura o estado DEMO ---"
 if [ "$RESET_DEMO" = '1' ]; then
+  # Rede de seguranca: dump do banco ANTES de apagar (best-effort). Desative
+  # com SKIP_BACKUP=1. Se o backup falhar e houver dados reais (ALLOW_DATA_LOSS=1
+  # foi necessario), aborta para nao destruir sem uma copia.
+  BACKUP_SH="$(dirname "$0")/backup-db.sh"
+  if [ "${SKIP_BACKUP:-0}" != '1' ] && [ -f "$BACKUP_SH" ]; then
+    echo "[backup] gerando dump de seguranca antes da limpeza..."
+    if DB_USER="$DB_USER" DB_HOST="$DB_HOST" DB_PORT="$DB_PORT" DB_NAME="$DB_NAME" \
+       PGPASSWORD="${PGPASSWORD:-}" PG_DUMP_BIN="${PG_DUMP_BIN:-pg_dump}" \
+       bash "$BACKUP_SH"; then
+      echo "[backup] ok"
+    else
+      echo "[backup] FALHOU"
+      if [ "${ALLOW_DATA_LOSS:-0}" = '1' ]; then
+        echo "[ABORT] Ha dados reais e o backup falhou. Nao vou apagar sem copia."
+        echo "        Corrija o backup, use SKIP_BACKUP=1 para assumir o risco, ou RESET_DEMO=0."
+        exit 1
+      fi
+    fi
+  fi
   "$PSQL_BIN" -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -q -c "
 DELETE FROM audit_logs;
 DELETE FROM app_settings;

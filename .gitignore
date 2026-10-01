@@ -29,6 +29,9 @@ backend/prisma/*.db-journal
 # Certificados TLS locais
 certs/
 
+# Backups de banco (podem conter dados reais)
+backups/
+
 # Misc
 coverage/
 *.tsbuildinfo
