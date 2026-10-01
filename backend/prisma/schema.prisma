@@ -1,0 +1,408 @@
+// Suporte Skills - Technical Capability Management
+// Modelo de dados (Fase 1). Migrations versionadas em prisma/migrations.
+// Regra: o STATUS de certificacao NAO e persistido; e calculado em runtime
+// pelo CertificationStatusService (expires_at + CERT_EXPIRING_DAYS).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  MANAGER
+  CONSULTANT
+}
+
+enum ProfessionalType {
+  CLT
+  PJ
+  INTERN
+  PARTNER
+  TEMPORARY
+}
+
+enum Seniority {
+  JUNIOR
+  MID
+  SENIOR
+  SPECIALIST
+  LEAD
+}
+
+enum PartnershipStatus {
+  NONE
+  ACTIVE
+  PENDING
+  SUSPENDED
+  EXPIRED
+}
+
+enum TechnologyCategory {
+  OPERATING_SYSTEM
+  VIRTUALIZATION
+  CONTAINER_PLATFORM
+  CLOUD
+  AUTOMATION
+  BACKUP
+  STORAGE
+  HARDWARE
+  NETWORK
+  MANAGEMENT
+  SECURITY
+  OTHER
+}
+
+enum CertificationLevel {
+  FOUNDATIONAL
+  ASSOCIATE
+  PROFESSIONAL
+  EXPERT
+  SPECIALIST
+  ARCHITECT
+}
+
+enum CatalogStatus {
+  ACTIVE
+  UPDATING
+  DISCONTINUED
+  REPLACED
+}
+
+enum RoadmapType {
+  CERTIFICATION
+  RENEWAL
+  COURSE
+  TRAINING
+  PROJECT
+  LAB
+}
+
+enum RoadmapPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum RoadmapStatus {
+  BACKLOG
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+// ---------------------------------------------------------------------------
+// Tec News (novidades dos canais oficiais dos fabricantes)
+// ---------------------------------------------------------------------------
+
+enum NewsConnectorType {
+  RSS
+  ATOM
+  MANUAL
+}
+
+enum NewsKind {
+  RELEASE
+  CERTIFICATION
+  FEATURE
+  SECURITY
+  EVENT
+  GENERAL
+}
+
+// ---------------------------------------------------------------------------
+// Identidade / acesso
+// Decisao D-003: users e professionals sao UMA unica entidade.
+// Profissional sem password_hash existe no cadastro, mas nao autentica.
+// ---------------------------------------------------------------------------
+
+model Professional {
+  id               String            @id @default(cuid())
+  name             String
+  email            String            @unique
+  passwordHash     String?           @map("password_hash")
+  providerId       String?           @map("provider_id")
+  role             Role              @default(CONSULTANT)
+  active           Boolean           @default(true)
+  position         String?
+  professionalType ProfessionalType? @map("professional_type")
+  seniority        Seniority?
+  hireDate         DateTime?         @map("hire_date") @db.Date
+  notes            String?
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  certifications ProfessionalCertification[]
+  roadmapItems   RoadmapItem[]            @relation("ProfessionalRoadmap")
+  ownedRoadmap   RoadmapItem[]            @relation("RoadmapOwner")
+  refreshTokens  RefreshToken[]
+  auditLogs      AuditLog[]
+  newsReadStates NewsReadState[]
+
+  @@index([active])
+  @@index([role])
+  @@map("professionals")
+}
+
+model RefreshToken {
+  id             String       @id @default(cuid())
+  professionalId String       @map("professional_id")
+  tokenHash      String       @map("token_hash")
+  expiresAt      DateTime     @map("expires_at")
+  revokedAt      DateTime?    @map("revoked_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@index([professionalId])
+  @@map("refresh_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Catalogo: fabricantes / tecnologias / certificacoes
+// ---------------------------------------------------------------------------
+
+model Vendor {
+  id                    String            @id @default(cuid())
+  name                  String            @unique
+  website               String?
+  logoUrl               String?           @map("logo_url")
+  partnershipStatus     PartnershipStatus @default(NONE) @map("partnership_status")
+  partnershipLevel      String?           @map("partnership_level")
+  partnershipStartDate  DateTime?         @map("partnership_start_date") @db.Date
+  partnershipRenewalDate DateTime?        @map("partnership_renewal_date") @db.Date
+  notes                 String?
+  active                Boolean           @default(true)
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  technologies   Technology[]
+  certifications Certification[]
+  newsSources    NewsSource[]
+  newsItems      NewsItem[]
+
+  @@index([active])
+  @@map("vendors")
+}
+
+model Technology {
+  id          String              @id @default(cuid())
+  vendorId    String              @map("vendor_id")
+  name        String
+  category    TechnologyCategory?
+  description String?
+  active      Boolean             @default(true)
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  vendor         Vendor           @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  certifications Certification[]
+  roadmapItems   RoadmapItem[]
+  newsSources    NewsSource[]
+  newsItems      NewsItem[]
+
+  @@unique([vendorId, name])
+  @@index([active])
+  @@map("technologies")
+}
+
+model Certification {
+  id             String              @id @default(cuid())
+  vendorId       String              @map("vendor_id")
+  technologyId   String?             @map("technology_id")
+  name           String
+  code           String?
+  level          CertificationLevel?
+  officialUrl    String?             @map("official_url")
+  validityMonths Int?                @map("validity_months")
+  catalogStatus  CatalogStatus       @default(ACTIVE) @map("catalog_status")
+  description    String?
+  notes          String?
+  active         Boolean             @default(true)
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+
+  vendor                   Vendor                     @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  technology               Technology?                @relation(fields: [technologyId], references: [id], onDelete: SetNull)
+  professionalCertifications ProfessionalCertification[]
+  roadmapItems             RoadmapItem[]
+
+  @@index([vendorId])
+  @@index([technologyId])
+  @@index([active])
+  @@map("certifications")
+}
+
+// Historico (D-004): renovacao gera NOVA linha, nunca sobrescreve.
+model ProfessionalCertification {
+  id              String    @id @default(cuid())
+  professionalId  String    @map("professional_id")
+  certificationId String    @map("certification_id")
+  certificateNumber String? @map("certificate_number")
+  obtainedAt      DateTime? @map("obtained_at") @db.Date
+  expiresAt       DateTime? @map("expires_at") @db.Date
+  proofUrl        String?   @map("proof_url")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  professional  Professional  @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  certification Certification @relation(fields: [certificationId], references: [id], onDelete: Restrict)
+
+  @@index([professionalId])
+  @@index([certificationId])
+  @@index([expiresAt])
+  @@map("professional_certifications")
+}
+
+// ---------------------------------------------------------------------------
+// Roadmap
+// ---------------------------------------------------------------------------
+
+model RoadmapItem {
+  id              String          @id @default(cuid())
+  professionalId  String          @map("professional_id")
+  technologyId    String?         @map("technology_id")
+  certificationId String?         @map("certification_id")
+  title           String
+  objective       String?
+  description     String?
+  type            RoadmapType
+  priority        RoadmapPriority @default(MEDIUM)
+  status          RoadmapStatus   @default(BACKLOG)
+  startDate       DateTime?       @map("start_date") @db.Date
+  dueDate         DateTime?       @map("due_date") @db.Date
+  completedAt     DateTime?       @map("completed_at")
+  ownerId         String?         @map("owner_id")
+  notes           String?
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  professional  Professional   @relation("ProfessionalRoadmap", fields: [professionalId], references: [id], onDelete: Cascade)
+  owner         Professional?  @relation("RoadmapOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  technology    Technology?    @relation(fields: [technologyId], references: [id], onDelete: SetNull)
+  certification Certification? @relation(fields: [certificationId], references: [id], onDelete: SetNull)
+
+  @@index([professionalId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("roadmap_items")
+}
+
+// ---------------------------------------------------------------------------
+// Auditoria (Fase 1: estrutura pronta; uso nas alteracoes criticas)
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  actorId   String?     @map("actor_id")
+  entity    String
+  entityId  String      @map("entity_id")
+  action    AuditAction
+  before    Json?
+  after     Json?
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  actor Professional? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Tec News — fontes oficiais, itens e estado de leitura por usuario
+// Uma fonte pode ser automatica (RSS/ATOM) ou curada a mao (MANUAL). Os itens
+// sao deduplicados pela URL (unica) e classificados por NewsKind.
+// ---------------------------------------------------------------------------
+
+model NewsSource {
+  id                   String            @id @default(cuid())
+  vendorId             String            @map("vendor_id")
+  technologyId         String?           @map("technology_id")
+  name                 String
+  url                  String?
+  connectorType        NewsConnectorType @default(RSS) @map("connector_type")
+  active               Boolean           @default(true)
+  fetchIntervalMinutes Int?              @map("fetch_interval_minutes")
+  lastFetchedAt        DateTime?         @map("last_fetched_at")
+  lastStatus           String?           @map("last_status")
+  lastError            String?           @map("last_error")
+  lastItemCount        Int?              @map("last_item_count")
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+
+  vendor     Vendor      @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  technology Technology? @relation(fields: [technologyId], references: [id], onDelete: SetNull)
+  items      NewsItem[]
+
+  @@index([vendorId])
+  @@index([technologyId])
+  @@index([active])
+  @@map("news_sources")
+}
+
+model NewsItem {
+  id           String    @id @default(cuid())
+  sourceId     String?   @map("source_id")
+  vendorId     String?   @map("vendor_id")
+  technologyId String?   @map("technology_id")
+  externalId   String?   @map("external_id")
+  url          String    @unique
+  title        String
+  summary      String?
+  author       String?
+  kind         NewsKind  @default(GENERAL)
+  origin       String    @default("feed")
+  publishedAt  DateTime? @map("published_at")
+  pinned       Boolean   @default(false)
+  hidden       Boolean   @default(false)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  source     NewsSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  vendor     Vendor?     @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  technology Technology? @relation(fields: [technologyId], references: [id], onDelete: SetNull)
+  readStates NewsReadState[]
+
+  @@index([vendorId])
+  @@index([technologyId])
+  @@index([kind])
+  @@index([publishedAt])
+  @@index([pinned])
+  @@index([hidden])
+  @@map("news_items")
+}
+
+model NewsReadState {
+  id             String    @id @default(cuid())
+  newsItemId     String    @map("news_item_id")
+  professionalId String    @map("professional_id")
+  readAt         DateTime? @map("read_at")
+  savedAt        DateTime? @map("saved_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  newsItem     NewsItem     @relation(fields: [newsItemId], references: [id], onDelete: Cascade)
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([newsItemId, professionalId])
+  @@index([professionalId])
+  @@map("news_read_states")
+}

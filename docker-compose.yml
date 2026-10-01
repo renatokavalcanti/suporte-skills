@@ -1,0 +1,81 @@
+name: suporte-skills
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: suporte-skills-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-suporte}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-suporte}
+      POSTGRES_DB: ${POSTGRES_DB:-suporte_skills}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-suporte} -d ${POSTGRES_DB:-suporte_skills}']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: ./backend
+    container_name: suporte-skills-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      API_PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-suporte}:${POSTGRES_PASSWORD:-suporte}@db:5432/${POSTGRES_DB:-suporte_skills}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-troque-este-segredo-de-acesso-com-no-minimo-32-caracteres}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-troque-este-segredo-de-refresh-com-no-minimo-32-caracteres}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-7d}
+      AUTH_LOGIN_MAX_ATTEMPTS: ${AUTH_LOGIN_MAX_ATTEMPTS:-5}
+      AUTH_LOGIN_WINDOW_MINUTES: ${AUTH_LOGIN_WINDOW_MINUTES:-15}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      CERT_EXPIRING_DAYS: ${CERT_EXPIRING_DAYS:-90}
+      BUSINESS_TIMEZONE: ${BUSINESS_TIMEZONE:-America/Sao_Paulo}
+      NEWS_SYNC_ENABLED: ${NEWS_SYNC_ENABLED:-false}
+      NEWS_SYNC_INTERVAL_MINUTES: ${NEWS_SYNC_INTERVAL_MINUTES:-360}
+      NEWS_FETCH_TIMEOUT_MS: ${NEWS_FETCH_TIMEOUT_MS:-10000}
+      NEWS_MAX_ITEMS_PER_SOURCE: ${NEWS_MAX_ITEMS_PER_SOURCE:-30}
+    command: sh -c "npx prisma migrate deploy && node dist/main.js"
+    ports:
+      - '${API_PORT:-4000}:4000'
+
+  # Seed DEMO sob demanda: docker compose --profile tools run --rm seed
+  seed:
+    build:
+      context: ./backend
+    profiles: ['tools']
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-suporte}:${POSTGRES_PASSWORD:-suporte}@db:5432/${POSTGRES_DB:-suporte_skills}?schema=public
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@suporte.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-Admin@123}
+    command: sh -c "npx prisma migrate deploy && npm run seed"
+
+  web:
+    build:
+      context: ./frontend
+    container_name: suporte-skills-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '${WEB_PORT:-8080}:80'
+      - '${WEB_TLS_PORT:-443}:443'
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
+
+volumes:
+  dbdata:
