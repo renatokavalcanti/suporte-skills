@@ -19,6 +19,7 @@ import { QueryNewsDto } from './dto/query-news.dto';
 import { QueryNewsSourcesDto } from './dto/query-news-sources.dto';
 import { UpdateNewsItemDto } from './dto/update-news-item.dto';
 import { UpdateNewsSourceDto } from './dto/update-news-source.dto';
+import { scoreNewsRelevance } from './news-relevance';
 
 const NEWS_ITEM_SELECT = {
   id: true,
@@ -35,6 +36,10 @@ const NEWS_ITEM_SELECT = {
   publishedAt: true,
   pinned: true,
   hidden: true,
+  relevanceScore: true,
+  relevanceFocus: true,
+  relevanceNote: true,
+  scoredAt: true,
   createdAt: true,
   updatedAt: true,
   vendor: { select: { id: true, name: true } },
@@ -72,7 +77,12 @@ export type NewsSourceView = Prisma.NewsSourceGetPayload<{
   select: typeof NEWS_SOURCE_SELECT;
 }>;
 
-const ITEM_SORTABLE = ['publishedAt', 'createdAt', 'title'] as const;
+const ITEM_SORTABLE = [
+  'publishedAt',
+  'createdAt',
+  'title',
+  'relevanceScore',
+] as const;
 
 interface ReadState {
   readAt: Date | null;
@@ -207,6 +217,14 @@ export class NewsService {
   ): Promise<NewsItemView> {
     await this.assertReferences(dto.vendorId, dto.technologyId);
 
+    const publishedAt = dto.publishedAt ? new Date(dto.publishedAt) : new Date();
+    const relevance = scoreNewsRelevance({
+      title: dto.title.trim(),
+      summary: dto.summary ?? null,
+      kind: dto.kind ?? 'GENERAL',
+      publishedAt,
+    });
+
     try {
       const created = await this.prisma.newsItem.create({
         data: {
@@ -218,8 +236,12 @@ export class NewsService {
           author: dto.author?.trim() ?? null,
           kind: dto.kind ?? 'GENERAL',
           origin: 'manual',
-          publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : new Date(),
+          publishedAt,
           pinned: dto.pinned ?? false,
+          relevanceScore: relevance.score,
+          relevanceFocus: relevance.focus,
+          relevanceNote: relevance.note,
+          scoredAt: new Date(),
         },
         select: NEWS_ITEM_SELECT,
       });
@@ -266,6 +288,23 @@ export class NewsService {
         ? { connect: { id: dto.technologyId } }
         : { disconnect: true };
     }
+
+    const relevance = scoreNewsRelevance({
+      title: dto.title !== undefined ? dto.title.trim() : existing.title,
+      summary:
+        dto.summary !== undefined ? (dto.summary?.trim() ?? null) : existing.summary,
+      kind: dto.kind ?? existing.kind,
+      publishedAt:
+        dto.publishedAt !== undefined
+          ? dto.publishedAt
+            ? new Date(dto.publishedAt)
+            : null
+          : existing.publishedAt,
+    });
+    data.relevanceScore = relevance.score;
+    data.relevanceFocus = relevance.focus;
+    data.relevanceNote = relevance.note;
+    data.scoredAt = new Date();
 
     try {
       const updated = await this.prisma.newsItem.update({

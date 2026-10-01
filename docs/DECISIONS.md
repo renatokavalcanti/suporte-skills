@@ -290,6 +290,37 @@ módulos.
 
 ---
 
+## D-022 — Tec News: relevância e resumo inteligente (destaques para o consultor)
+**Data:** 01/10/2026
+**Decisão:** o Tec News passa a priorizar o que interessa ao consultor — **funcionalidades
+de produto** e **certificações/treinamentos técnicos** — em duas camadas. (a) **Relevância
+determinística** (`news-relevance.ts`, sempre ativa): pontua cada novidade de 0 a 100 a
+partir de palavras-chave (PT/EN), do tipo editorial (`kind`) e da recência, atribuindo um
+`NewsFocus` (`FEATURE | CERTIFICATION | SECURITY | RELEASE | OTHER`) e um motivo curto;
+calculada na ingestão, na curadoria e num **backfill idempotente** no start. (b) **Resumo
+inteligente (digest):** usa um endpoint **compatível com OpenAI** (config por env:
+`AI_ENABLED`, `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`, `AI_TIMEOUT_MS`), recebe as
+novidades candidatas do período (`NEWS_DIGEST_WINDOW_DAYS`, `NEWS_DIGEST_MAX_ITEMS`) e
+devolve, em JSON, um texto de resumo + até 8 destaques com foco/motivo/score. O digest é
+persistido (`news_digests`, snapshot em JSON) e exibido no painel **"Destaques para o
+consultor"** no topo da tela; o estado de leitura/salvo continua **por usuário**. A
+geração ocorre **automaticamente** ao fim de uma sincronização com novidades novas (quando
+`NEWS_DIGEST_ENABLED=true`) e **sob demanda** pela gestão (`POST /news/digest`). A
+classificação heurística e o campo `kind` seguem como interface estável — a IA é um
+enriquecimento opcional.
+**Contexto:** o volume de novidades dos fabricantes tornava a lista um garimpo; o consultor
+precisa ver rápido o que agrega conhecimento (novas capacidades e certificações), não
+marketing. Era o próximo passo natural previsto na D-020 (classificação substituível por IA).
+**Consequências:** passa a existir tráfego HTTP de saída opcional para o provedor de IA
+(opt-in; sem ele, o Tec News segue funcionando e a relevância heurística ordena a lista).
+Sem dependência nova (fetch nativo). Custo/limite controlados pela janela e pelo teto de
+itens por resumo. A IA pode falhar: a API responde `503` e o módulo continua íntegro
+(degrada para a heurística). Todos os resumos gerados são auditados (`news_digests`). Nova
+migration `20261001150000_news_digest` (campos de relevância em `news_items` + tabela
+`news_digests`). Versão exibida: `0.4.0`.
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.

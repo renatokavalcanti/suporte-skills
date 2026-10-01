@@ -12,6 +12,7 @@
 import 'dotenv/config';
 import { PrismaClient, ReleaseCategory, Role } from '@prisma/client';
 import { hash } from '@node-rs/argon2';
+import { scoreNewsRelevance } from '../src/modules/news/news-relevance';
 
 const prisma = new PrismaClient();
 const DAY = 24 * 60 * 60 * 1000;
@@ -302,10 +303,22 @@ async function main(): Promise<void> {
   ];
 
   for (const n of newsItems) {
+    const relevance = scoreNewsRelevance({
+      title: n.title,
+      summary: n.summary,
+      kind: n.kind,
+      publishedAt: n.publishedAt,
+    });
+    const relevanceData = {
+      relevanceScore: relevance.score,
+      relevanceFocus: relevance.focus,
+      relevanceNote: relevance.note,
+      scoredAt: new Date(),
+    };
     await prisma.newsItem.upsert({
       where: { id: n.id },
-      update: { vendorId: n.vendorId, technologyId: n.technologyId, title: n.title, summary: n.summary, url: n.url, kind: n.kind, origin: 'seed', publishedAt: n.publishedAt, pinned: n.pinned, hidden: false },
-      create: { id: n.id, vendorId: n.vendorId, technologyId: n.technologyId, title: n.title, summary: n.summary, url: n.url, kind: n.kind, origin: 'seed', publishedAt: n.publishedAt, pinned: n.pinned },
+      update: { vendorId: n.vendorId, technologyId: n.technologyId, title: n.title, summary: n.summary, url: n.url, kind: n.kind, origin: 'seed', publishedAt: n.publishedAt, pinned: n.pinned, hidden: false, ...relevanceData },
+      create: { id: n.id, vendorId: n.vendorId, technologyId: n.technologyId, title: n.title, summary: n.summary, url: n.url, kind: n.kind, origin: 'seed', publishedAt: n.publishedAt, pinned: n.pinned, ...relevanceData },
     });
   }
 
@@ -387,11 +400,25 @@ async function main(): Promise<void> {
       title: 'Releases (changelog do sistema)',
       summary: 'Área que documenta as mudanças de cada versão do sistema.',
       releasedAt: new Date('2026-10-01T12:00:00.000Z'),
-      current: true,
+      current: false,
       items: [
         { category: 'FEATURE', description: 'Nova área de Releases com o histórico de versões e mudanças' },
         { category: 'FEATURE', description: 'Gestão das releases por ADMIN/MANAGER, com destaque da versão atual' },
         { category: 'IMPROVEMENT', description: 'Versão do sistema exibida no rodapé da navegação' },
+      ],
+    },
+    {
+      id: 'rel-0-4-0',
+      version: '0.4.0',
+      title: 'Tec News: resumo inteligente',
+      summary: 'Destaques automáticos das novidades mais importantes para o consultor (funcionalidades e certificações).',
+      releasedAt: new Date('2026-10-01T15:00:00.000Z'),
+      current: true,
+      items: [
+        { category: 'FEATURE', description: 'Painel "Destaques para o consultor" no topo do Tec News' },
+        { category: 'FEATURE', description: 'Resumo por IA (endpoint compatível com OpenAI, opt-in) focado em funcionalidades de produto e certificações técnicas' },
+        { category: 'FEATURE', description: 'Classificação de relevância das novidades e ordenação "Mais relevantes"' },
+        { category: 'IMPROVEMENT', description: 'Resumo atualizado automaticamente na sincronização e por botão manual' },
       ],
     },
   ];

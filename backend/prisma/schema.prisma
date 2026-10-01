@@ -126,6 +126,16 @@ enum NewsKind {
   GENERAL
 }
 
+// Foco de relevancia para o consultor: o que a novidade ensina/adiciona.
+// Distinto de NewsKind (que e' o tipo editorial do item).
+enum NewsFocus {
+  FEATURE
+  CERTIFICATION
+  SECURITY
+  RELEASE
+  OTHER
+}
+
 // ---------------------------------------------------------------------------
 // Releases (changelog do proprio sistema)
 // ---------------------------------------------------------------------------
@@ -386,6 +396,12 @@ model NewsItem {
   publishedAt  DateTime? @map("published_at")
   pinned       Boolean   @default(false)
   hidden       Boolean   @default(false)
+  // Ranking de relevancia para o consultor (0..100), foco e motivo curto.
+  // Preenchidos por heuristica e/ou pelo resumo inteligente (IA).
+  relevanceScore Int       @default(0) @map("relevance_score")
+  relevanceFocus NewsFocus? @map("relevance_focus")
+  relevanceNote  String?   @map("relevance_note")
+  scoredAt       DateTime? @map("scored_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
@@ -400,6 +416,7 @@ model NewsItem {
   @@index([publishedAt])
   @@index([pinned])
   @@index([hidden])
+  @@index([relevanceScore])
   @@map("news_items")
 }
 
@@ -418,6 +435,26 @@ model NewsReadState {
   @@unique([newsItemId, professionalId])
   @@index([professionalId])
   @@map("news_read_states")
+}
+
+// Resumo inteligente (digest) dos destaques do Tec News. Os destaques sao um
+// snapshot em JSON (id/titulo/link/foco/motivo) do momento da geracao; o
+// estado de leitura/salvo e' resolvido por usuario na leitura.
+model NewsDigest {
+  id          String    @id @default(cuid())
+  title       String
+  summary     String
+  highlights  Json
+  itemCount   Int       @map("item_count")
+  periodStart DateTime? @map("period_start")
+  periodEnd   DateTime? @map("period_end")
+  model       String?
+  origin      String    @default("manual")
+  generatedBy String?   @map("generated_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("news_digests")
 }
 
 // ---------------------------------------------------------------------------

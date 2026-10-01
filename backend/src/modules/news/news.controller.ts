@@ -20,6 +20,7 @@ import { SetPinnedDto } from './dto/set-pinned.dto';
 import { SetReadDto } from './dto/set-read.dto';
 import { SetSavedDto } from './dto/set-saved.dto';
 import { UpdateNewsItemDto } from './dto/update-news-item.dto';
+import { NewsDigestService } from './news-digest.service';
 import { NewsService } from './news.service';
 import { NewsSyncService } from './news-sync.service';
 
@@ -28,6 +29,7 @@ export class NewsController {
   constructor(
     private readonly service: NewsService,
     private readonly sync: NewsSyncService,
+    private readonly digest: NewsDigestService,
   ) {}
 
   @Get()
@@ -39,6 +41,23 @@ export class NewsController {
   @Get('summary')
   summary(@CurrentUser() user: AuthenticatedUser) {
     return this.service.summary(user);
+  }
+
+  // Resumo inteligente (destaques para o consultor). Somente leitura para
+  // qualquer usuario; a geracao sob demanda e' da gestao.
+  @Get('digest')
+  async getDigest(@CurrentUser() user: AuthenticatedUser) {
+    return {
+      aiEnabled: this.digest.isAiEnabled(),
+      autoEnabled: this.digest.isAutoEnabled(),
+      digest: await this.digest.getLatest(user),
+    };
+  }
+
+  @Post('digest')
+  @Roles(Role.ADMIN, Role.MANAGER)
+  generateDigest(@CurrentUser() user: AuthenticatedUser) {
+    return this.digest.generate(user, 'manual');
   }
 
   @Post('sync')

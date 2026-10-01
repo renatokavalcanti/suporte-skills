@@ -36,6 +36,7 @@ Profissional → Competências → Tecnologias → Certificações → Experiên
 | 10 | Alertas básicos | 5 |
 | 11 | Tec News (novidades dos fabricantes) | pós-MVP |
 | 12 | Releases (changelog do sistema) | pós-MVP |
+| 13 | Resumo inteligente do Tec News (destaques) | pós-MVP |
 
 Fora do MVP (arquitetura preparada, **não implementar**): Skills com níveis,
 Treinamentos, Projetos, Parcerias e requisitos, Gap Analysis, Capacity Planning,
@@ -63,6 +64,16 @@ escrita restrita a ADMIN/MANAGER e leitura liberada a todos os papéis.
 Segurança, Infraestrutura, Outro). Exatamente uma é a **versão atual**, exibida no rodapé
 da navegação. Gerenciável por ADMIN/MANAGER (criar, editar, tornar atual, remover); o seed
 traz o histórico real do projeto.
+
+### 3.3 Resumo inteligente do Tec News (módulo pós-MVP, D-022)
+
+Painel **"Destaques para o consultor"** no topo do Tec News, que prioriza o que agrega
+conhecimento — **funcionalidades de produto** e **certificações/treinamentos técnicos**. A
+**relevância** de cada novidade (0..100, com foco e motivo) é sempre calculada por
+heurística; o **resumo** usa um endpoint de IA compatível com OpenAI (opt-in) e é gerado
+automaticamente ao fim da sincronização com novidades novas e sob demanda pela gestão.
+Requisitos: leitura liberada a todos, geração restrita a ADMIN/MANAGER, ordenação "mais
+relevantes", e **degradação graciosa** quando a IA está desligada (`503`, lista intacta).
 
 ## 4. Regras de negócio essenciais
 
@@ -105,5 +116,5 @@ dashboard real; relatórios; CSV; importações; autenticação; permissões; Do
 migrations; seed; documentação).
 
 **Situação:** todos atendidos e verificados na Fase 8 — evidências, achados e
-limitações em [`QA.md`](./QA.md) (suíte de aceite com 123 verificações e 0 falhas, já
-incluindo os blocos dos módulos **Tec News** e **Releases**).
+limitações em [`QA.md`](./QA.md) (suíte de aceite com 129 verificações e 0 falhas, já
+incluindo os blocos dos módulos **Tec News**, **Releases** e do **resumo inteligente**).

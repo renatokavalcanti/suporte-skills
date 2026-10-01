@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# Suite de aceite do Suporte Skills (Fase 8 + Tec News + Releases) — 123 verificacoes
+# Suite de aceite do Suporte Skills (Fase 8 + Tec News + Releases + Resumo IA) — 129 verificacoes
 #
 # Uso:
 #   bash scripts/acceptance.sh
@@ -543,11 +543,32 @@ call GET "/releases?search=9.9.$TS" "$ADMIN"
 check "$([ "$(q 'o.meta.total')" = '0' ]; echo $?)" 'release removida some da lista' "total=$(q 'o.meta.total')"
 
 # ---------------------------------------------------------------------------
+echo "--- 11d. Tec News: resumo inteligente (D-022) ---"
+call GET "/news?sort=relevanceScore&order=desc" "$ADMIN"
+check "$([ "$CODE" = '200' ] && [ "$(q 'o.data[0].relevanceScore')" -ge 1 ]; echo $?)" \
+  'novidades ordenadas por relevancia' "http=$CODE score=$(q 'o.data[0].relevanceScore')"
+check "$([ "$(q 'typeof o.data[0].relevanceFocus')" = 'string' ]; echo $?)" \
+  'foco de relevancia classificado' "foco=$(q 'o.data[0].relevanceFocus')"
+
+call GET /news/digest "$CONSULTANT"
+check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.aiEnabled')" = 'boolean' ]; echo $?)" \
+  'CONSULTANT le o resumo (destaques)' "http=$CODE"
+call POST /news/digest "$CONSULTANT"
+check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao gera resumo -> 403' "http=$CODE"
+call GET /news/digest "$ADMIN"
+check "$([ "$CODE" = '200' ] && [ "$(q 'o.digest')" = 'null' ]; echo $?)" \
+  'sem resumo gerado no estado DEMO' "digest=$(q 'o.digest')"
+call POST /news/digest "$ADMIN"
+check "$([ "$CODE" = '503' ]; echo $?)" \
+  'IA desligada -> 503 (degradacao graciosa)' "http=$CODE"
+
+# ---------------------------------------------------------------------------
 echo "--- 12. Limpeza: restaura o estado DEMO ---"
 if [ "$RESET_DEMO" = '1' ]; then
   "$PSQL_BIN" -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -q -c "
 DELETE FROM audit_logs;
 DELETE FROM releases;
+DELETE FROM news_digests;
 DELETE FROM news_read_states;
 DELETE FROM news_items;
 DELETE FROM news_sources;
@@ -559,8 +580,8 @@ DELETE FROM vendors;
 DELETE FROM refresh_tokens;
 DELETE FROM professionals;"
   ( cd "$BACKEND_DIR" && "$NPM_BIN" run seed >/dev/null 2>&1 )
-  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM releases')" = '5' ]; echo $?)"
-  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 5 releases"
+  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '6' ]; echo $?)"
+  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 6 releases"
 else
   echo "[SKIP] restauracao do seed (RESET_DEMO=0)"
 fi

@@ -38,10 +38,13 @@ import {
   formatDate,
   newsKindLabels,
   newsKindVariant,
+  newsFocusLabels,
+  newsFocusVariant,
   toOptions,
 } from '@/utils/labels';
 import { NewsFormDialog } from './news-form-dialog';
 import { NewsSourcesDialog } from './news-sources-dialog';
+import { NewsDigestPanel } from './news-digest-panel';
 
 type Scope = 'all' | 'unread' | 'saved' | 'pinned';
 
@@ -56,6 +59,7 @@ export function NewsPage() {
   const [technologyFilter, setTechnologyFilter] = useState('');
   const [kindFilter, setKindFilter] = useState('');
   const [scope, setScope] = useState<Scope>('all');
+  const [sort, setSort] = useState('');
   const debouncedSearch = useDebouncedValue(search);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -101,8 +105,18 @@ export function NewsPage() {
       unread: scope === 'unread' || undefined,
       saved: scope === 'saved' || undefined,
       pinned: scope === 'pinned' || undefined,
+      sort: sort || undefined,
+      order: sort ? ('desc' as const) : undefined,
     }),
-    [page, debouncedSearch, vendorFilter, technologyFilter, kindFilter, scope],
+    [
+      page,
+      debouncedSearch,
+      vendorFilter,
+      technologyFilter,
+      kindFilter,
+      scope,
+      sort,
+    ],
   );
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -190,7 +204,8 @@ export function NewsPage() {
     Boolean(vendorFilter) ||
     Boolean(technologyFilter) ||
     Boolean(kindFilter) ||
-    scope !== 'all';
+    scope !== 'all' ||
+    sort !== '';
 
   const clearFilters = () => {
     setSearch('');
@@ -198,6 +213,7 @@ export function NewsPage() {
     setTechnologyFilter('');
     setKindFilter('');
     setScope('all');
+    setSort('');
     setPage(1);
   };
 
@@ -243,6 +259,8 @@ export function NewsPage() {
           )
         }
       />
+
+      <NewsDigestPanel canWrite={canWrite} />
 
       <Card className="mb-4 p-4">
         <div className="flex flex-col gap-3">
@@ -311,6 +329,20 @@ export function NewsPage() {
                 setPage(1);
               }}
               options={toOptions(newsKindLabels)}
+            />
+            <Select
+              className="sm:w-44"
+              placeholder="Mais recentes"
+              value={sort}
+              onChange={(event) => {
+                setSort(event.target.value);
+                setPage(1);
+              }}
+              options={[
+                { value: 'relevanceScore', label: 'Mais relevantes' },
+                { value: 'publishedAt', label: 'Por data' },
+                { value: 'title', label: 'Por título' },
+              ]}
             />
             {hasFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -430,6 +462,11 @@ function NewsCard({
           <Badge variant={newsKindVariant[item.kind]}>
             {newsKindLabels[item.kind]}
           </Badge>
+          {item.relevanceFocus && item.relevanceScore >= 60 && (
+            <Badge variant={newsFocusVariant[item.relevanceFocus]}>
+              Relevante: {newsFocusLabels[item.relevanceFocus]}
+            </Badge>
+          )}
           {item.vendor && <Badge variant="neutral">{item.vendor.name}</Badge>}
           {item.technology && (
             <span className="text-xs text-slate-500 dark:text-slate-400">

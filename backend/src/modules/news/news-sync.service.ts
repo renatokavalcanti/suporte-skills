@@ -10,6 +10,7 @@ import { AppConfiguration } from '../../config/configuration';
 import { PrismaService } from '../../database/prisma.service';
 import { parseFeed } from './feed-parser';
 import { classifyNewsKind } from './news-classifier';
+import { scoreNewsRelevance } from './news-relevance';
 
 export interface SyncSourceResult {
   fetched: number;
@@ -38,6 +39,9 @@ const DEFAULT_SETTINGS: AppConfiguration['news'] = {
   syncIntervalMinutes: 360,
   fetchTimeoutMs: 10000,
   maxItemsPerSource: 30,
+  digestEnabled: false,
+  digestWindowDays: 7,
+  digestMaxItems: 20,
 };
 
 @Injectable()
@@ -150,6 +154,13 @@ export class NewsSyncService {
       const url =
         entry.url ?? this.fallbackUrl(source.url, entry.externalId ?? entry.title);
       const kind = classifyNewsKind(entry.title, entry.summary);
+      const publishedAt = entry.publishedAt ?? null;
+      const relevance = scoreNewsRelevance({
+        title: entry.title,
+        summary: entry.summary ?? null,
+        kind,
+        publishedAt,
+      });
 
       const existing = await this.prisma.newsItem.findUnique({
         where: { url },
@@ -169,7 +180,11 @@ export class NewsSyncService {
           author: entry.author ?? null,
           kind,
           origin: 'feed',
-          publishedAt: entry.publishedAt ?? null,
+          publishedAt,
+          relevanceScore: relevance.score,
+          relevanceFocus: relevance.focus,
+          relevanceNote: relevance.note,
+          scoredAt: new Date(),
         },
         update: {
           sourceId: source.id,
@@ -180,7 +195,11 @@ export class NewsSyncService {
           summary: entry.summary ?? null,
           author: entry.author ?? null,
           kind,
-          publishedAt: entry.publishedAt ?? null,
+          publishedAt,
+          relevanceScore: relevance.score,
+          relevanceFocus: relevance.focus,
+          relevanceNote: relevance.note,
+          scoredAt: new Date(),
         },
       });
 

@@ -8,7 +8,7 @@ segurança, e uma suíte de regressão automatizada de ponta a ponta.
 
 | Frente | Como foi verificado |
 |--------|---------------------|
-| API e regras de negócio | Suíte `scripts/acceptance.sh` — **123 verificações**, 100% aprovadas |
+| API e regras de negócio | Suíte `scripts/acceptance.sh` — **129 verificações**, 100% aprovadas |
 | Permissões (RBAC) | Matriz ADMIN/MANAGER/CONSULTANT em dashboard, cadastros, roadmap, relatórios, importação e dados de terceiros |
 | Segurança | Headers (Helmet), CORS, força bruta no login, reuso de refresh token, injeção em CSV, validação de entrada, exposição de erro |
 | Regras de negócio | Status dinâmico, cobertura, vencimentos, auditoria, renovação, duplicidade |
@@ -17,13 +17,13 @@ segurança, e uma suíte de regressão automatizada de ponta a ponta.
 
 ## 2. Suíte de regressão
 
-A suíte vive no repositório: **`scripts/acceptance.sh`** (123 verificações). Ela exige a
+A suíte vive no repositório: **`scripts/acceptance.sh`** (129 verificações). Ela exige a
 API e o frontend no ar e o **seed DEMO aplicado**; ao final limpa os dados de teste e
 reaplica o seed (`RESET_DEMO=0` desativa essa restauração).
 
 ```bash
 npm run seed --prefix backend      # garante o estado DEMO
-bash scripts/acceptance.sh         # 123 PASS / 0 FAIL
+bash scripts/acceptance.sh         # 129 PASS / 0 FAIL
 ```
 
 Parâmetros aceitos: `API_URL`, `WEB_URL`, `NODE_BIN`, `CURL_BIN`, `PSQL_BIN`, `NPM_BIN`,
@@ -49,8 +49,9 @@ caminhos são normalizados via `cygpath` (node/curl/psql nativos do Windows).
 | 11. Frontend e proxy | 2 |
 | 11b. Tec News (D-020) | 19 |
 | 11c. Releases (D-021) | 12 |
+| 11d. Tec News — resumo inteligente (D-022) | 6 |
 | 12. Limpeza e restauração do seed | 1 |
-| **Total** | **123** |
+| **Total** | **129** |
 
 Suítes das fases anteriores, reexecutadas após as correções: F2 23/23, F3 15/15,
 F4 16/16, F5 13/13, F7 6/6.
@@ -160,10 +161,24 @@ Validado na suíte (bloco 11c, 12 verificações): listagem por ADMIN com **exat
 versão atual; `403` do CONSULTANT ao acessar e ao criar; criação com itens (`201`); versão
 duplicada (`409`) e formato fora de `X.Y.Z` (`400`); troca da versão atual permanecendo
 única; edição que **substitui** os itens; remoção (soft) que some da lista. A limpeza da
-suíte passou a apagar `releases` e confere 5 releases no estado DEMO final.
+suíte passou a apagar `releases` e confere 6 releases no estado DEMO final.
 
 > A constante `APP_VERSION` do frontend (`config/version.ts`) acompanha a release marcada
 > como atual; é uma duplicação consciente para exibir o rodapé sem chamada extra.
+
+## 5d. Módulo Tec News — resumo inteligente (D-022)
+
+Validado na suíte (bloco 11d, 6 verificações): listagem ordenada por relevância
+(`sort=relevanceScore`) com `relevanceScore`/`relevanceFocus` preenchidos pelo seed; o
+CONSULTANT **lê** o resumo (`200`) mas **não gera** (`403`); no estado DEMO, ainda sem
+resumo, o `GET` devolve `digest: null`; e, com a IA desligada, o `POST /news/digest`
+responde **`503`** — confirmando a **degradação graciosa** (o módulo segue funcionando com
+a relevância heurística). A limpeza passou a apagar `news_digests`. O caminho com IA foi
+exercitado **manualmente** contra um endpoint compatível com OpenAI (mock): o resumo foi
+persistido, os destaques refletidos nos itens e a geração auditada.
+
+> A suíte **não** chama a IA real (dependeria de rede, chave e custo, além de ser não
+> determinística); cobre as rotas, o RBAC e a degradação.
 
 ## 6. Limitações conhecidas (aceitas no MVP)
 
@@ -184,21 +199,26 @@ suíte passou a apagar `releases` e confere 5 releases no estado DEMO final.
 8. **Tec News — ingestão:** a sincronização agendada exige saída HTTPS para os fabricantes
    e vem desligada por padrão; as URLs de feed podem mudar (administráveis; o erro fica em
    `last_error`). O parser é tolerante e cobre os campos essenciais — não extrai o conteúdo
-   completo da página (decisão D-020) nem segue links. A classificação de tipo é por
-   palavras-chave (substituível por IA).
-9. **Releases:** "apenas uma versão atual" é garantido na aplicação (transação), sem
-   constraint única parcial; e a versão exibida no rodapé (`APP_VERSION`) é mantida à mão,
-   precisando acompanhar a release atual marcada no banco.
+   completo da página (decisão D-020) nem segue links. A classificação de tipo e a
+   relevância são heurísticas (palavras-chave + recência).
+9. **Tec News — resumo inteligente:** vem desligado por padrão e exige um endpoint de IA
+   compatível com OpenAI (`AI_ENABLED`/`AI_API_KEY`). Quando ligado, gera tráfego de saída e
+   tem custo por chamada (limitado pela janela e pelo teto de itens). Uma falha da IA
+   responde `503` sem afetar a lista; o resumo é um snapshot (não recalcula itens escondidos).
+10. **Releases:** "apenas uma versão atual" é garantido na aplicação (transação), sem
+    constraint única parcial; e a versão exibida no rodapé (`APP_VERSION`) é mantida à mão,
+    precisando acompanhar a release atual marcada no banco.
 
 ## 7. Achados encaminhados para fases futuras (fora do MVP)
 
 - Auditoria de eventos de autenticação (login/logout/refresh).
 - "Logout de todos os dispositivos" na interface.
 - Expurgo periódico de refresh tokens expirados.
-- Integrações (Zoho), notificações (e-mail/Teams/Slack/WhatsApp) e IA.
+- Integrações (Zoho) e notificações de novidades (e-mail/Teams/Slack/WhatsApp).
 - Treinamentos/cursos do consultor: entidade nova (schema + migration), reaproveitando o
   padrão de rota aninhada + aba no perfil definido na D-019.
-- Tec News: extração do conteúdo completo da página (scraping) e classificação por IA;
-  fontes adicionais (segurança/CVE por fabricante) e notificação das novidades.
+- Tec News: extração do conteúdo completo da página (scraping); classificação por IA mais
+  rica que a heurística (a via de resumo já existe na D-022); fontes adicionais
+  (segurança/CVE por fabricante) e notificação das novidades.
 - Releases: gerar o rascunho da release a partir dos commits/tags do git (hoje é cadastro
   manual) e derivar `APP_VERSION` da release atual em vez de constante.

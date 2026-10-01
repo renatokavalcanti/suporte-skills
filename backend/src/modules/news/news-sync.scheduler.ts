@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppConfiguration } from '../../config/configuration';
+import { NewsDigestService } from './news-digest.service';
 import { NewsSyncService } from './news-sync.service';
 
 /**
@@ -13,6 +14,9 @@ import { NewsSyncService } from './news-sync.service';
  * cron: a cadencia e' um intervalo em minutos vindo da configuracao.
  * Desligado por padrao (NEWS_SYNC_ENABLED=false) para nao gerar trafego de
  * saida em ambientes sem internet.
+ *
+ * Depois de sincronizar, atualiza o resumo inteligente (quando
+ * NEWS_DIGEST_ENABLED=true e a IA esta configurada) e houve novidade nova.
  */
 @Injectable()
 export class NewsSyncScheduler implements OnModuleInit, OnModuleDestroy {
@@ -22,6 +26,7 @@ export class NewsSyncScheduler implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly config: ConfigService,
     private readonly sync: NewsSyncService,
+    private readonly digest: NewsDigestService,
   ) {}
 
   onModuleInit(): void {
@@ -54,6 +59,19 @@ export class NewsSyncScheduler implements OnModuleInit, OnModuleDestroy {
       this.logger.log(
         `Tec News: ${summary.created} nova(s), ${summary.updated} atualizada(s), ${summary.errors.length} falha(s)`,
       );
+
+      if (summary.created > 0 && this.digest.isAutoEnabled()) {
+        try {
+          const digest = await this.digest.generate(null, 'sync');
+          this.logger.log(
+            `Resumo do Tec News atualizado (${digest.highlights.length} destaque(s))`,
+          );
+        } catch (error) {
+          this.logger.warn(
+            `Falha ao gerar o resumo do Tec News: ${String(error)}`,
+          );
+        }
+      }
     } catch (error) {
       this.logger.error(`Falha na sincronizacao do Tec News: ${String(error)}`);
     }

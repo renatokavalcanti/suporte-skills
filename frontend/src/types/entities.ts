@@ -331,6 +331,13 @@ export type NewsKind =
 
 export type NewsConnectorType = 'RSS' | 'ATOM' | 'MANUAL';
 
+export type NewsFocus =
+  | 'FEATURE'
+  | 'CERTIFICATION'
+  | 'SECURITY'
+  | 'RELEASE'
+  | 'OTHER';
+
 export interface NewsItem {
   id: string;
   sourceId: string | null;
@@ -346,6 +353,10 @@ export interface NewsItem {
   publishedAt: string | null;
   pinned: boolean;
   hidden: boolean;
+  relevanceScore: number;
+  relevanceFocus: NewsFocus | null;
+  relevanceNote: string | null;
+  scoredAt: string | null;
   createdAt: string;
   updatedAt: string;
   vendor: { id: string; name: string } | null;
@@ -380,6 +391,39 @@ export interface NewsSummary {
   pinned: number;
   unread: number;
   saved: number;
+}
+
+export interface NewsDigestHighlight {
+  id: string;
+  title: string;
+  url: string;
+  kind: NewsKind;
+  focus: NewsFocus | null;
+  vendor: string | null;
+  technology: string | null;
+  note: string;
+  score: number;
+  read: boolean;
+  saved: boolean;
+}
+
+export interface NewsDigest {
+  id: string;
+  title: string;
+  summary: string;
+  itemCount: number;
+  periodStart: string | null;
+  periodEnd: string | null;
+  model: string | null;
+  origin: string;
+  createdAt: string;
+  highlights: NewsDigestHighlight[];
+}
+
+export interface NewsDigestResponse {
+  aiEnabled: boolean;
+  autoEnabled: boolean;
+  digest: NewsDigest | null;
 }
 
 export interface SyncSummary {

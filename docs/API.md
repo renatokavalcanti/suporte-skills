@@ -114,8 +114,10 @@ Os cabeçalhos aceitam aliases em português (ex.: `nome`, `fabricante`, `senior
 
 | Método | Rota | Auth | Descrição |
 |--------|------|------|-----------|
-| GET | `/news` | autenticado | Lista paginada de novidades. Filtros: `search, vendorId, technologyId, sourceId, kind, unread, saved, pinned, from, to`. Cada item traz `read`/`saved` **do usuário**. |
+| GET | `/news` | autenticado | Lista paginada de novidades. Filtros: `search, vendorId, technologyId, sourceId, kind, unread, saved, pinned, from, to, sort, order`. Cada item traz `read`/`saved` **do usuário** e a relevância (`relevanceScore`, `relevanceFocus`, `relevanceNote`); `sort=relevanceScore` ordena por relevância. |
 | GET | `/news/summary` | autenticado | Contadores do usuário: `{ total, pinned, unread, saved }`. |
+| GET | `/news/digest` | autenticado | Último **resumo inteligente** (destaques). Devolve `{ aiEnabled, autoEnabled, digest }`; `digest` é `null` se ainda não houver. |
+| POST | `/news/digest` | ADMIN/MANAGER | Gera um novo resumo agora (foco em funcionalidades e certificações). Sem IA configurada → `503`. |
 | GET | `/news/:id` | autenticado | Detalhe da novidade. |
 | POST | `/news` | ADMIN/MANAGER | Curadoria manual (título, link, resumo, autor, tipo, fabricante/tecnologia). Link duplicado → `409`. |
 | PUT | `/news/:id` | ADMIN/MANAGER | Atualiza a novidade. |
@@ -132,10 +134,17 @@ Os cabeçalhos aceitam aliases em português (ex.: `nome`, `fabricante`, `senior
 | POST | `/news/sources/:id/sync` | ADMIN/MANAGER | Sincroniza **uma** fonte agora. |
 | POST | `/news/sync` | ADMIN/MANAGER | Sincroniza todas as fontes ativas; devolve `{ sources, fetched, created, updated, errors }`. |
 
-> A ordem de registro preserva `news/sources` antes de `news/:id`. A ingestão exige saída
-> HTTPS para os fabricantes e é **opt-in** (`NEWS_SYNC_ENABLED`); o parser é tolerante e uma
-> fonte com erro não interrompe as demais (o motivo fica em `last_error`). O escopo inicial
-> cobre Red Hat, Nutanix, Veeam, ExaGrid e SUSE (fontes já cadastradas no seed).
+> A ordem de registro preserva `news/sources` antes de `news/digest` e `news/:id`. A ingestão
+> exige saída HTTPS para os fabricantes e é **opt-in** (`NEWS_SYNC_ENABLED`); o parser é
+> tolerante e uma fonte com erro não interrompe as demais (o motivo fica em `last_error`).
+> O escopo inicial cobre Red Hat, Nutanix, Veeam, ExaGrid e SUSE (fontes já cadastradas no
+> seed).
+>
+> **Resumo inteligente (D-022):** a relevância heurística (`relevanceScore`) é sempre
+> calculada. O `digest` é **opt-in** (`NEWS_DIGEST_ENABLED` + IA configurada via
+> `AI_ENABLED`/`AI_API_KEY`): é gerado ao fim de uma sincronização com novidades novas e,
+> sob demanda, por `POST /news/digest`. Quando a IA está desligada, o endpoint `POST`
+> responde `503` e o Tec News continua funcionando com a ordenação por relevância.
 
 ### Releases (D-021)
 
@@ -170,10 +179,11 @@ curl -b cookies.txt -c cookies.txt -X POST http://localhost:4000/api/v1/auth/ref
 
 ## Planejado (próximas fases)
 
-A Fase 7 concluiu as rotas de negócio do MVP e a Fase 8 foi de **QA**. O módulo
-**Tec News** (D-020) foi adicionado depois, com as rotas acima. Integrações futuras
-(fora do MVP): Zoho, notificações (e-mail/Teams/Slack/WhatsApp), IA e scraping/monitoramento
-avançado de fabricantes (a via RSS/Atom já está coberta pelo Tec News).
+A Fase 7 concluiu as rotas de negócio do MVP e a Fase 8 foi de **QA**. Os módulos
+**Tec News** (D-020), **Releases** (D-021) e o **resumo inteligente** do Tec News (D-022)
+foram adicionados depois, com as rotas acima. Integrações futuras (fora do MVP): Zoho,
+notificações (e-mail/Teams/Slack/WhatsApp) e scraping/monitoramento avançado de
+fabricantes (a via RSS/Atom já está coberta pelo Tec News).
 
 > As rotas planejadas serão implementadas nas Fases 2–7 e este documento será
 > atualizado a cada fase (não deixar documentação desatualizada).

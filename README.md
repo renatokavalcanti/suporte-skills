@@ -76,7 +76,7 @@ npm run dev                    # http://localhost:5173 (proxy /api -> :4000)
 
 | Onde | Comando | O que faz |
 |------|---------|-----------|
-| raiz | `bash scripts/acceptance.sh` | **Suíte de aceite** (123 verificações) contra a API no ar; restaura o seed ao final |
+| raiz | `bash scripts/acceptance.sh` | **Suíte de aceite** (129 verificações) contra a API no ar; restaura o seed ao final |
 | backend | `npm run typecheck` | Checagem de tipos |
 | backend | `npm run build` | Compila para `dist/` |
 | backend | `npm run seed` | Seed DEMO |
@@ -111,6 +111,7 @@ suporte-skills/
 | **Certificações do profissional** | Vínculo com obtenção/validade, **status dinâmico** (ACTIVE/EXPIRING/EXPIRED/NO_EXPIRATION), renovação com histórico e comprovante por URL |
 | **Roadmap técnico** | Lista com filtros, Kanban com drag-and-drop, timeline e marcação de atrasados |
 | **Tec News** | Novidades dos canais oficiais (RSS/Atom) dos fabricantes, com ingestão automática, curadoria manual, filtros por fabricante/tecnologia/tipo, destaques e leitura/salvo por usuário |
+| **Resumo inteligente (Tec News)** | Painel de destaques para o consultor, com resumo por IA focado em funcionalidades de produto e certificações técnicas; relevância e ordenação "mais relevantes" (opt-in) |
 | **Releases** | Changelog do sistema: versões com mudanças por categoria (novidade, melhoria, correção, segurança, infra) e destaque da versão atual |
 | **Relatórios** | Certificações, vencimentos, roadmap e por fabricante — em tela e **exportação CSV** (UTF-8 BOM, separador `;`) |
 | **Importação CSV** | Prévia validada linha a linha, confirmação e relatório de erros para profissionais e certificações |
@@ -136,6 +137,14 @@ para execução local). Principais:
 | `NEWS_SYNC_INTERVAL_MINUTES` | Intervalo entre sincronizações (padrão 360) |
 | `NEWS_FETCH_TIMEOUT_MS` | Timeout por requisição de feed (padrão 10000) |
 | `NEWS_MAX_ITEMS_PER_SOURCE` | Máximo de itens lidos por fonte em cada sincronização (padrão 30) |
+| `NEWS_DIGEST_ENABLED` | Liga o resumo inteligente automático ao fim da sincronização (padrão `false`; exige IA configurada) |
+| `NEWS_DIGEST_WINDOW_DAYS` | Janela de novidades considerada no resumo, em dias (padrão 7) |
+| `NEWS_DIGEST_MAX_ITEMS` | Máximo de novidades enviadas à IA por resumo (padrão 20) |
+| `AI_ENABLED` | Liga a classificação/resumo por IA (padrão `false`; exige `AI_API_KEY`) |
+| `AI_BASE_URL` | Endpoint compatível com OpenAI (padrão `https://api.openai.com/v1`) |
+| `AI_API_KEY` | Chave da API de IA (só no servidor) |
+| `AI_MODEL` | Modelo usado no resumo (padrão `gpt-4o-mini`) |
+| `AI_TIMEOUT_MS` | Timeout da chamada de IA (padrão 20000) |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | Credenciais do ADMIN no seed |
 
 ## Documentação
@@ -152,14 +161,19 @@ para execução local). Principais:
 
 **MVP concluído** — fases 0 a 8 (arquitetura, fundação, cadastros, relacionamentos,
 roadmap, dashboard, relatórios, importação e QA) implementadas e validadas, mais os módulos
-**Tec News** (D-020) e **Releases** (D-021). Suíte de aceite com **123 verificações,
-0 falhas** (ver [`docs/QA.md`](./docs/QA.md)), typecheck e build limpos em backend e
-frontend.
+**Tec News** (D-020), **Releases** (D-021) e o **resumo inteligente** do Tec News (D-022).
+Suíte de aceite com **129 verificações, 0 falhas** (ver [`docs/QA.md`](./docs/QA.md)),
+typecheck e build limpos em backend e frontend.
 
 A ingestão automática do Tec News é **opt-in** (`NEWS_SYNC_ENABLED=true`): sem ela, o
 módulo funciona com a curadoria manual e o botão "Sincronizar". Os cinco fabricantes do
 escopo inicial (Red Hat, Nutanix, Veeam, ExaGrid, SUSE) já vêm com feed cadastrado no seed.
 
+A **relevância** das novidades (foco em funcionalidades e certificações) é sempre calculada;
+o **resumo inteligente** é opt-in (`NEWS_DIGEST_ENABLED=true` + `AI_ENABLED`/`AI_API_KEY`) e
+aceita qualquer endpoint compatível com OpenAI (OpenAI, DeepSeek, Groq, OpenRouter, Ollama).
+Sem IA, o painel de destaques fica oculto e a lista continua ordenável por relevância.
+
 Fora do MVP (arquitetura preparada): Skills com níveis, Treinamentos, Projetos,
-Parcerias e requisitos, Gap Analysis, Capacity Planning, IA, integração Zoho e
+Parcerias e requisitos, Gap Analysis, Capacity Planning, integração Zoho e
 scraping/monitoramento avançado de fabricantes (o Tec News cobre a via RSS/Atom).

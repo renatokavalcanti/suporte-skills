@@ -71,13 +71,23 @@ Fonte de novidades de um fabricante; `url` é obrigatória para fontes automáti
 ### news_items
 `id, source_id (nullable), vendor_id (nullable), technology_id (nullable), external_id,
 url (único), title, summary, author, kind [RELEASE|CERTIFICATION|FEATURE|SECURITY|EVENT|
-GENERAL], origin, published_at (nullable), pinned, hidden, timestamps`
+GENERAL], origin, published_at (nullable), pinned, hidden, relevance_score (0..100),
+relevance_focus [FEATURE|CERTIFICATION|SECURITY|RELEASE|OTHER] (nullable), relevance_note
+(nullable), scored_at (nullable), timestamps`
 Deduplicado pela `url`; `hidden` implementa o soft delete; a leitura não é por usuário
-aqui.
+aqui. A relevância para o consultor é calculada por heurística e/ou IA (D-022).
 
 ### news_read_states
 `id, news_item_id, professional_id, read_at (nullable), saved_at (nullable), timestamps`
 Único: `(news_item_id, professional_id)`. Estado de leitura/salvo **por usuário** (D-020).
+
+### news_digests
+`id, title, summary, highlights (jsonb), item_count, period_start (nullable),
+period_end (nullable), model (nullable), origin [manual|sync], generated_by (nullable),
+created_at`
+Resumo inteligente dos destaques (D-022). `highlights` guarda um snapshot em JSON
+(`id/título/link/tipo/foco/motivo/score`) do momento da geração; o estado de leitura/salvo é
+resolvido por usuário na leitura.
 
 ### releases
 `id, version (único), title, summary (nullable), released_at, current, hidden, timestamps`
@@ -106,6 +116,7 @@ Itens de uma release; `position` define a ordem de exibição (cascade ao remove
 | AuditAction | CREATE, UPDATE, DELETE |
 | NewsConnectorType | RSS, ATOM, MANUAL |
 | NewsKind | RELEASE, CERTIFICATION, FEATURE, SECURITY, EVENT, GENERAL |
+| NewsFocus | FEATURE, CERTIFICATION, SECURITY, RELEASE, OTHER |
 | ReleaseCategory | FEATURE, IMPROVEMENT, FIX, SECURITY, INFRA, OTHER |
 
 ## 4. Status de certificação (derivado — não é coluna)
@@ -121,8 +132,9 @@ Calculado por `CertificationStatusService` a partir de `expires_at` e de
 - `audit_logs`: `(entity, entity_id)`, `created_at`.
 - `news_sources`: `vendor_id`, `technology_id`, `active`.
 - `news_items`: `url` (único), `vendor_id`, `technology_id`, `kind`, `published_at`,
-  `pinned`, `hidden`.
+  `pinned`, `hidden`, `relevance_score`.
 - `news_read_states`: `(news_item_id, professional_id)` (único), `professional_id`.
+- `news_digests`: `created_at`.
 - `releases`: `version` (único), `hidden`, `released_at`.
 - `release_items`: `release_id`.
 
@@ -133,3 +145,4 @@ Calculado por `CertificationStatusService` a partir de `expires_at` e de
 | `20260930000000_init` | Criação de todos os enums e tabelas do MVP. |
 | `20261001000000_tec_news` | Tabelas do Tec News (`news_sources`, `news_items`, `news_read_states`) e enums `NewsConnectorType`/`NewsKind`. |
 | `20261001120000_releases` | Tabelas de Releases (`releases`, `release_items`) e enum `ReleaseCategory`. |
+| `20261001150000_news_digest` | Campos de relevância em `news_items`, tabela `news_digests` e enum `NewsFocus` (D-022). |

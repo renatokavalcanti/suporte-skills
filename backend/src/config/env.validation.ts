@@ -40,6 +40,37 @@ export function validateEnv(
     errors.push('NEWS_FETCH_TIMEOUT_MS deve ser um numero inteiro >= 1000');
   }
 
+  const digestWindowDays = Number(config['NEWS_DIGEST_WINDOW_DAYS'] ?? 7);
+  if (Number.isNaN(digestWindowDays) || digestWindowDays < 1) {
+    errors.push('NEWS_DIGEST_WINDOW_DAYS deve ser um numero inteiro >= 1');
+  }
+
+  const digestMaxItems = Number(config['NEWS_DIGEST_MAX_ITEMS'] ?? 20);
+  if (Number.isNaN(digestMaxItems) || digestMaxItems < 1 || digestMaxItems > 100) {
+    errors.push('NEWS_DIGEST_MAX_ITEMS deve ser um numero inteiro entre 1 e 100');
+  }
+
+  // Resumo inteligente (IA): so' valida quando explicitamente ligado.
+  if (String(config['AI_ENABLED'] ?? '') === 'true') {
+    const aiKey = String(config['AI_API_KEY'] ?? '');
+    if (aiKey.trim() === '') {
+      errors.push('AI_ENABLED=true exige a variavel AI_API_KEY');
+    }
+    const aiBaseUrl = String(
+      config['AI_BASE_URL'] ?? 'https://api.openai.com/v1',
+    );
+    if (!/^https?:\/\//i.test(aiBaseUrl)) {
+      errors.push('AI_BASE_URL deve comecar com http(s)://');
+    }
+    if (String(config['AI_MODEL'] ?? 'gpt-4o-mini').trim() === '') {
+      errors.push('AI_MODEL nao pode ser vazio');
+    }
+    const aiTimeout = Number(config['AI_TIMEOUT_MS'] ?? 20000);
+    if (Number.isNaN(aiTimeout) || aiTimeout < 1000) {
+      errors.push('AI_TIMEOUT_MS deve ser um numero inteiro >= 1000');
+    }
+  }
+
   const nodeEnv = String(config['NODE_ENV'] ?? 'development');
   const accessSecret = String(config['JWT_ACCESS_SECRET'] ?? '');
   const refreshSecret = String(config['JWT_REFRESH_SECRET'] ?? '');

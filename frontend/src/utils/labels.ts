@@ -3,6 +3,7 @@ import type {
   CertificationLevel,
   CertificationStatus,
   NewsConnectorType,
+  NewsFocus,
   NewsKind,
   PartnershipStatus,
   ReleaseCategory,
@@ -234,6 +235,25 @@ export const newsConnectorLabels: Record<NewsConnectorType, string> = {
   RSS: 'RSS',
   ATOM: 'Atom',
   MANUAL: 'Manual',
+};
+
+export const newsFocusLabels: Record<NewsFocus, string> = {
+  FEATURE: 'Funcionalidade',
+  CERTIFICATION: 'Certificação',
+  SECURITY: 'Segurança',
+  RELEASE: 'Release',
+  OTHER: 'Geral',
+};
+
+export const newsFocusVariant: Record<
+  NewsFocus,
+  'neutral' | 'info' | 'warning' | 'success' | 'danger'
+> = {
+  FEATURE: 'info',
+  CERTIFICATION: 'success',
+  SECURITY: 'danger',
+  RELEASE: 'neutral',
+  OTHER: 'neutral',
 };
 
 export const releaseCategoryLabels: Record<ReleaseCategory, string> = {

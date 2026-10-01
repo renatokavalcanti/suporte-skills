@@ -1,5 +1,7 @@
 import { api } from './api';
 import type {
+  NewsDigest,
+  NewsDigestResponse,
   NewsItem,
   NewsSource,
   NewsSummary,
@@ -62,6 +64,14 @@ export const newsService = {
   },
   async summary(): Promise<NewsSummary> {
     const { data } = await api.get<NewsSummary>('/news/summary');
+    return data;
+  },
+  async getDigest(): Promise<NewsDigestResponse> {
+    const { data } = await api.get<NewsDigestResponse>('/news/digest');
+    return data;
+  },
+  async generateDigest(): Promise<NewsDigest> {
+    const { data } = await api.post<NewsDigest>('/news/digest');
     return data;
   },
   async get(id: string): Promise<NewsItem> {

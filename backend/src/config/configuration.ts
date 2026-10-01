@@ -20,6 +20,16 @@ export interface AppConfiguration {
     syncIntervalMinutes: number;
     fetchTimeoutMs: number;
     maxItemsPerSource: number;
+    digestEnabled: boolean;
+    digestWindowDays: number;
+    digestMaxItems: number;
+  };
+  ai: {
+    enabled: boolean;
+    baseUrl: string;
+    apiKey: string;
+    model: string;
+    timeoutMs: number;
   };
   seed: {
     enabled: boolean;
@@ -70,6 +80,23 @@ export default (): AppConfiguration => {
       syncIntervalMinutes: toInt(env.NEWS_SYNC_INTERVAL_MINUTES, 360),
       fetchTimeoutMs: toInt(env.NEWS_FETCH_TIMEOUT_MS, 10000),
       maxItemsPerSource: toInt(env.NEWS_MAX_ITEMS_PER_SOURCE, 30),
+      // Resumo inteligente agendado (junto da sincronizacao). Exige IA ligada.
+      digestEnabled: env.NEWS_DIGEST_ENABLED === 'true',
+      digestWindowDays: toInt(env.NEWS_DIGEST_WINDOW_DAYS, 7),
+      digestMaxItems: toInt(env.NEWS_DIGEST_MAX_ITEMS, 20),
+    },
+    ai: {
+      // Endpoint compativel com OpenAI (OpenAI, DeepSeek, Groq, OpenRouter,
+      // Ollama...). Opt-in: exige AI_ENABLED=true e AI_API_KEY.
+      enabled:
+        env.AI_ENABLED === 'true' && (env.AI_API_KEY ?? '').trim() !== '',
+      baseUrl: (env.AI_BASE_URL ?? 'https://api.openai.com/v1').replace(
+        /\/+$/,
+        '',
+      ),
+      apiKey: env.AI_API_KEY ?? '',
+      model: env.AI_MODEL ?? 'gpt-4o-mini',
+      timeoutMs: toInt(env.AI_TIMEOUT_MS, 20000),
     },
     seed: {
       enabled: env.SEED_DEMO === 'true',
