@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# Suite de aceite do Suporte Skills (Fase 8 + Tec News + Releases + Resumo IA) — 129 verificacoes
+# Suite de aceite do Suporte Skills (Fase 8 + Tec News + Releases + Resumo IA + Config) — 137 verificacoes
 #
 # Uso:
 #   bash scripts/acceptance.sh
@@ -563,10 +563,38 @@ check "$([ "$CODE" = '503' ]; echo $?)" \
   'IA desligada -> 503 (degradacao graciosa)' "http=$CODE"
 
 # ---------------------------------------------------------------------------
+echo "--- 11e. Configuracoes: IA (D-023) ---"
+call GET /settings/ai "$ADMIN"
+check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.baseUrl')" = 'string' ] && [ "$(q 'typeof o.model')" = 'string' ]; echo $?)" \
+  'ADMIN le a configuracao de IA' "http=$CODE baseUrl=$(q 'o.baseUrl')"
+check "$([ "$(q 'typeof o.apiKey')" = 'undefined' ]; echo $?)" \
+  'configuracao nao expoe a chave da API' "apiKey=$(q 'typeof o.apiKey')"
+
+call GET /settings/ai "$CONSULTANT"
+check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa configuracoes -> 403' "http=$CODE"
+call PUT /settings/ai "$MANAGER" '{"enabled":true}'
+check "$([ "$CODE" = '403' ]; echo $?)" 'MANAGER nao grava configuracoes -> 403' "http=$CODE"
+
+call PUT /settings/ai "$ADMIN" '{"enabled":true,"baseUrl":"http://127.0.0.1:4999/v1","model":"gpt-4o-mini","timeoutMs":5000,"apiKey":"sk-qa-secret","digestEnabled":true,"digestWindowDays":7,"digestMaxItems":10}'
+check "$([ "$CODE" = '200' ] && [ "$(q 'o.apiKeySet')" = 'true' ] && [ "$(q 'o.apiKeySource')" = 'settings' ]; echo $?)" \
+  'ADMIN salva a configuracao de IA (chave cifrada)' "http=$CODE source=$(q 'o.apiKeySource')"
+
+call POST /settings/ai/test "$ADMIN" '{"baseUrl":"http://127.0.0.1:1/v1","model":"x","timeoutMs":1000,"apiKey":"sk-qa-secret"}'
+check "$([ "$CODE" = '400' ]; echo $?)" 'teste com provedor inacessivel -> 400' "http=$CODE"
+
+call GET /news/digest "$CONSULTANT"
+check "$([ "$(q 'o.aiEnabled')" = 'true' ]; echo $?)" 'IA passa a valer apos salvar a configuracao' "aiEnabled=$(q 'o.aiEnabled')"
+
+call PUT /settings/ai "$ADMIN" '{"enabled":false,"clearApiKey":true}'
+call GET /news/digest "$CONSULTANT"
+check "$([ "$(q 'o.aiEnabled')" = 'false' ]; echo $?)" 'desligar e limpar a chave desativa a IA' "aiEnabled=$(q 'o.aiEnabled')"
+
+# ---------------------------------------------------------------------------
 echo "--- 12. Limpeza: restaura o estado DEMO ---"
 if [ "$RESET_DEMO" = '1' ]; then
   "$PSQL_BIN" -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -q -c "
 DELETE FROM audit_logs;
+DELETE FROM app_settings;
 DELETE FROM releases;
 DELETE FROM news_digests;
 DELETE FROM news_read_states;
@@ -580,8 +608,8 @@ DELETE FROM vendors;
 DELETE FROM refresh_tokens;
 DELETE FROM professionals;"
   ( cd "$BACKEND_DIR" && "$NPM_BIN" run seed >/dev/null 2>&1 )
-  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '6' ]; echo $?)"
-  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 6 releases"
+  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '6' ]; echo $?)"
+  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 6 releases"
 else
   echo "[SKIP] restauracao do seed (RESET_DEMO=0)"
 fi

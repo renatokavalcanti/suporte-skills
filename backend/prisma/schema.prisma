@@ -458,6 +458,21 @@ model NewsDigest {
 }
 
 // ---------------------------------------------------------------------------
+// Configuracoes do sistema (chave/valor JSON, editaveis por ADMIN na tela de
+// Configuracoes). Segredos sao gravados cifrados (AES-256-GCM) e nunca
+// devolvidos pela API. Ver D-023.
+// ---------------------------------------------------------------------------
+
+model AppSetting {
+  key       String   @id
+  value     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
+
+// ---------------------------------------------------------------------------
 // Releases — changelog do sistema (versao + itens por categoria)
 // ---------------------------------------------------------------------------
 

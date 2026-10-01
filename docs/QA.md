@@ -8,7 +8,7 @@ segurança, e uma suíte de regressão automatizada de ponta a ponta.
 
 | Frente | Como foi verificado |
 |--------|---------------------|
-| API e regras de negócio | Suíte `scripts/acceptance.sh` — **129 verificações**, 100% aprovadas |
+| API e regras de negócio | Suíte `scripts/acceptance.sh` — **137 verificações**, 100% aprovadas |
 | Permissões (RBAC) | Matriz ADMIN/MANAGER/CONSULTANT em dashboard, cadastros, roadmap, relatórios, importação e dados de terceiros |
 | Segurança | Headers (Helmet), CORS, força bruta no login, reuso de refresh token, injeção em CSV, validação de entrada, exposição de erro |
 | Regras de negócio | Status dinâmico, cobertura, vencimentos, auditoria, renovação, duplicidade |
@@ -17,13 +17,13 @@ segurança, e uma suíte de regressão automatizada de ponta a ponta.
 
 ## 2. Suíte de regressão
 
-A suíte vive no repositório: **`scripts/acceptance.sh`** (129 verificações). Ela exige a
+A suíte vive no repositório: **`scripts/acceptance.sh`** (137 verificações). Ela exige a
 API e o frontend no ar e o **seed DEMO aplicado**; ao final limpa os dados de teste e
 reaplica o seed (`RESET_DEMO=0` desativa essa restauração).
 
 ```bash
 npm run seed --prefix backend      # garante o estado DEMO
-bash scripts/acceptance.sh         # 129 PASS / 0 FAIL
+bash scripts/acceptance.sh         # 137 PASS / 0 FAIL
 ```
 
 Parâmetros aceitos: `API_URL`, `WEB_URL`, `NODE_BIN`, `CURL_BIN`, `PSQL_BIN`, `NPM_BIN`,
@@ -50,8 +50,9 @@ caminhos são normalizados via `cygpath` (node/curl/psql nativos do Windows).
 | 11b. Tec News (D-020) | 19 |
 | 11c. Releases (D-021) | 12 |
 | 11d. Tec News — resumo inteligente (D-022) | 6 |
+| 11e. Configurações de IA (D-023) | 8 |
 | 12. Limpeza e restauração do seed | 1 |
-| **Total** | **129** |
+| **Total** | **137** |
 
 Suítes das fases anteriores, reexecutadas após as correções: F2 23/23, F3 15/15,
 F4 16/16, F5 13/13, F7 6/6.
@@ -180,6 +181,19 @@ persistido, os destaques refletidos nos itens e a geração auditada.
 > A suíte **não** chama a IA real (dependeria de rede, chave e custo, além de ser não
 > determinística); cobre as rotas, o RBAC e a degradação.
 
+## 5e. Módulo Configurações — IA (D-023)
+
+Validado na suíte (bloco 11e, 8 verificações): o ADMIN lê a configuração efetiva e a
+resposta **não expõe** a chave (`apiKey` ausente); CONSULTANT (`GET`) e MANAGER (`PUT`)
+recebem `403`; o ADMIN salva a configuração (chave **cifrada**, `apiKeySource = settings`) e
+a IA passa a valer na hora (`GET /news/digest` → `aiEnabled: true`); o teste com provedor
+inacessível devolve `400`; e desligar + limpar a chave desativa a IA. A limpeza da suíte
+passou a apagar `app_settings`. O caminho feliz do teste de conexão foi exercitado
+**manualmente** contra um mock compatível com OpenAI (`200 ok`).
+
+> A suíte não depende de um provedor real: o teste de conexão é validado pelo caminho de
+> erro (provedor inacessível) e a persistência pelo formato da resposta.
+
 ## 6. Limitações conhecidas (aceitas no MVP)
 
 1. **Estado em memória**: o limitador de login e o cache não usam store compartilhado —
@@ -202,10 +216,16 @@ persistido, os destaques refletidos nos itens e a geração auditada.
    completo da página (decisão D-020) nem segue links. A classificação de tipo e a
    relevância são heurísticas (palavras-chave + recência).
 9. **Tec News — resumo inteligente:** vem desligado por padrão e exige um endpoint de IA
-   compatível com OpenAI (`AI_ENABLED`/`AI_API_KEY`). Quando ligado, gera tráfego de saída e
-   tem custo por chamada (limitado pela janela e pelo teto de itens). Uma falha da IA
-   responde `503` sem afetar a lista; o resumo é um snapshot (não recalcula itens escondidos).
-10. **Releases:** "apenas uma versão atual" é garantido na aplicação (transação), sem
+   compatível com OpenAI. Pode ser configurado por variáveis de ambiente (`AI_*`) ou pela
+   tela de **Configurações** (D-023); a interface tem precedência. Quando ligado, gera
+   tráfego de saída e tem custo por chamada (limitado pela janela e pelo teto de itens). Uma
+   falha da IA responde `503` sem afetar a lista; o resumo é um snapshot (não recalcula itens
+   escondidos).
+10. **Configurações (D-023):** restritas a ADMIN; a chave de IA fica **cifrada** no banco,
+    dependente de `SETTINGS_ENCRYPTION_KEY` (ou do segredo de acesso do JWT). Trocar o
+    segredo de cifra invalida a chave salva (é preciso salvá-la de novo). Não há cache
+    distribuído: cada réplica lê a configuração do banco.
+11. **Releases:** "apenas uma versão atual" é garantido na aplicação (transação), sem
     constraint única parcial; e a versão exibida no rodapé (`APP_VERSION`) é mantida à mão,
     precisando acompanhar a release atual marcada no banco.
 

@@ -31,6 +31,11 @@ export interface AppConfiguration {
     model: string;
     timeoutMs: number;
   };
+  settings: {
+    /** Segredo usado para cifrar valores sensiveis salvos via interface.
+     *  Vazio: cai no segredo de acesso do JWT. */
+    encryptionKey: string;
+  };
   seed: {
     enabled: boolean;
   };
@@ -97,6 +102,9 @@ export default (): AppConfiguration => {
       apiKey: env.AI_API_KEY ?? '',
       model: env.AI_MODEL ?? 'gpt-4o-mini',
       timeoutMs: toInt(env.AI_TIMEOUT_MS, 20000),
+    },
+    settings: {
+      encryptionKey: (env.SETTINGS_ENCRYPTION_KEY ?? '').trim(),
     },
     seed: {
       enabled: env.SEED_DEMO === 'true',

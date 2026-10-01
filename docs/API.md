@@ -162,6 +162,20 @@ Todas as rotas são restritas a **ADMIN/MANAGER**.
 > Cada item tem `category` (`FEATURE|IMPROVEMENT|FIX|SECURITY|INFRA|OTHER`) e
 > `description`. Só pode haver uma release com `current = true`.
 
+### Configurações (D-023)
+
+Todas as rotas são restritas a **ADMIN** (a chave de IA é um segredo e nunca é devolvida).
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/settings/ai` | Configuração efetiva de IA: `{ enabled, baseUrl, model, timeoutMs, apiKeySet, apiKeySource, digestEnabled, digestWindowDays, digestMaxItems }`. Nunca inclui a chave. |
+| PUT | `/settings/ai` | Atualiza os campos (parciais). `apiKey` grava/rotaciona a chave (cifrada); `clearApiKey: true` remove a chave salva. |
+| POST | `/settings/ai/test` | Testa a conexão (`baseUrl`, `model`, `timeoutMs`, `apiKey` opcionais — o ausente usa a config efetiva). `200` em sucesso; `400` com o motivo em falha. |
+
+> A resolução é **banco sobrepõe ambiente**: o que foi salvo pela interface vence; o que não
+> foi salvo cai em `AI_*`/`NEWS_DIGEST_*`. A chave é cifrada em repouso
+> (`SETTINGS_ENCRYPTION_KEY`, com fallback para o segredo de acesso do JWT).
+
 ### Exemplos
 
 ```bash

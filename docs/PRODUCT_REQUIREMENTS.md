@@ -74,6 +74,14 @@ heurística; o **resumo** usa um endpoint de IA compatível com OpenAI (opt-in) 
 automaticamente ao fim da sincronização com novidades novas e sob demanda pela gestão.
 Requisitos: leitura liberada a todos, geração restrita a ADMIN/MANAGER, ordenação "mais
 relevantes", e **degradação graciosa** quando a IA está desligada (`503`, lista intacta).
+Os parâmetros do provedor (URL, modelo, chave, timeout e opções do resumo) são editáveis
+pela página **Configurações** (ADMIN), com teste de conexão (D-023) — ver §3.4.
+
+### 3.4 Configurações (módulo pós-MVP, D-023)
+
+Página administrativa (ADMIN) para ajustar a IA do Tec News pela interface, com **teste de
+conexão**. A chave da API é gravada **cifrada** e nunca é devolvida pela API; a configuração
+salva tem precedência sobre as variáveis de ambiente (que permanecem como padrão).
 
 ## 4. Regras de negócio essenciais
 

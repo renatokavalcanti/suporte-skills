@@ -3,9 +3,9 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { NewsFocus, NewsKind } from '@prisma/client';
-import { AppConfiguration } from '../../config/configuration';
+import { AiClient } from '../../shared/ai/ai-client.service';
+import { SettingsService } from '../settings/settings.service';
 
 export interface DigestCandidate {
   id: string;
@@ -96,43 +96,29 @@ function asString(value: unknown): string | null {
 }
 
 /**
- * Cliente minimo de um endpoint compativel com OpenAI (chat/completions).
- * Sem dependencia nova: usa o fetch nativo. Quando a IA esta desligada ou
- * falha, o modulo Tec News continua funcionando com a relevancia heuristica.
+ * Resumo inteligente do Tec News. As credenciais e preferencias vem das
+ * configuracoes editaveis na tela de Configuracoes (com fallback para o
+ * ambiente). Quando a IA esta desligada ou falha, lanca 503 - o modulo segue
+ * funcionando com a relevancia heuristica.
  */
 @Injectable()
 export class NewsAiService {
   private readonly logger = new Logger(NewsAiService.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly settings: SettingsService,
+    private readonly aiClient: AiClient,
+  ) {}
 
-  settings(): AppConfiguration['ai'] {
-    return (
-      this.config.get<AppConfiguration['ai']>('ai') ?? {
-        enabled: false,
-        baseUrl: 'https://api.openai.com/v1',
-        apiKey: '',
-        model: 'gpt-4o-mini',
-        timeoutMs: 20000,
-      }
-    );
+  async isEnabled(): Promise<boolean> {
+    return (await this.settings.getResolved()).enabled;
   }
 
-  isEnabled(): boolean {
-    const settings = this.settings();
-    return settings.enabled && settings.apiKey.trim() !== '';
-  }
-
-  /**
-   * Gera o resumo/destaques a partir dos candidatos. Lanca
-   * ServiceUnavailableException quando a IA esta desligada, o provedor falha
-   * ou a resposta e' invalida — o chamador traduz para a experiencia adequada.
-   */
   async summarize(candidates: DigestCandidate[]): Promise<AiDigestResult> {
-    const settings = this.settings();
-    if (!this.isEnabled()) {
+    const config = await this.settings.getResolved();
+    if (!config.enabled) {
       throw new ServiceUnavailableException(
-        'Resumo inteligente desativado (configure AI_ENABLED e AI_API_KEY)',
+        'Resumo inteligente desativado (configure a IA em Configuracoes)',
       );
     }
     if (candidates.length === 0) {
@@ -141,47 +127,29 @@ export class NewsAiService {
       );
     }
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), settings.timeoutMs);
     let content: string;
     try {
-      const response = await fetch(`${settings.baseUrl}/chat/completions`, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${settings.apiKey}`,
+      content = await this.aiClient.complete(
+        {
+          baseUrl: config.baseUrl,
+          apiKey: config.apiKey,
+          model: config.model,
+          timeoutMs: config.timeoutMs,
         },
-        body: JSON.stringify({
-          model: settings.model,
-          temperature: 0.2,
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: buildUserPrompt(candidates) },
-          ],
-        }),
-      });
-
-      if (!response.ok) {
-        const detail = (await response.text().catch(() => '')).slice(0, 300);
-        throw new Error(`HTTP ${response.status} ${detail}`.trim());
-      }
-
-      const payload = (await response.json()) as {
-        choices?: { message?: { content?: string } }[];
-      };
-      content = payload.choices?.[0]?.message?.content ?? '';
+        [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: buildUserPrompt(candidates) },
+        ],
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Falha ao gerar resumo com IA: ${message}`);
       throw new ServiceUnavailableException(
         'Nao foi possivel gerar o resumo inteligente agora. Tente novamente.',
       );
-    } finally {
-      clearTimeout(timer);
     }
 
-    return this.parse(content, settings.model, candidates);
+    return this.parse(content, config.model, candidates);
   }
 
   private parse(

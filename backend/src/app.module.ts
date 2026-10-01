@@ -16,6 +16,7 @@ import { ProfessionalsModule } from './modules/professionals/professionals.modul
 import { ReleasesModule } from './modules/releases/releases.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { RoadmapModule } from './modules/roadmap/roadmap.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { TechnologiesModule } from './modules/technologies/technologies.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
@@ -45,6 +46,7 @@ import { RolesGuard } from './shared/guards/roles.guard';
     ImportsModule,
     NewsModule,
     ReleasesModule,
+    SettingsModule,
   ],
   providers: [
     // Autenticacao global: rotas so sao abertas se marcadas com @Public().

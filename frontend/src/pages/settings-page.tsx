@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useTheme } from '@/hooks/use-theme';
 import { roleLabels } from '@/utils/labels';
+import { AiSettingsCard } from '@/features/settings/ai-settings-card';
 import type { HealthResponse } from '@/types/api';
 
 function HealthCard() {
@@ -60,7 +61,7 @@ function HealthCard() {
 export function SettingsPage() {
   const { user } = useAuth();
   const { theme } = useTheme();
-  const { canWrite } = usePermissions();
+  const { canWrite, isAdmin } = usePermissions();
 
   return (
     <>
@@ -70,6 +71,8 @@ export function SettingsPage() {
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
+        {isAdmin && <AiSettingsCard />}
+
         <Card>
           <CardHeader>
             <CardTitle>Sessão</CardTitle>

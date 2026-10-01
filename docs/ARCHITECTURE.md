@@ -92,6 +92,17 @@ todas as escritas são auditadas. O rodapé da navegação exibe a versão atual
 `APP_VERSION` (`frontend/src/config/version.ts`), mantida à mão em sincronia com a release
 marcada como atual.
 
+### 3.3 Configurações (parâmetros de IA)
+
+Módulo `settings` (ADMIN): guarda parâmetros editáveis pela interface em `app_settings`
+(chave/valor JSON). `SettingsService.getResolved()` resolve a configuração efetiva com
+**banco sobrepondo o ambiente** (valores salvos vencem; o resto cai em `AI_*` /
+`NEWS_DIGEST_*`). Segredos (chave da API) são **cifrados em repouso** (AES-256-GCM;
+`secret-crypto.ts`) e **nunca devolvidos** pela API. O cliente HTTP de IA foi extraído para
+`shared/ai/ai-client.service.ts` (`AiClient.complete`), reutilizado pelo resumo do Tec News
+(`news-ai.service.ts`) e pelo teste de conexão (`POST /settings/ai/test`). O módulo `news`
+passou a resolver a IA por `SettingsService` (assíncrono).
+
 ## 4. Segurança
 
 - `JwtAuthGuard` global: toda rota exige autenticação, exceto `@Public()`.
@@ -118,6 +129,10 @@ marcada como atual.
   servidor (`AI_API_KEY`), nunca é exposta ao cliente, e o envio à IA é opt-in.
 - **Releases:** todas as rotas restritas a ADMIN/MANAGER (`@Roles` no controller) e
   reforçadas no frontend por `RequireRole`.
+- **Configurações (D-023):** restritas a ADMIN. A chave de IA é gravada **cifrada**
+  (AES-256-GCM) e **nunca** retorna nas respostas (`apiKeySet`/`apiKeySource` no lugar); a
+  auditoria das alterações também omite o segredo. O segredo de cifra vem de
+  `SETTINGS_ENCRYPTION_KEY` (fallback: o segredo de acesso do JWT).
 
 ## 5. Autenticação (fluxo)
 

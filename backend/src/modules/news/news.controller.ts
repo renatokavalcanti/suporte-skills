@@ -48,8 +48,8 @@ export class NewsController {
   @Get('digest')
   async getDigest(@CurrentUser() user: AuthenticatedUser) {
     return {
-      aiEnabled: this.digest.isAiEnabled(),
-      autoEnabled: this.digest.isAutoEnabled(),
+      aiEnabled: await this.digest.isAiEnabled(),
+      autoEnabled: await this.digest.isAutoEnabled(),
       digest: await this.digest.getLatest(user),
     };
   }

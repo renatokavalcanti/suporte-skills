@@ -99,6 +99,12 @@ soft delete.
 position, timestamps`
 Itens de uma release; `position` define a ordem de exibição (cascade ao remover a release).
 
+### app_settings
+`key (PK), value (jsonb), timestamps`
+Configurações editáveis pela interface (D-023). Hoje guarda `key = 'ai'` com as preferências
+de IA do Tec News; a chave da API é gravada **cifrada** (`apiKeyEnc`, AES-256-GCM) e nunca é
+devolvida pela API.
+
 ## 3. Enums
 
 | Enum | Valores |
@@ -146,3 +152,4 @@ Calculado por `CertificationStatusService` a partir de `expires_at` e de
 | `20261001000000_tec_news` | Tabelas do Tec News (`news_sources`, `news_items`, `news_read_states`) e enums `NewsConnectorType`/`NewsKind`. |
 | `20261001120000_releases` | Tabelas de Releases (`releases`, `release_items`) e enum `ReleaseCategory`. |
 | `20261001150000_news_digest` | Campos de relevância em `news_items`, tabela `news_digests` e enum `NewsFocus` (D-022). |
+| `20261001180000_app_settings` | Tabela `app_settings` (configurações editáveis pela interface; D-023). |

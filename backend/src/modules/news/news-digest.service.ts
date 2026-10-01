@@ -1,10 +1,9 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { NewsFocus, NewsKind, Prisma } from '@prisma/client';
-import { AppConfiguration } from '../../config/configuration';
 import { PrismaService } from '../../database/prisma.service';
 import { AuditService } from '../../shared/audit/audit.service';
 import { AuthenticatedUser } from '../../shared/common/authenticated-user.interface';
+import { SettingsService } from '../settings/settings.service';
 import { DigestCandidate, NewsAiService } from './news-ai.service';
 import { scoreNewsRelevance } from './news-relevance';
 
@@ -73,7 +72,7 @@ export class NewsDigestService implements OnModuleInit {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly config: ConfigService,
+    private readonly settings: SettingsService,
     private readonly ai: NewsAiService,
     private readonly audit: AuditService,
   ) {}
@@ -95,28 +94,15 @@ export class NewsDigestService implements OnModuleInit {
       });
   }
 
-  private newsConfig(): AppConfiguration['news'] {
-    return (
-      this.config.get<AppConfiguration['news']>('news') ?? {
-        syncEnabled: false,
-        syncIntervalMinutes: 360,
-        fetchTimeoutMs: 10000,
-        maxItemsPerSource: 30,
-        digestEnabled: false,
-        digestWindowDays: 7,
-        digestMaxItems: 20,
-      }
-    );
-  }
-
   /** A IA esta configurada e pronta para gerar resumos. */
-  isAiEnabled(): boolean {
+  isAiEnabled(): Promise<boolean> {
     return this.ai.isEnabled();
   }
 
   /** Resumo automatico na sincronizacao esta ligado (e a IA disponivel). */
-  isAutoEnabled(): boolean {
-    return this.newsConfig().digestEnabled && this.ai.isEnabled();
+  async isAutoEnabled(): Promise<boolean> {
+    const config = await this.settings.getResolved();
+    return config.digestEnabled && config.enabled;
   }
 
   async getLatest(user: AuthenticatedUser): Promise<NewsDigestView | null> {
@@ -179,15 +165,15 @@ export class NewsDigestService implements OnModuleInit {
   ): Promise<NewsDigestView> {
     await this.scorePending();
 
-    const settings = this.newsConfig();
+    const config = await this.settings.getResolved();
     const periodEnd = new Date();
     const periodStart = new Date(
-      periodEnd.getTime() - settings.digestWindowDays * DAY_MS,
+      periodEnd.getTime() - config.digestWindowDays * DAY_MS,
     );
 
     const candidates = await this.selectCandidates(
       periodStart,
-      settings.digestMaxItems,
+      config.digestMaxItems,
     );
     const byId = new Map(candidates.map((row) => [row.id, row]));
 

@@ -321,6 +321,32 @@ migration `20261001150000_news_digest` (campos de relevância em `news_items` + 
 
 ---
 
+## D-023 — Configurações pela interface: parâmetros de IA do Tec News
+**Data:** 01/10/2026
+**Decisão:** os parâmetros de IA do Tec News deixam de depender só de variáveis de
+ambiente e passam a ser **editáveis pela interface** (página *Configurações*), restritos a
+**ADMIN**. Um armazenamento chave/valor (`app_settings`, valor em JSON) guarda as
+preferências; a **chave da API é cifrada em repouso** (AES-256-GCM, chave derivada por
+scrypt de `SETTINGS_ENCRYPTION_KEY` — ou do `JWT_ACCESS_SECRET` quando ausente) e **nunca é
+devolvida** pela API (a resposta expõe só `apiKeySet`/`apiKeySource`). A resolução é
+**banco sobrepõe ambiente**: valores salvos vencem; o que não foi salvo cai no env
+(`AI_*`, `NEWS_DIGEST_*`), mantendo compatibilidade com implantações que usam só env. Novos
+endpoints: `GET /settings/ai`, `PUT /settings/ai` e `POST /settings/ai/test` (teste de
+conexão, devolvendo `400` com o motivo quando falha). Campos: ativar IA, URL do provedor,
+modelo, chave, timeout, e as opções do resumo (gerar na sincronização, janela em dias, máx.
+de itens). As alterações são auditadas sem registrar o segredo.
+**Contexto:** a configuração da IA vinha só do ambiente (D-022), o que exigia editar
+arquivos e reiniciar o serviço. Um operador precisa ligar/ajustar o provedor pela própria
+aplicação, com teste de conexão, sem repositório nem acesso ao servidor.
+**Consequências:** o segredo deixa de existir apenas em env e passa a existir (cifrado) no
+banco — a tela restringe o acesso e nunca o devolve. Trocar o segredo de cifra invalida a
+chave salva (basta salvá-la de novo). Um `fetch`/chamada de teste gera tráfego de saída
+quando disparado pelo ADMIN (sob demanda). O módulo `news` passa a resolver a config via
+`SettingsService` (assíncrono); `AiClient` foi extraído para `shared/ai` (reuso entre o
+resumo e o teste). Migration `20261001180000_app_settings`; suíte ampliada (bloco 11e).
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.

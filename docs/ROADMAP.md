@@ -55,8 +55,12 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > **Módulo pós-MVP (D-022) — Tec News: resumo inteligente:** destaca para o consultor o que
 > importa (funcionalidades de produto e certificações técnicas). Relevância determinística
 > sempre ativa + resumo por IA (endpoint compatível com OpenAI, opt-in), automático na
-> sincronização e sob demanda. Migration `20261001150000_news_digest`. Suíte de aceite
-> ampliada para **129 verificações, 0 falhas** (versão `0.4.0`).
+> sincronização e sob demanda. Migration `20261001150000_news_digest`.
+
+> **Módulo pós-MVP (D-023) — Configurações (IA):** parâmetros de IA editáveis pela interface
+> (ADMIN), com teste de conexão; chave cifrada em repouso e nunca devolvida. Resolução
+> banco-sobrepõe-ambiente (env segue como default). Migration `20261001180000_app_settings`.
+> Suíte de aceite ampliada para **137 verificações, 0 falhas** (versão `0.4.0`).
 
 ## Critérios de aceite da Fase 1 (histórico)
 

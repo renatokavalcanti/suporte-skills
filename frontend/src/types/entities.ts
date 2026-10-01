@@ -426,6 +426,38 @@ export interface NewsDigestResponse {
   digest: NewsDigest | null;
 }
 
+export type AiKeySource = 'settings' | 'env' | 'none';
+
+export interface AiSettings {
+  enabled: boolean;
+  baseUrl: string;
+  model: string;
+  timeoutMs: number;
+  apiKeySet: boolean;
+  apiKeySource: AiKeySource;
+  digestEnabled: boolean;
+  digestWindowDays: number;
+  digestMaxItems: number;
+}
+
+export interface AiSettingsPayload {
+  enabled?: boolean;
+  baseUrl?: string;
+  model?: string;
+  apiKey?: string;
+  clearApiKey?: boolean;
+  timeoutMs?: number;
+  digestEnabled?: boolean;
+  digestWindowDays?: number;
+  digestMaxItems?: number;
+}
+
+export interface AiTestResult {
+  ok: boolean;
+  model: string;
+  message: string;
+}
+
 export interface SyncSummary {
   sources: number;
   fetched: number;

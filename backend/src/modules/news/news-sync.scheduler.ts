@@ -60,7 +60,7 @@ export class NewsSyncScheduler implements OnModuleInit, OnModuleDestroy {
         `Tec News: ${summary.created} nova(s), ${summary.updated} atualizada(s), ${summary.errors.length} falha(s)`,
       );
 
-      if (summary.created > 0 && this.digest.isAutoEnabled()) {
+      if (summary.created > 0 && (await this.digest.isAutoEnabled())) {
         try {
           const digest = await this.digest.generate(null, 'sync');
           this.logger.log(
