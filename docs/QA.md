@@ -27,11 +27,26 @@ bash scripts/acceptance.sh         # 137 PASS / 0 FAIL
 ```
 
 Parâmetros aceitos: `API_URL`, `WEB_URL`, `NODE_BIN`, `CURL_BIN`, `PSQL_BIN`, `NPM_BIN`,
-`BACKEND_DIR`, `WORK_DIR`, `DB_USER/DB_HOST/DB_PORT/DB_NAME`, `RESET_DEMO`. Em Git Bash os
-caminhos são normalizados via `cygpath` (node/curl/psql nativos do Windows).
+`BACKEND_DIR`, `WORK_DIR`, `DB_USER/DB_HOST/DB_PORT/DB_NAME`, `RESET_DEMO`,
+`ALLOW_DATA_LOSS`. Em Git Bash os caminhos são normalizados via `cygpath`
+(node/curl/psql nativos do Windows).
 
 > Rode sempre sobre um banco recém-semeado: dados deixados por execuções anteriores
 > invalidam as verificações de volume do seed, do dashboard e da importação.
+
+> **Proteção de dados:** com `RESET_DEMO=1` (padrão) a limpeza final **apaga todos os
+> dados** e reaplica o seed. Para não destruir dados reais, a suíte **aborta antes de
+> qualquer teste** ao encontrar registros fora do seed DEMO (id que não começa pelo prefixo
+> do seed, ex.: `prof-`, `ven-`), a menos que `ALLOW_DATA_LOSS=1` seja informado. Em ambiente
+> com dados reais, prefira `RESET_DEMO=0` ou o teste de fumaça (§2.1).
+
+### 2.1 Teste de fumaça (não-destrutivo)
+
+`bash scripts/smoke.sh` valida que a aplicação está no ar e funcional **sem criar, alterar
+ou remover dados**: frontend, `/health`, login dos três papéis, `/auth/me`, dashboard, Tec
+News (lista + resumo) e configurações de IA (sem expor a chave; `403` para o CONSULTANT).
+É o teste indicado **após um deploy** em ambiente com dados reais. Aceita `API_URL`,
+`WEB_URL`, `NODE_BIN`, `CURL_BIN`, `SMOKE_*_EMAIL/PASSWORD` e `SMOKE_INSECURE=1` (curl `-k`).
 
 | Bloco | Verificações |
 |-------|--------------|

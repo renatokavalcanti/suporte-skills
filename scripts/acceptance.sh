@@ -20,9 +20,15 @@
 #   WORK_DIR   diretorio temporario   (padrao /tmp/suporte-skills-acceptance)
 #   DB_USER/DB_HOST/DB_PORT/DB_NAME   (padrao suporte/localhost/5432/suporte_skills)
 #   RESET_DEMO 1|0 — ao final, limpa o banco e reaplica o seed (padrao 1)
+#   ALLOW_DATA_LOSS 1 — autoriza a limpeza mesmo com dados que nao sao do seed
 #
 # A suite cria e remove dados proprios (prefixo QA) e, com RESET_DEMO=1,
 # deixa o banco exatamente no estado DEMO documentado.
+#
+# ATENCAO: com RESET_DEMO=1 a limpeza final APAGA TODOS os dados e reaplica o
+# seed DEMO. Para proteger dados reais, a suite ABORTA se encontrar registros
+# que nao pertencem ao seed, a menos que ALLOW_DATA_LOSS=1. Em ambiente com
+# dados de verdade, use RESET_DEMO=0 (ou prefira scripts/smoke.sh, sem escrita).
 # ===========================================================================
 set -u
 
@@ -108,7 +114,35 @@ login() { # login EMAIL PASSWORD -> token
 echo "=================================================================="
 echo " Suporte Skills | suite de aceite ($(date '+%d/%m/%Y %H:%M'))"
 echo " API: $API"
+if [ "$RESET_DEMO" = '1' ]; then
+  echo " AVISO: ao final, os dados serao apagados e o seed DEMO reaplicado."
+fi
 echo "=================================================================="
+
+# ---------------------------------------------------------------------------
+# Guarda de dados: a limpeza final (RESET_DEMO=1) apaga TUDO e reaplica o seed.
+# Se houver registros fora do seed DEMO, aborta antes de qualquer teste, para
+# nao destruir dados reais por engano (ALLOW_DATA_LOSS=1 forca a execucao).
+if [ "$RESET_DEMO" = '1' ] && [ "${ALLOW_DATA_LOSS:-0}" != '1' ]; then
+  NON_DEMO="$("$PSQL_BIN" -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -tAc "
+    SELECT
+      (SELECT count(*) FROM professionals WHERE id NOT LIKE 'prof-%') +
+      (SELECT count(*) FROM vendors WHERE id NOT LIKE 'ven-%') +
+      (SELECT count(*) FROM technologies WHERE id NOT LIKE 'tec-%') +
+      (SELECT count(*) FROM certifications WHERE id NOT LIKE 'cer-%') +
+      (SELECT count(*) FROM professional_certifications WHERE id NOT LIKE 'pc-%') +
+      (SELECT count(*) FROM roadmap_items WHERE id NOT LIKE 'rm-%')
+  " 2>/dev/null | tr -d '[:space:]')"
+  if [ -n "$NON_DEMO" ] && [ "$NON_DEMO" != '0' ]; then
+    echo
+    echo "[ABORT] Encontrei $NON_DEMO registro(s) que nao pertencem ao seed DEMO."
+    echo "        A limpeza final (RESET_DEMO=1) apagaria TODOS os dados e restauraria o DEMO."
+    echo "        Rodar sem apagar nada:   RESET_DEMO=0 bash scripts/acceptance.sh"
+    echo "        Apagar mesmo assim:      ALLOW_DATA_LOSS=1 bash scripts/acceptance.sh"
+    echo
+    exit 1
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 echo "--- 1. Autenticacao (criterio 21) ---"

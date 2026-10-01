@@ -76,7 +76,8 @@ npm run dev                    # http://localhost:5173 (proxy /api -> :4000)
 
 | Onde | Comando | O que faz |
 |------|---------|-----------|
-| raiz | `bash scripts/acceptance.sh` | **Suíte de aceite** (137 verificações) contra a API no ar; restaura o seed ao final |
+| raiz | `bash scripts/smoke.sh` | **Teste de fumaça não-destrutivo** (health, login, leituras) — ideal depois de um deploy |
+| raiz | `bash scripts/acceptance.sh` | **Suíte de aceite** (137 verificações) contra a API no ar; **apaga os dados e restaura o seed DEMO** |
 | backend | `npm run typecheck` | Checagem de tipos |
 | backend | `npm run build` | Compila para `dist/` |
 | backend | `npm run seed` | Seed DEMO |
@@ -86,8 +87,24 @@ npm run dev                    # http://localhost:5173 (proxy /api -> :4000)
 
 A suíte de aceite exige a API, o frontend e o seed DEMO aplicados. Ela aceita
 `API_URL`, `WEB_URL`, `NODE_BIN`, `CURL_BIN`, `PSQL_BIN`, `NPM_BIN`, `WORK_DIR`,
-`DB_*` e `RESET_DEMO=0` (para não tocar no banco) — os valores padrão servem para o
+`DB_*`, `RESET_DEMO` e `ALLOW_DATA_LOSS` — os valores padrão servem para o
 ambiente local descrito acima.
+
+### Persistência de dados (importante)
+
+Os dados ficam num **volume Docker nomeado** (`suporte-skills_dbdata`, em
+`/var/lib/postgresql/data`) e **persistem** entre reinícios e `docker compose up -d`.
+Eles **só** voltam ao estado de demonstração quando algo roda o seed ou a limpeza
+da suíte:
+
+- `npm run seed` → reaplica (idempotente) os registros DEMO por cima.
+- `bash scripts/acceptance.sh` com `RESET_DEMO=1` (**padrão**) → **apaga todos os
+  dados** e reaplica o seed ao final.
+
+Por isso, **em ambiente com dados reais não rode a suíte de aceite**: use
+`RESET_DEMO=0` (não toca no banco) ou, melhor, `bash scripts/smoke.sh`
+(não-destrutivo). A suíte ainda **aborta** antes de qualquer teste se encontrar
+registros que não pertencem ao seed, exigindo `ALLOW_DATA_LOSS=1` para prosseguir.
 
 ## Estrutura
 
@@ -97,7 +114,7 @@ suporte-skills/
 ├── backend/    API NestJS (prisma/)
 ├── database/   Scripts de banco
 ├── docs/       Documentação (ver docs/ARCHITECTURE.md)
-├── scripts/    Suíte de aceite (scripts/acceptance.sh)
+├── scripts/    Teste de fumaça e suíte de aceite (scripts/smoke.sh, acceptance.sh)
 └── docker-compose.yml
 ```
 
