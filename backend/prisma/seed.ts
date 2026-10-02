@@ -413,12 +413,25 @@ async function main(): Promise<void> {
       title: 'Tec News: resumo inteligente',
       summary: 'Destaques automáticos das novidades mais importantes para o consultor (funcionalidades e certificações).',
       releasedAt: new Date('2026-10-01T15:00:00.000Z'),
-      current: true,
+      current: false,
       items: [
         { category: 'FEATURE', description: 'Painel "Destaques para o consultor" no topo do Tec News' },
         { category: 'FEATURE', description: 'Resumo por IA (endpoint compatível com OpenAI, opt-in) focado em funcionalidades de produto e certificações técnicas' },
         { category: 'FEATURE', description: 'Classificação de relevância das novidades e ordenação "Mais relevantes"' },
         { category: 'IMPROVEMENT', description: 'Resumo atualizado automaticamente na sincronização e por botão manual' },
+      ],
+    },
+    {
+      id: 'rel-0-5-0',
+      version: '0.5.0',
+      title: 'Acesso com senha provisória',
+      summary: 'O administrador cria o acesso do consultor com uma senha provisória e o sistema exige a troca no primeiro login.',
+      releasedAt: new Date('2026-10-02T12:00:00.000Z'),
+      current: true,
+      items: [
+        { category: 'FEATURE', description: 'Senha provisória: troca obrigatória no primeiro acesso (tela de definição de nova senha)' },
+        { category: 'FEATURE', description: 'Checkbox "Exigir troca de senha no próximo acesso" no cadastro e selo "Senha provisória" na lista' },
+        { category: 'SECURITY', description: 'Bloqueio do app até a troca, revogação das sessões e nova senha diferente da atual' },
       ],
     },
   ];

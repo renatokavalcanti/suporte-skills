@@ -186,6 +186,11 @@ export function ProfessionalsPage() {
                       <div className="text-xs text-slate-500 dark:text-slate-400">
                         {professional.email}
                       </div>
+                      {professional.mustChangePassword && (
+                        <Badge variant="warning" className="mt-1">
+                          Senha provisória
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="text-slate-700 dark:text-slate-300">

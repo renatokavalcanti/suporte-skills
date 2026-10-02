@@ -11,9 +11,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
+import { AllowProvisionalPassword } from '../../shared/decorators/allow-provisional-password.decorator';
 import { Public } from '../../shared/decorators/public.decorator';
 import { AuthenticatedUser } from '../../shared/common/authenticated-user.interface';
 import { AuthService } from './auth.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 
 export const REFRESH_COOKIE = 'ss_refresh';
@@ -67,9 +69,23 @@ export class AuthController {
     return { success: true };
   }
 
+  @AllowProvisionalPassword()
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser): AuthenticatedUser {
     return user;
+  }
+
+  @AllowProvisionalPassword()
+  @Post('change-password')
+  @HttpCode(200)
+  async changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ChangePasswordDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.changePassword(user.id, dto);
+    this.setRefreshCookie(res, result.refreshToken);
+    return { accessToken: result.accessToken, user: result.user };
   }
 
   private readRefreshCookie(req: Request): string {

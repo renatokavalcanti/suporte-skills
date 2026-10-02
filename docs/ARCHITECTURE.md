@@ -109,6 +109,12 @@ passou a resolver a IA por `SettingsService` (assíncrono).
 - `RolesGuard` global: aplica `@Roles(...)` declarado na rota.
 - **Escopo por dono (D-019):** `assertProfessionalAccess` garante que o CONSULTANT só
   acessa/edita os próprios dados; ADMIN/MANAGER acessam qualquer profissional.
+- **Senha provisória (D-024):** `PasswordChangeRequiredGuard` (global, após o
+  `JwtAuthGuard`) bloqueia todo o app enquanto `mustChangePassword` for `true`, exceto as
+  rotas marcadas com `@AllowProvisionalPassword()` (`POST /auth/change-password`,
+  `GET /auth/me`, logout). A troca exige a senha atual, limpa a marca, **revoga as sessões
+  anteriores** e emite novos tokens. Somente ADMIN define senha/`mustChangePassword`; o
+  frontend força a tela `/trocar-senha` via `ProtectedRoute`.
 - Access token (JWT, curto) em memória; refresh token opaco em cookie
   `httpOnly`/`SameSite=Lax`/`Secure` (produção), com **rotação** e revogação
   persistida (`refresh_tokens`). **Reuso** de token já rotacionado revoga todas as

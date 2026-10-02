@@ -20,6 +20,17 @@ export const authService = {
     return data;
   },
 
+  async changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<LoginResponse> {
+    const { data } = await api.post<LoginResponse>('/auth/change-password', {
+      currentPassword,
+      newPassword,
+    });
+    return data;
+  },
+
   async logout(): Promise<void> {
     await api.post('/auth/logout');
   },

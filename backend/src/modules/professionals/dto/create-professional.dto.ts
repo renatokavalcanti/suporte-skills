@@ -54,6 +54,12 @@ export class CreateProfessionalDto {
   @MaxLength(128)
   password?: string;
 
+  // Ao definir uma senha, marca-la como provisoria (exige troca no 1o acesso).
+  // Padrao do servico: true quando ha senha, salvo valor explicito (D-024).
+  @IsOptional()
+  @IsBoolean()
+  mustChangePassword?: boolean;
+
   @IsOptional()
   @IsBoolean()
   active?: boolean;

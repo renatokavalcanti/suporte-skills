@@ -179,7 +179,7 @@ Validado na suíte (bloco 11c, 12 verificações): listagem por ADMIN com **exat
 versão atual; `403` do CONSULTANT ao acessar e ao criar; criação com itens (`201`); versão
 duplicada (`409`) e formato fora de `X.Y.Z` (`400`); troca da versão atual permanecendo
 única; edição que **substitui** os itens; remoção (soft) que some da lista. A limpeza da
-suíte passou a apagar `releases` e confere 6 releases no estado DEMO final.
+suíte passou a apagar `releases` e confere 7 releases no estado DEMO final.
 
 > A constante `APP_VERSION` do frontend (`config/version.ts`) acompanha a release marcada
 > como atual; é uma duplicação consciente para exibir o rodapé sem chamada extra.
@@ -210,6 +210,23 @@ passou a apagar `app_settings`. O caminho feliz do teste de conexão foi exercit
 
 > A suíte não depende de um provedor real: o teste de conexão é validado pelo caminho de
 > erro (provedor inacessível) e a persistência pelo formato da resposta.
+
+## 5f. Acesso — senha provisória (D-024)
+
+Validado na suíte (bloco 11f, 13 verificações): ao criar um profissional com senha sem
+informar `mustChangePassword`, a marca vem **ligada por padrão** e o login devolve
+`mustChangePassword: true`; com a senha provisória, `/auth/me` responde `200` mas
+qualquer rota de negócio (ex.: `/news`) responde **`403`**; a troca erra com senha atual
+incorreta (`400`), nova senha igual à atual (`400`) e nova senha fraca (`400`); a troca
+válida devolve novos tokens com a marca **limpa** e libera o acesso; a senha provisória
+antiga **deixa de autenticar** e a nova funciona; uma senha **definitiva**
+(`mustChangePassword: false`) acessa de imediato; e o MANAGER **não** pode marcar senha
+provisória (`403`). A limpeza da suíte apaga os profissionais de QA com o restante do
+estado DEMO.
+
+> A suíte valida o fluxo completo de primeira sessão; a revogação das sessões anteriores
+> (refresh tokens) é coberta indiretamente pela troca de tokens e pelo login com a senha
+> antiga.
 
 ## 6. Limitações conhecidas (aceitas no MVP)
 

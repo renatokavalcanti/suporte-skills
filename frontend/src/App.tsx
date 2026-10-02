@@ -3,6 +3,7 @@ import { ProtectedRoute } from '@/components/protected-route';
 import { RequireRole } from '@/components/require-role';
 import { AppShell } from '@/layouts/app-shell';
 import { LoginPage } from '@/features/auth/login-page';
+import { ChangePasswordPage } from '@/features/auth/change-password-page';
 import { HomeRedirect } from '@/features/dashboard/home-redirect';
 import { ProfessionalsPage } from '@/features/professionals/professionals-page';
 import { ProfessionalDetailPage } from '@/features/professionals/professional-detail-page';
@@ -21,6 +22,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/trocar-senha" element={<ChangePasswordPage />} />
       <Route
         element={
           <ProtectedRoute>

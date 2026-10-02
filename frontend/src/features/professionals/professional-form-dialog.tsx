@@ -43,6 +43,7 @@ const schema = z.object({
     ),
   notes: z.string().optional(),
   active: z.boolean().optional(),
+  mustChangePassword: z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -58,6 +59,7 @@ const emptyValues: FormValues = {
   password: '',
   notes: '',
   active: true,
+  mustChangePassword: true,
 };
 
 export function ProfessionalFormDialog({
@@ -98,6 +100,7 @@ export function ProfessionalFormDialog({
         password: '',
         notes: professional.notes ?? '',
         active: professional.active,
+        mustChangePassword: professional.mustChangePassword,
       });
     } else {
       reset(emptyValues);
@@ -116,6 +119,9 @@ export function ProfessionalFormDialog({
         notes: values.notes?.trim() || null,
         ...(isAdmin ? { role: values.role || undefined } : {}),
         ...(isAdmin && values.password ? { password: values.password } : {}),
+        ...(isAdmin
+          ? { mustChangePassword: values.mustChangePassword ?? false }
+          : {}),
         active: values.active ?? true,
       };
       if (professional) {
@@ -256,6 +262,25 @@ export function ProfessionalFormDialog({
               {errors.password && (
                 <p role="alert" className="text-xs text-red-600">{errors.password.message}</p>
               )}
+            </div>
+
+            <div className="flex items-start gap-2 sm:col-span-2">
+              <input
+                id="pf-must-change"
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                {...register('mustChangePassword')}
+              />
+              <label
+                htmlFor="pf-must-change"
+                className="text-sm text-slate-700 dark:text-slate-300"
+              >
+                Exigir troca de senha no próximo acesso
+                <span className="block text-xs text-slate-400">
+                  O usuário entra com a senha definida acima e é obrigado a criar
+                  uma nova.
+                </span>
+              </label>
             </div>
           </>
         )}

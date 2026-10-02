@@ -23,10 +23,11 @@ rotas `@Public()`.
 | POST | `/auth/login` | público | Login; devolve `accessToken` + `user`; seta cookie de refresh (`429` após excesso de falhas). |
 | POST | `/auth/refresh` | público (cookie) | Rotaciona refresh e emite novo access token (reuso revoga a sessão). |
 | POST | `/auth/logout` | público (cookie) | Revoga refresh e limpa cookie. |
-| GET | `/auth/me` | Bearer | Usuário autenticado. |
+| GET | `/auth/me` | Bearer | Usuário autenticado (inclui `mustChangePassword`). |
+| POST | `/auth/change-password` | Bearer | Troca a própria senha (`{ currentPassword, newPassword }`); limpa a senha provisória, revoga as sessões e devolve novos tokens. |
 | GET | `/professionals` | ADMIN/MANAGER | Lista paginada + `stats` (certificações, expirando, vencidas, roadmap aberto). Filtros: `search, active, role, professionalType, seniority`. |
 | GET | `/professionals/:id` | autenticado (CONSULTANT só o próprio) | Detalhe com `stats`. |
-| POST | `/professionals` | ADMIN/MANAGER | Cria. `role`/`password` apenas ADMIN. |
+| POST | `/professionals` | ADMIN/MANAGER | Cria. `role`/`password`/`mustChangePassword` apenas ADMIN; com senha, `mustChangePassword` assume `true` por padrão. |
 | PUT | `/professionals/:id` | ADMIN/MANAGER | Atualiza. |
 | PATCH | `/professionals/:id/status` | ADMIN/MANAGER | Ativa/desativa (`{ active }`). |
 | DELETE | `/professionals/:id` | ADMIN/MANAGER | Desativação (soft delete). |

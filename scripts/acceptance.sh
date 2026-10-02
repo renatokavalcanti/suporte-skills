@@ -625,6 +625,53 @@ call GET /news/digest "$CONSULTANT"
 check "$([ "$(q 'o.aiEnabled')" = 'false' ]; echo $?)" 'desligar e limpar a chave desativa a IA' "aiEnabled=$(q 'o.aiEnabled')"
 
 # ---------------------------------------------------------------------------
+echo "--- 11f. Senha provisoria / 1o acesso (D-024) ---"
+QA_PW_EMAIL="qa.provisoria.$TS@suporte.local"
+# Sem mustChangePassword explicito: com senha, o padrao e provisoria (true).
+call POST /professionals "$ADMIN" "{\"name\":\"QA Provisoria\",\"email\":\"$QA_PW_EMAIL\",\"role\":\"CONSULTANT\",\"password\":\"Provisoria@123\"}"
+QA_PW_ID=$(q 'o.id')
+check "$([ "$CODE" = '201' ] && [ "$(q 'o.mustChangePassword')" = 'true' ]; echo $?)" \
+  'senha definida pelo ADMIN vira provisoria por padrao' "http=$CODE flag=$(q 'o.mustChangePassword')"
+
+PROV=$(login "$QA_PW_EMAIL" 'Provisoria@123')
+check "$([ -n "$PROV" ]; echo $?)" 'consultor entra com a senha provisoria' "len=${#PROV}"
+call GET /auth/me "$PROV"
+check "$([ "$CODE" = '200' ] && [ "$(q 'o.mustChangePassword')" = 'true' ]; echo $?)" \
+  '/auth/me expoe a senha provisoria' "http=$CODE"
+call GET /news "$PROV"
+check "$([ "$CODE" = '403' ]; echo $?)" 'rota de negocio bloqueada ate trocar a senha -> 403' "http=$CODE"
+
+call POST /auth/change-password "$PROV" '{"currentPassword":"errada123","newPassword":"NovaSenha@123"}'
+check "$([ "$CODE" = '400' ]; echo $?)" 'troca com senha atual errada -> 400' "http=$CODE"
+call POST /auth/change-password "$PROV" '{"currentPassword":"Provisoria@123","newPassword":"Provisoria@123"}'
+check "$([ "$CODE" = '400' ]; echo $?)" 'nova senha igual a atual -> 400' "http=$CODE"
+call POST /auth/change-password "$PROV" '{"currentPassword":"Provisoria@123","newPassword":"curta"}'
+check "$([ "$CODE" = '400' ]; echo $?)" 'nova senha fraca -> 400' "http=$CODE"
+
+call POST /auth/change-password "$PROV" '{"currentPassword":"Provisoria@123","newPassword":"NovaSenha@123"}'
+NEWPROV=$(q 'o.accessToken')
+check "$([ "$CODE" = '200' ] && [ "$(q 'o.user.mustChangePassword')" = 'false' ]; echo $?)" \
+  'troca de senha limpa a marca e libera o acesso' "http=$CODE flag=$(q 'o.user.mustChangePassword')"
+call GET /news "$NEWPROV"
+check "$([ "$CODE" = '200' ]; echo $?)" 'rota de negocio acessivel apos a troca' "http=$CODE"
+
+OLD_LOGIN=$(login "$QA_PW_EMAIL" 'Provisoria@123')
+check "$([ -z "$OLD_LOGIN" ] && [ "$CODE" = '401' ]; echo $?)" 'senha provisoria antiga nao autentica mais' "http=$CODE"
+NEW_LOGIN=$(login "$QA_PW_EMAIL" 'NovaSenha@123')
+check "$([ -n "$NEW_LOGIN" ]; echo $?)" 'nova senha autentica' "len=${#NEW_LOGIN}"
+
+# Senha definitiva (mustChangePassword=false) acessa de imediato.
+QA_DEF_EMAIL="qa.definitiva.$TS@suporte.local"
+call POST /professionals "$ADMIN" "{\"name\":\"QA Definitiva\",\"email\":\"$QA_DEF_EMAIL\",\"role\":\"CONSULTANT\",\"password\":\"Definitiva@123\",\"mustChangePassword\":false}"
+DEF=$(login "$QA_DEF_EMAIL" 'Definitiva@123')
+call GET /news "$DEF"
+check "$([ "$CODE" = '200' ]; echo $?)" 'senha definitiva nao exige troca' "http=$CODE"
+
+# Apenas ADMIN define credenciais (mesmo a marca de senha provisoria).
+call PUT "/professionals/$QA_PW_ID" "$MANAGER" '{"mustChangePassword":true}'
+check "$([ "$CODE" = '403' ]; echo $?)" 'MANAGER nao marca senha provisoria -> 403' "http=$CODE"
+
+# ---------------------------------------------------------------------------
 echo "--- 12. Limpeza: restaura o estado DEMO ---"
 if [ "$RESET_DEMO" = '1' ]; then
   # Rede de seguranca: dump do banco ANTES de apagar (best-effort). Desative
@@ -662,8 +709,8 @@ DELETE FROM vendors;
 DELETE FROM refresh_tokens;
 DELETE FROM professionals;"
   ( cd "$BACKEND_DIR" && "$NPM_BIN" run seed >/dev/null 2>&1 )
-  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '6' ]; echo $?)"
-  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 6 releases"
+  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '7' ]; echo $?)"
+  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 7 releases"
 else
   echo "[SKIP] restauracao do seed (RESET_DEMO=0)"
 fi

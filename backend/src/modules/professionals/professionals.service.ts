@@ -33,6 +33,7 @@ const PROFESSIONAL_SELECT = {
   professionalType: true,
   seniority: true,
   active: true,
+  mustChangePassword: true,
   hireDate: true,
   notes: true,
   createdAt: true,
@@ -135,7 +136,7 @@ export class ProfessionalsService {
     dto: CreateProfessionalDto,
     actor: AuthenticatedUser,
   ): Promise<ProfessionalWithStats> {
-    this.assertCredentialsAllowed(dto.role, dto.password, actor);
+    this.assertCredentialsAllowed(dto.role, dto.password, dto.mustChangePassword, actor);
 
     const created = await this.prisma.professional.create({
       data: {
@@ -148,6 +149,9 @@ export class ProfessionalsService {
         notes: dto.notes ?? null,
         role: dto.role ?? Role.CONSULTANT,
         passwordHash: dto.password ? await hash(dto.password) : null,
+        mustChangePassword: dto.password
+          ? dto.mustChangePassword ?? true
+          : false,
         active: dto.active ?? true,
       },
       select: PROFESSIONAL_SELECT,
@@ -170,7 +174,7 @@ export class ProfessionalsService {
     dto: UpdateProfessionalDto,
     actor: AuthenticatedUser,
   ): Promise<ProfessionalWithStats> {
-    this.assertCredentialsAllowed(dto.role, dto.password, actor);
+    this.assertCredentialsAllowed(dto.role, dto.password, dto.mustChangePassword, actor);
 
     const existing = await this.prisma.professional.findUnique({
       where: { id },
@@ -192,8 +196,17 @@ export class ProfessionalsService {
     if (dto.notes !== undefined) data.notes = dto.notes ?? null;
     if (dto.role !== undefined) data.role = dto.role;
     if (dto.active !== undefined) data.active = dto.active;
-    if (dto.password !== undefined)
+    if (dto.password !== undefined) {
       data.passwordHash = dto.password ? await hash(dto.password) : null;
+      // Nova senha definida pelo ADMIN: provisoria por padrao (D-024).
+      if (dto.password) {
+        data.mustChangePassword = dto.mustChangePassword ?? true;
+      } else if (dto.mustChangePassword !== undefined) {
+        data.mustChangePassword = dto.mustChangePassword;
+      }
+    } else if (dto.mustChangePassword !== undefined) {
+      data.mustChangePassword = dto.mustChangePassword;
+    }
 
     const updated = await this.prisma.professional.update({
       where: { id },
@@ -276,9 +289,13 @@ export class ProfessionalsService {
   private assertCredentialsAllowed(
     role: Role | undefined,
     password: string | undefined,
+    mustChangePassword: boolean | undefined,
     actor: AuthenticatedUser,
   ): void {
-    const touchesCredentials = role !== undefined || password !== undefined;
+    const touchesCredentials =
+      role !== undefined ||
+      password !== undefined ||
+      mustChangePassword !== undefined;
     if (touchesCredentials && actor.role !== Role.ADMIN) {
       throw new ForbiddenException(
         'Apenas administradores podem definir papel de acesso ou senha',

@@ -18,5 +18,10 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
+  // Senha provisoria: nada no app e acessivel antes da troca (D-024).
+  if (user.mustChangePassword) {
+    return <Navigate to="/trocar-senha" replace />;
+  }
+
   return <>{children}</>;
 }

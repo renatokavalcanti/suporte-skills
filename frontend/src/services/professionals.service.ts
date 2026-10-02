@@ -30,6 +30,7 @@ export interface ProfessionalPayload {
   notes?: string | null;
   role?: string;
   password?: string | null;
+  mustChangePassword?: boolean;
   active?: boolean;
 }
 

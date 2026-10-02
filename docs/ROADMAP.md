@@ -60,6 +60,11 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > **Módulo pós-MVP (D-023) — Configurações (IA):** parâmetros de IA editáveis pela interface
 > (ADMIN), com teste de conexão; chave cifrada em repouso e nunca devolvida. Resolução
 > banco-sobrepõe-ambiente (env segue como default). Migration `20261001180000_app_settings`.
+
+> **Acesso (D-024) — Senha provisória:** o ADMIN cria o acesso do consultor com uma senha
+> provisória; no primeiro login o sistema exige a troca (tela `/trocar-senha`), bloqueando
+> as demais rotas até a nova senha. Migration `20261002120000_must_change_password`.
+> Versão `0.5.0`.
 > Suíte de aceite ampliada para **137 verificações, 0 falhas** (versão `0.4.0`).
 
 ## Critérios de aceite da Fase 1 (histórico)

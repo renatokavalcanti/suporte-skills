@@ -21,6 +21,7 @@ import { TechnologiesModule } from './modules/technologies/technologies.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
 import { JwtAuthGuard } from './shared/guards/jwt-auth.guard';
+import { PasswordChangeRequiredGuard } from './shared/guards/password-change-required.guard';
 import { RolesGuard } from './shared/guards/roles.guard';
 
 @Module({
@@ -53,6 +54,8 @@ import { RolesGuard } from './shared/guards/roles.guard';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     // Autorizacao por papel: aplicada quando a rota declara @Roles(...).
     { provide: APP_GUARD, useClass: RolesGuard },
+    // Senha provisoria (D-024): bloqueia o app ate a troca da senha.
+    { provide: APP_GUARD, useClass: PasswordChangeRequiredGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],
 })

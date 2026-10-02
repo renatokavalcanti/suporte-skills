@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -10,6 +11,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Professional } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { AuthenticatedUser } from '../../shared/common/authenticated-user.interface';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { LoginThrottleService } from './login-throttle.service';
 
@@ -111,7 +113,14 @@ export class AuthService {
   async me(userId: string): Promise<AuthenticatedUser> {
     const professional = await this.prisma.professional.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, name: true, role: true, active: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        active: true,
+        mustChangePassword: true,
+      },
     });
 
     if (!professional || !professional.active) {
@@ -123,7 +132,56 @@ export class AuthService {
       email: professional.email,
       name: professional.name,
       role: professional.role,
+      mustChangePassword: professional.mustChangePassword,
     };
+  }
+
+  /**
+   * Troca de senha do proprio usuario (D-024). Exige a senha atual, grava a
+   * nova, limpa a marca de senha provisoria e revoga as sessoes anteriores,
+   * devolvendo um novo par de tokens.
+   */
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+  ): Promise<AuthResult> {
+    const professional = await this.prisma.professional.findUnique({
+      where: { id: userId },
+    });
+
+    if (!professional || !professional.active || !professional.passwordHash) {
+      throw new UnauthorizedException('Usuario inativo ou inexistente');
+    }
+
+    const matches = await verify(
+      professional.passwordHash,
+      dto.currentPassword,
+    ).catch(() => false);
+    if (!matches) {
+      throw new BadRequestException('A senha atual nao confere');
+    }
+
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException('A nova senha deve ser diferente da atual');
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const saved = await tx.professional.update({
+        where: { id: professional.id },
+        data: {
+          passwordHash: await hash(dto.newPassword),
+          mustChangePassword: false,
+        },
+      });
+      // Qualquer sessao anterior deixa de valer ao trocar a senha.
+      await tx.refreshToken.updateMany({
+        where: { professionalId: professional.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return saved;
+    });
+
+    return this.issueTokens(updated);
   }
 
   static async hashPassword(password: string): Promise<string> {
@@ -136,12 +194,14 @@ export class AuthService {
       email: professional.email,
       name: professional.name,
       role: professional.role,
+      mustChangePassword: professional.mustChangePassword,
     };
 
     const accessToken = await this.jwt.signAsync({
       sub: professional.id,
       email: professional.email,
       role: professional.role,
+      mustChangePassword: professional.mustChangePassword,
     });
 
     const refreshToken = randomBytes(48).toString('hex');

@@ -68,6 +68,7 @@ export interface Professional {
   professionalType: ProfessionalType | null;
   seniority: Seniority | null;
   active: boolean;
+  mustChangePassword: boolean;
   hireDate: string | null;
   notes: string | null;
   createdAt: string;

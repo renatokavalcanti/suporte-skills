@@ -163,6 +163,8 @@ model Professional {
   providerId       String?           @map("provider_id")
   role             Role              @default(CONSULTANT)
   active           Boolean           @default(true)
+  // Senha provisoria: obriga a troca no proximo login (D-024).
+  mustChangePassword Boolean         @default(false) @map("must_change_password")
   position         String?
   professionalType ProfessionalType? @map("professional_type")
   seniority        Seniority?

@@ -28,10 +28,12 @@ Decisão **D-003**: `users` e `professionals` são a **mesma tabela**
 
 ### professionals
 `id, name, email (único), password_hash (nullable), provider_id, role
-[ADMIN|MANAGER|CONSULTANT], active, position, professional_type, seniority,
-hire_date, notes, created_at, updated_at`
+[ADMIN|MANAGER|CONSULTANT], active, must_change_password, position, professional_type,
+seniority, hire_date, notes, created_at, updated_at`
 
 > Profissional sem `password_hash` existe no cadastro, mas não autentica.
+> `must_change_password` (D-024) marca senha provisória: o usuário só acessa a troca
+> de senha até definir uma nova.
 
 ### refresh_tokens
 `id, professional_id, token_hash, expires_at, revoked_at, created_at`
@@ -153,3 +155,4 @@ Calculado por `CertificationStatusService` a partir de `expires_at` e de
 | `20261001120000_releases` | Tabelas de Releases (`releases`, `release_items`) e enum `ReleaseCategory`. |
 | `20261001150000_news_digest` | Campos de relevância em `news_items`, tabela `news_digests` e enum `NewsFocus` (D-022). |
 | `20261001180000_app_settings` | Tabela `app_settings` (configurações editáveis pela interface; D-023). |
+| `20261002120000_must_change_password` | Coluna `must_change_password` em `professionals` (senha provisória; D-024). |

@@ -24,7 +24,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
     const professional = await this.prisma.professional.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, name: true, role: true, active: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        active: true,
+        mustChangePassword: true,
+      },
     });
 
     if (!professional || !professional.active) {
@@ -36,6 +43,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: professional.email,
       name: professional.name,
       role: professional.role,
+      mustChangePassword: professional.mustChangePassword,
     };
   }
 }

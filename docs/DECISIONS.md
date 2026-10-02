@@ -347,6 +347,34 @@ resumo e o teste). Migration `20261001180000_app_settings`; suíte ampliada (blo
 
 ---
 
+## D-024 — Senha provisória e troca obrigatória no primeiro acesso
+**Data:** 02/10/2026
+**Decisão:** ao cadastrar/atualizar um usuário com senha, o ADMIN pode marcar a senha como
+**provisória** (`mustChangePassword`); com uma senha informada, a marca é ligada por
+**padrão** (o ADMIN desmarca se quiser uma senha definitiva). Enquanto a marca estiver
+ligada, o usuário **não acessa nenhuma área do sistema**: é levado à tela `/trocar-senha`
+e a API bloqueia as demais rotas com `403` por um guard global
+(`PasswordChangeRequiredGuard`, executado após o `JwtAuthGuard`). Só as rotas marcadas com
+`@AllowProvisionalPassword()` seguem liberadas: `POST /auth/change-password`, `GET /auth/me`
+e logout. A troca (`POST /auth/change-password`) exige a **senha atual**, grava a nova
+(mínimo de 8 caracteres, diferente da atual), **limpa a marca**, **revoga todas as sessões
+anteriores** (refresh tokens) e devolve um novo par de tokens. A flag viaja no JWT e no
+`AuthenticatedUser`; `mustChangePassword` é privilégio de **ADMIN** (junto de `role` e
+`password`). O cadastro ganhou o checkbox "Exigir troca de senha no próximo acesso" e a
+lista de profissionais exibe o selo **"Senha provisória"**.
+**Contexto:** o go-live exige que os consultores reais recebam um acesso inicial (login +
+senha) criado pela administração e definam a própria senha no primeiro login, sem senha
+compartilhada conhecida pela gestão. Era o que faltava para substituir os dados DEMO por
+usuários reais com segurança.
+**Consequências:** nova coluna `must_change_password` em `professionals` (migration
+`20261002120000_must_change_password`, `default false`: nenhum usuário existente é afetado).
+O guard não adiciona consulta ao banco (a flag já vem do `JwtStrategy`), e a revogação das
+sessões exige novo login nos outros dispositivos. A definição de senha/marca continua
+restrita ao ADMIN, impedindo que o próprio consultor burle a troca pela edição de perfil
+(`PUT /professionals/:id` é ADMIN/MANAGER). Versão exibida: `0.5.0`.
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.
