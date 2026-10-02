@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Pencil, Plus } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -13,10 +13,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { EmptyState, ErrorState, TableSkeleton } from '@/components/feedback';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { useToast } from '@/components/toast';
 import { usePermissions } from '@/hooks/use-permissions';
 import { professionalsService } from '@/services/professionals.service';
+import { extractApiError } from '@/services/api';
 import type { RoadmapItem } from '@/types/entities';
 import { RoadmapFormDialog } from '@/features/roadmap/roadmap-form-dialog';
+import { RoadmapAttachmentCell } from '../roadmap-attachment-cell';
 import {
   formatDate,
   formatDaysRemaining,
@@ -28,13 +32,39 @@ import {
 } from '@/utils/labels';
 
 export function RoadmapTab({ professionalId }: { professionalId: string }) {
-  const { canWrite } = usePermissions();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { canEditProfessional } = usePermissions();
+  // O CONSULTANT mantem o proprio roadmap; a gestao mantem o de qualquer um (D-026).
+  const canWrite = canEditProfessional(professionalId);
+
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<RoadmapItem | null>(null);
+  const [removing, setRemoving] = useState<RoadmapItem | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['professional', professionalId, 'roadmap'],
     queryFn: () => professionalsService.roadmap(professionalId),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (itemId: string) =>
+      professionalsService.removeRoadmap(professionalId, itemId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['professional', professionalId, 'roadmap'],
+      });
+      void queryClient.invalidateQueries({ queryKey: ['professional', professionalId] });
+      void queryClient.invalidateQueries({ queryKey: ['roadmap'] });
+      toast({ title: 'Item removido', variant: 'success' });
+      setRemoving(null);
+    },
+    onError: (error) =>
+      toast({
+        title: 'Não foi possível remover',
+        description: extractApiError(error),
+        variant: 'error',
+      }),
   });
 
   return (
@@ -78,6 +108,7 @@ export function RoadmapTab({ professionalId }: { professionalId: string }) {
                 <TableHead>Status</TableHead>
                 <TableHead>Prazo</TableHead>
                 <TableHead>Restante</TableHead>
+                <TableHead>Anexo</TableHead>
                 {canWrite && <TableHead className="text-right">Ações</TableHead>}
               </TableRow>
             </TableHeader>
@@ -116,19 +147,36 @@ export function RoadmapTab({ professionalId }: { professionalId: string }) {
                       ? '—'
                       : formatDaysRemaining(item.daysToDue)}
                   </TableCell>
+                  <TableCell>
+                    <RoadmapAttachmentCell
+                      professionalId={professionalId}
+                      item={item}
+                      canWrite={canWrite}
+                    />
+                  </TableCell>
                   {canWrite && (
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Editar"
-                        onClick={() => {
-                          setEditing(item);
-                          setFormOpen(true);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Editar"
+                          onClick={() => {
+                            setEditing(item);
+                            setFormOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Remover"
+                          onClick={() => setRemoving(item)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
                     </TableCell>
                   )}
                 </TableRow>
@@ -143,6 +191,25 @@ export function RoadmapTab({ professionalId }: { professionalId: string }) {
         onClose={() => setFormOpen(false)}
         item={editing}
         defaultProfessionalId={professionalId}
+        mode="profile"
+      />
+
+      <ConfirmDialog
+        open={Boolean(removing)}
+        title="Remover item do roadmap"
+        description={
+          removing
+            ? `Remover "${removing.title}" do roadmap deste profissional?`
+            : undefined
+        }
+        confirmLabel="Remover"
+        destructive
+        reversible={false}
+        loading={removeMutation.isPending}
+        onClose={() => setRemoving(null)}
+        onConfirm={() => {
+          if (removing) removeMutation.mutate(removing.id);
+        }}
       />
     </>
   );

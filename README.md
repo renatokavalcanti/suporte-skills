@@ -151,14 +151,14 @@ suporte-skills/
 | **Profissionais** | Cadastro com cargo, tipo, senioridade, papel e status; perfil com abas de resumo, certificações, tecnologias, roadmap e histórico |
 | **Fabricantes / Tecnologias / Certificações** | Catálogo com CRUD, níveis, validade, status de catálogo e vínculos entre si |
 | **Certificações do profissional** | Vínculo com obtenção/validade, **status dinâmico** (ACTIVE/EXPIRING/EXPIRED/NO_EXPIRATION), renovação com histórico, comprovante por **URL** e **anexo do PDF** (guardado no servidor, baixado por rota autenticada) |
-| **Roadmap técnico** | Lista com filtros, Kanban com drag-and-drop, timeline e marcação de atrasados |
+| **Roadmap técnico** | Lista com filtros, Kanban com drag-and-drop, timeline e marcação de atrasados; o CONSULTANT mantém o próprio roadmap (certificação, renovação, curso, treinamento, projeto, laboratório) na aba do perfil, com anexo do comprovante em PDF |
 | **Tec News** | Novidades dos canais oficiais (RSS/Atom) dos fabricantes, com ingestão automática, curadoria manual, filtros por fabricante/tecnologia/tipo, destaques e leitura/salvo por usuário |
 | **Resumo inteligente (Tec News)** | Painel de destaques para o consultor, com resumo por IA focado em funcionalidades de produto e certificações técnicas; relevância e ordenação "mais relevantes" |
 | **Configurações** | Página administrativa (ADMIN) para ativar/ajustar a IA do Tec News pela interface, com teste de conexão; chave guardada cifrada |
 | **Releases** | Changelog do sistema: versões com mudanças por categoria (novidade, melhoria, correção, segurança, infra) e destaque da versão atual |
 | **Relatórios** | Certificações, vencimentos, roadmap e por fabricante — em tela e **exportação CSV** (UTF-8 BOM, separador `;`) |
 | **Importação CSV** | Prévia validada linha a linha, confirmação e relatório de erros para profissionais e certificações |
-| **Acessos** | ADMIN/MANAGER com acesso total; CONSULTANT restrito ao próprio perfil, onde mantém os próprios vínculos de certificação |
+| **Acessos** | ADMIN/MANAGER com acesso total; CONSULTANT restrito ao próprio perfil, onde mantém os próprios vínculos de certificação e o próprio roadmap |
 | **Senha provisória** | ADMIN cria o acesso com senha provisória; no 1º login o usuário é obrigado a definir uma nova senha (tela dedicada), com bloqueio das demais rotas e revogação das sessões |
 | **Alertas e auditoria** | Alertas de vencimento/roadmap/cobertura e log de alterações (`audit_logs`) |
 
@@ -206,7 +206,7 @@ para execução local). Principais:
 
 ## Status
 
-**Versão atual: `0.6.0`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
+**Versão atual: `0.7.0`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
 relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módulos pós-MVP:
 
 | Decisão | Entrega |
@@ -218,11 +218,12 @@ relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módul
 | D-023 | **Configurações** de IA pela interface (ADMIN) |
 | D-024 | **Senha provisória** com troca obrigatória no 1º acesso |
 | D-025 | **Anexo do comprovante** (PDF) por certificação |
+| D-026 | **Roadmap próprio do consultor** (autoatendimento + anexo no item) |
 
 Typecheck e build limpos em backend e frontend; imagem Docker publicada na VM
-(10.0.0.200) com HTTPS. A suíte de aceite cobre os blocos 11f (D-024) e 11g (D-025) e o
-estado DEMO de referência (ver [`docs/QA.md`](./docs/QA.md)); o deploy em ambiente com dados
-reais é validado pelo `smoke.sh` (não-destrutivo).
+(10.0.0.200) com HTTPS. A suíte de aceite cobre os blocos 11f (D-024), 11g (D-025) e 11h
+(D-026) e o estado DEMO de referência (ver [`docs/QA.md`](./docs/QA.md)); o deploy em
+ambiente com dados reais é validado pelo `smoke.sh` (não-destrutivo).
 
 A ingestão automática do Tec News é **opt-in** (`NEWS_SYNC_ENABLED=true`): sem ela, o
 módulo funciona com a curadoria manual e o botão "Sincronizar". Os cinco fabricantes do

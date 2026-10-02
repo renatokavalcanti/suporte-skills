@@ -12,7 +12,16 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { AuditService } from '../../shared/audit/audit.service';
+import { assertProfessionalAccess } from '../../shared/common/access';
 import { AuthenticatedUser } from '../../shared/common/authenticated-user.interface';
+import {
+  ATTACHMENT_FOLDERS,
+  AttachmentStorageService,
+} from '../../shared/storage/attachment-storage.service';
+import {
+  assertPdfUpload,
+  sanitizeAttachmentName,
+} from '../../shared/storage/pdf-attachment';
 import {
   Paginated,
   buildMeta,
@@ -38,6 +47,11 @@ const ITEM_SELECT = {
   completedAt: true,
   ownerId: true,
   notes: true,
+  attachmentFile: true,
+  attachmentName: true,
+  attachmentMime: true,
+  attachmentSize: true,
+  attachmentUploadedAt: true,
   createdAt: true,
   updatedAt: true,
   professional: { select: { id: true, name: true } },
@@ -48,10 +62,21 @@ const ITEM_SELECT = {
 
 type ItemRow = Prisma.RoadmapItemGetPayload<{ select: typeof ITEM_SELECT }>;
 
-export interface RoadmapItemView extends ItemRow {
+export type RoadmapItemView = Omit<ItemRow, 'attachmentFile'> & {
+  /** Indica se ha anexo sem expor o nome interno no disco (D-026). */
+  hasAttachment: boolean;
   isOverdue: boolean;
   daysToDue: number | null;
+};
+
+export interface RoadmapAttachment {
+  path: string;
+  name: string;
+  mime: string;
+  size: number;
 }
+
+const ROADMAP_FOLDER = ATTACHMENT_FOLDERS.roadmap;
 
 const KANBAN_ORDER: RoadmapStatus[] = [
   RoadmapStatus.BACKLOG,
@@ -80,6 +105,7 @@ export class RoadmapService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly config: ConfigService,
+    private readonly storage: AttachmentStorageService,
   ) {}
 
   async list(query: QueryRoadmapDto): Promise<Paginated<RoadmapItemView>> {
@@ -309,12 +335,177 @@ export class RoadmapService {
   async remove(id: string, actor: AuthenticatedUser): Promise<void> {
     const existing = await this.findRow(id);
     await this.prisma.roadmapItem.delete({ where: { id } });
+    // O anexo do item nao sobrevive a remocao (D-026).
+    if (existing.attachmentFile) {
+      await this.storage.remove(existing.attachmentFile, ROADMAP_FOLDER);
+    }
     await this.audit.record({
       actorId: actor.id,
       entity: 'roadmap_items',
       entityId: id,
       action: 'DELETE',
       before: this.payload(existing),
+    });
+  }
+
+  // --- Autoatendimento do CONSULTANT (D-026) ------------------------------
+  // Mesmo padrao da D-019: o CONSULTANT mantem os PROPRIOS itens pela aba do
+  // perfil. O escopo e' validado aqui e a rota aninhada fixa o profissional.
+
+  async createForProfessional(
+    professionalId: string,
+    dto: Omit<CreateRoadmapItemDto, 'professionalId'>,
+    actor: AuthenticatedUser,
+  ): Promise<RoadmapItemView> {
+    assertProfessionalAccess(professionalId, actor);
+    return this.create({ ...dto, professionalId, ownerId: undefined }, actor);
+  }
+
+  async updateForProfessional(
+    professionalId: string,
+    itemId: string,
+    dto: UpdateRoadmapItemDto,
+    actor: AuthenticatedUser,
+  ): Promise<RoadmapItemView> {
+    assertProfessionalAccess(professionalId, actor);
+    await this.assertItemBelongsTo(professionalId, itemId);
+    // Nao permite mover o item para outro profissional nem reatribuir o dono.
+    return this.update(
+      itemId,
+      { ...dto, professionalId: undefined, ownerId: undefined },
+      actor,
+    );
+  }
+
+  async setStatusForProfessional(
+    professionalId: string,
+    itemId: string,
+    status: RoadmapStatus,
+    actor: AuthenticatedUser,
+  ): Promise<RoadmapItemView> {
+    assertProfessionalAccess(professionalId, actor);
+    await this.assertItemBelongsTo(professionalId, itemId);
+    return this.setStatus(itemId, status, actor);
+  }
+
+  async removeForProfessional(
+    professionalId: string,
+    itemId: string,
+    actor: AuthenticatedUser,
+  ): Promise<void> {
+    assertProfessionalAccess(professionalId, actor);
+    await this.assertItemBelongsTo(professionalId, itemId);
+    return this.remove(itemId, actor);
+  }
+
+  // --- Anexo do item de roadmap (D-026) -----------------------------------
+
+  async uploadAttachment(
+    professionalId: string,
+    itemId: string,
+    file: Express.Multer.File | undefined,
+    actor: AuthenticatedUser,
+  ): Promise<RoadmapItemView> {
+    assertProfessionalAccess(professionalId, actor);
+    const existing = await this.findRow(itemId);
+    if (existing.professionalId !== professionalId) {
+      throw new NotFoundException('Item de roadmap nao encontrado');
+    }
+    assertPdfUpload(file, this.storage.maxFileBytes);
+
+    const storedName = await this.storage.save(file!.buffer, '.pdf', ROADMAP_FOLDER);
+    let updated: ItemRow;
+    try {
+      updated = await this.prisma.roadmapItem.update({
+        where: { id: itemId },
+        data: {
+          attachmentFile: storedName,
+          attachmentName: sanitizeAttachmentName(file!.originalname),
+          attachmentMime: 'application/pdf',
+          attachmentSize: file!.size,
+          attachmentUploadedAt: new Date(),
+        },
+        select: ITEM_SELECT,
+      });
+    } catch (error) {
+      await this.storage.remove(storedName, ROADMAP_FOLDER);
+      throw error;
+    }
+
+    // Substituicao: o arquivo anterior deixa de existir.
+    if (existing.attachmentFile && existing.attachmentFile !== storedName) {
+      await this.storage.remove(existing.attachmentFile, ROADMAP_FOLDER);
+    }
+
+    await this.audit.record({
+      actorId: actor.id,
+      entity: 'roadmap_items',
+      entityId: itemId,
+      action: 'UPDATE',
+      before: { attachmentName: existing.attachmentName },
+      after: {
+        attachmentName: updated.attachmentName,
+        replaced: Boolean(existing.attachmentFile),
+      },
+    });
+
+    return this.toView(updated);
+  }
+
+  async getAttachment(
+    professionalId: string,
+    itemId: string,
+    actor: AuthenticatedUser,
+  ): Promise<RoadmapAttachment> {
+    assertProfessionalAccess(professionalId, actor);
+    const row = await this.findRow(itemId);
+
+    if (row.professionalId !== professionalId || !row.attachmentFile) {
+      throw new NotFoundException('Este item de roadmap nao possui anexo');
+    }
+    if (!(await this.storage.exists(row.attachmentFile, ROADMAP_FOLDER))) {
+      throw new NotFoundException('Anexo nao encontrado no servidor');
+    }
+
+    return {
+      path: this.storage.pathOf(row.attachmentFile, ROADMAP_FOLDER),
+      name: row.attachmentName ?? 'comprovante.pdf',
+      mime: row.attachmentMime ?? 'application/pdf',
+      size: row.attachmentSize ?? 0,
+    };
+  }
+
+  async removeAttachment(
+    professionalId: string,
+    itemId: string,
+    actor: AuthenticatedUser,
+  ): Promise<void> {
+    assertProfessionalAccess(professionalId, actor);
+    const existing = await this.findRow(itemId);
+
+    if (existing.professionalId !== professionalId || !existing.attachmentFile) {
+      throw new NotFoundException('Este item de roadmap nao possui anexo');
+    }
+
+    await this.prisma.roadmapItem.update({
+      where: { id: itemId },
+      data: {
+        attachmentFile: null,
+        attachmentName: null,
+        attachmentMime: null,
+        attachmentSize: null,
+        attachmentUploadedAt: null,
+      },
+    });
+    await this.storage.remove(existing.attachmentFile, ROADMAP_FOLDER);
+
+    await this.audit.record({
+      actorId: actor.id,
+      entity: 'roadmap_items',
+      entityId: itemId,
+      action: 'UPDATE',
+      before: { attachmentName: existing.attachmentName },
+      after: { attachmentName: null },
     });
   }
 
@@ -368,6 +559,7 @@ export class RoadmapService {
   }
 
   private toView(row: ItemRow): RoadmapItemView {
+    const { attachmentFile, ...rest } = row;
     const overdue =
       row.dueDate !== null &&
       row.dueDate.getTime() < this.today().getTime() &&
@@ -381,7 +573,12 @@ export class RoadmapService {
         )
       : null;
 
-    return { ...row, isOverdue: overdue, daysToDue };
+    return {
+      ...rest,
+      hasAttachment: attachmentFile !== null,
+      isOverdue: overdue,
+      daysToDue,
+    };
   }
 
   private payload(row: ItemRow) {
@@ -392,6 +589,17 @@ export class RoadmapService {
       priority: row.priority,
       dueDate: this.toIso(row.dueDate),
     } satisfies Prisma.InputJsonValue;
+  }
+
+  private async assertItemBelongsTo(
+    professionalId: string,
+    itemId: string,
+  ): Promise<void> {
+    const found = await this.prisma.roadmapItem.findFirst({
+      where: { id: itemId, professionalId },
+      select: { id: true },
+    });
+    if (!found) throw new NotFoundException('Item de roadmap nao encontrado');
   }
 
   private async findRow(id: string): Promise<ItemRow> {

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# Suite de aceite do Suporte Skills (Fase 8 + Tec News + Releases + Resumo IA + Config) — 137 verificacoes
+# Suite de aceite do Suporte Skills (Fase 8 + Tec News + Releases + Resumo IA + Config + Anexo + Roadmap) — 174 verificacoes
 #
 # Uso:
 #   bash scripts/acceptance.sh
@@ -655,8 +655,11 @@ check "$([ "$CODE" = '200' ] && [ "$(q 'o.user.mustChangePassword')" = 'false' ]
 call GET /news "$NEWPROV"
 check "$([ "$CODE" = '200' ]; echo $?)" 'rota de negocio acessivel apos a troca' "http=$CODE"
 
-OLD_LOGIN=$(login "$QA_PW_EMAIL" 'Provisoria@123')
-check "$([ -z "$OLD_LOGIN" ] && [ "$CODE" = '401' ]; echo $?)" 'senha provisoria antiga nao autentica mais' "http=$CODE"
+CODE_OLD=$("$CURL_BIN" -s -c "$COOKIES" -o "$OUT" -w "%{http_code}" -X POST "$API/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"$QA_PW_EMAIL\",\"password\":\"Provisoria@123\"}")
+OLD_TOKEN=$(q "o.accessToken")
+check "$([ "$CODE_OLD" = '401' ] && [ "$OLD_TOKEN" = '__UNDEF__' ]; echo $?)" 'senha provisoria antiga nao autentica mais' "http=$CODE_OLD"
 NEW_LOGIN=$(login "$QA_PW_EMAIL" 'NovaSenha@123')
 check "$([ -n "$NEW_LOGIN" ]; echo $?)" 'nova senha autentica' "len=${#NEW_LOGIN}"
 
@@ -721,6 +724,66 @@ HAS=$(q "o.find(r=>r.id==='$QA_REC').hasAttachment")
 check "$([ "$HAS" = 'false' ]; echo $?)" 'vinculo volta a ficar sem anexo' "hasAttachment=$HAS"
 
 # ---------------------------------------------------------------------------
+echo "--- 11h. Roadmap proprio do consultor + anexo (D-026) ---"
+QA_OWN=$(login "$QA_PW_EMAIL" 'NovaSenha@123')
+CERT_RM=$(call GET '/certifications?pageSize=1' "$ADMIN"; q 'o.data[0].id')
+call POST "/professionals/$QA_PW_ID/roadmap" "$QA_OWN" "{\"title\":\"QA roadmap item\",\"type\":\"CERTIFICATION\",\"priority\":\"HIGH\",\"status\":\"BACKLOG\",\"certificationId\":\"$CERT_RM\"}"
+QA_RM=$(q 'o.id')
+check "$([ "$CODE" = '201' ] && [ "$(q 'o.hasAttachment')" = 'false' ] && [ "$(q 'o.professionalId')" = "$QA_PW_ID" ]; echo $?)" \
+  'CONSULTANT cria item no proprio roadmap' "http=$CODE"
+
+call POST "/professionals/$QA_PW_ID/roadmap" "$CONSULTANT" '{"title":"tentativa","type":"COURSE"}'
+check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao cria roadmap de terceiros -> 403' "http=$CODE"
+call PUT "/professionals/$QA_PW_ID/roadmap/$QA_RM" "$CONSULTANT" '{"title":"hack"}'
+check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao edita roadmap de terceiros -> 403' "http=$CODE"
+
+call PUT "/professionals/$QA_PW_ID/roadmap/$QA_RM" "$QA_OWN" '{"title":"QA roadmap item editado"}'
+check "$([ "$CODE" = '200' ] && [ "$(q 'o.title')" = 'QA roadmap item editado' ]; echo $?)" \
+  'CONSULTANT edita o proprio item' "http=$CODE"
+# Mesmo enviando outro professionalId, o item nao muda de dono.
+call PUT "/professionals/$QA_PW_ID/roadmap/$QA_RM" "$QA_OWN" '{"professionalId":"outro-id","title":"QA roadmap item editado"}'
+check "$([ "$CODE" = '200' ] && [ "$(q 'o.professionalId')" = "$QA_PW_ID" ]; echo $?)" \
+  'item nao muda de dono ao trocar o profissional' "http=$CODE"
+
+call PATCH "/professionals/$QA_PW_ID/roadmap/$QA_RM/status" "$QA_OWN" '{"status":"COMPLETED"}'
+check "$([ "$CODE" = '200' ] && [ "$(q 'o.status')" = 'COMPLETED' ]; echo $?)" \
+  'CONSULTANT muda o status do proprio item' "http=$CODE"
+
+printf '%%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%%%EOF\n' > "$WORK_DIR/valid-rm.pdf"
+RM_UPLOAD() { # RM_UPLOAD TOKEN FILE
+  CODE=$("$CURL_BIN" -s -o "$OUT" -w "%{http_code}" -X POST \
+    "$API/professionals/$QA_PW_ID/roadmap/$QA_RM/attachment" \
+    -H "Authorization: Bearer $1" -F "file=@$2;type=application/pdf")
+}
+RM_UPLOAD "$QA_OWN" "$WORK_DIR/valid-rm.pdf"
+check "$([ "$CODE" = '200' ] && [ "$(q 'o.hasAttachment')" = 'true' ]; echo $?)" \
+  'CONSULTANT anexa PDF ao proprio item -> 200' "http=$CODE"
+RM_UPLOAD "$QA_OWN" "$WORK_DIR/fake.pdf"
+check "$([ "$CODE" = '400' ]; echo $?)" 'anexo de roadmap que nao e PDF -> 400' "http=$CODE"
+
+CODE=$("$CURL_BIN" -s -D "$WORK_DIR/rm-head.txt" -o "$WORK_DIR/rm.pdf" -w "%{http_code}" \
+  "$API/professionals/$QA_PW_ID/roadmap/$QA_RM/attachment" -H "Authorization: Bearer $QA_OWN")
+IS_PDF=$(head -c 5 "$WORK_DIR/rm.pdf" 2>/dev/null)
+check "$([ "$CODE" = '200' ] && [ "$IS_PDF" = '%PDF-' ]; echo $?)" \
+  'download autenticado do anexo do roadmap' "http=$CODE magic=$IS_PDF"
+CODE=$("$CURL_BIN" -s -o /dev/null -w "%{http_code}" \
+  "$API/professionals/$QA_PW_ID/roadmap/$QA_RM/attachment" -H "Authorization: Bearer $CONSULTANT")
+check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao baixa anexo de roadmap de terceiros -> 403' "http=$CODE"
+
+call DELETE "/professionals/$QA_PW_ID/roadmap/$QA_RM/attachment" "$ADMIN"
+check "$([ "$CODE" = '204' ]; echo $?)" 'gestao remove o anexo do roadmap -> 204' "http=$CODE"
+
+call POST "/professionals/$QA_PW_ID/roadmap" "$ADMIN" '{"title":"Item da gestao","type":"TRAINING","priority":"LOW","status":"PLANNED"}'
+check "$([ "$CODE" = '201' ] && [ "$(q 'o.professionalId')" = "$QA_PW_ID" ]; echo $?)" \
+  'ADMIN cria item no roadmap de um profissional' "http=$CODE"
+
+call DELETE "/professionals/$QA_PW_ID/roadmap/$QA_RM" "$QA_OWN"
+check "$([ "$CODE" = '204' ]; echo $?)" 'CONSULTANT remove o proprio item -> 204' "http=$CODE"
+call GET "/professionals/$QA_PW_ID/roadmap" "$QA_OWN"
+HAS_RM=$(q "o.find(r=>r.id==='$QA_RM')")
+check "$([ "$HAS_RM" = '__UNDEF__' ]; echo $?)" 'item removido sai do roadmap' "item=$HAS_RM"
+
+# ---------------------------------------------------------------------------
 echo "--- 12. Limpeza: restaura o estado DEMO ---"
 if [ "$RESET_DEMO" = '1' ]; then
   # Rede de seguranca: dump do banco ANTES de apagar (best-effort). Desative
@@ -759,8 +822,8 @@ DELETE FROM refresh_tokens;
 DELETE FROM professionals;"
   rm -rf "$BACKEND_DIR/uploads"
   ( cd "$BACKEND_DIR" && "$NPM_BIN" run seed >/dev/null 2>&1 )
-  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '8' ]; echo $?)"
-  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 8 releases"
+  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '9' ]; echo $?)"
+  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 9 releases"
 else
   echo "[SKIP] restauracao do seed (RESET_DEMO=0)"
 fi

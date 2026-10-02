@@ -61,7 +61,10 @@ o banco guarda só os metadados (`attachment_*`). `proof_url` (link externo) per
 ### roadmap_items
 `id, professional_id, technology_id (nullable), certification_id (nullable),
 title, objective, description, type, priority, status, start_date, due_date,
-completed_at, owner_id, notes, timestamps`
+completed_at, owner_id, notes, attachment_file, attachment_name, attachment_mime,
+attachment_size, attachment_uploaded_at, timestamps`
+Anexo (D-026): o PDF do comprovante do item fica no disco (`UPLOADS_DIR/roadmap`,
+nome aleatório); o banco guarda só os metadados (`attachment_*`).
 
 ### audit_logs
 `id, actor_id (nullable), entity, entity_id, action [CREATE|UPDATE|DELETE],
@@ -160,3 +163,4 @@ Calculado por `CertificationStatusService` a partir de `expires_at` e de
 | `20261001180000_app_settings` | Tabela `app_settings` (configurações editáveis pela interface; D-023). |
 | `20261002120000_must_change_password` | Coluna `must_change_password` em `professionals` (senha provisória; D-024). |
 | `20261002150000_certification_attachment` | Colunas de anexo (`attachment_*`) em `professional_certifications` (PDF do comprovante; D-025). |
+| `20261002180000_roadmap_attachment` | Colunas de anexo (`attachment_*`) em `roadmap_items` (PDF do comprovante do item; D-026). |

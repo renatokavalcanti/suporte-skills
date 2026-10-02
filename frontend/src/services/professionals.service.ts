@@ -5,8 +5,10 @@ import type {
   Professional,
   ProfessionalCertification,
   RoadmapItem,
+  RoadmapStatus,
   TechnologyCoverage,
 } from '@/types/entities';
+import type { RoadmapPayload } from './roadmap.service';
 
 export interface ProfessionalListParams {
   page?: number;
@@ -147,5 +149,66 @@ export const professionalsService = {
       `/professionals/${id}/roadmap`,
     );
     return data;
+  },
+
+  // --- Roadmap do profissional (D-026) ------------------------------------
+
+  async createRoadmap(
+    id: string,
+    payload: RoadmapPayload,
+  ): Promise<RoadmapItem> {
+    const { data } = await api.post<RoadmapItem>(
+      `/professionals/${id}/roadmap`,
+      payload,
+    );
+    return data;
+  },
+  async updateRoadmap(
+    id: string,
+    itemId: string,
+    payload: RoadmapPayload,
+  ): Promise<RoadmapItem> {
+    const { data } = await api.put<RoadmapItem>(
+      `/professionals/${id}/roadmap/${itemId}`,
+      payload,
+    );
+    return data;
+  },
+  async setRoadmapStatus(
+    id: string,
+    itemId: string,
+    status: RoadmapStatus,
+  ): Promise<RoadmapItem> {
+    const { data } = await api.patch<RoadmapItem>(
+      `/professionals/${id}/roadmap/${itemId}/status`,
+      { status },
+    );
+    return data;
+  },
+  async removeRoadmap(id: string, itemId: string): Promise<void> {
+    await api.delete(`/professionals/${id}/roadmap/${itemId}`);
+  },
+  async uploadRoadmapAttachment(
+    id: string,
+    itemId: string,
+    file: File,
+  ): Promise<RoadmapItem> {
+    const form = new FormData();
+    form.append('file', file);
+    const { data } = await api.post<RoadmapItem>(
+      `/professionals/${id}/roadmap/${itemId}/attachment`,
+      form,
+    );
+    return data;
+  },
+  async fetchRoadmapAttachment(id: string, itemId: string): Promise<Blob> {
+    const { data } = await api.get<Blob>(
+      `/professionals/${id}/roadmap/${itemId}/attachment`,
+      { responseType: 'blob' },
+    );
+    return data;
+  },
+  async removeRoadmapAttachment(id: string, itemId: string): Promise<void> {
+    await api.delete(`/professionals/${id}/roadmap/${itemId}/attachment`);
   },
 };

@@ -5,10 +5,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { basename } from 'node:path';
 import { PrismaService } from '../../database/prisma.service';
 import { AuditService } from '../../shared/audit/audit.service';
 import { AttachmentStorageService } from '../../shared/storage/attachment-storage.service';
+import {
+  assertPdfUpload,
+  sanitizeAttachmentName,
+} from '../../shared/storage/pdf-attachment';
 import { AuthenticatedUser } from '../../shared/common/authenticated-user.interface';
 import { assertProfessionalAccess } from '../../shared/common/access';
 import {
@@ -311,7 +314,7 @@ export class ProfessionalCertificationsService {
   ): Promise<ProfessionalCertificationView> {
     assertProfessionalAccess(professionalId, actor);
     const existing = await this.findRecord(professionalId, recordId);
-    this.assertPdf(file);
+    assertPdfUpload(file, this.storage.maxFileBytes);
 
     const storedName = await this.storage.save(file!.buffer, '.pdf');
     let updated: RecordRow;
@@ -320,7 +323,7 @@ export class ProfessionalCertificationsService {
         where: { id: recordId },
         data: {
           attachmentFile: storedName,
-          attachmentName: this.sanitizeName(file!.originalname),
+          attachmentName: sanitizeAttachmentName(file!.originalname),
           attachmentMime: 'application/pdf',
           attachmentSize: file!.size,
           attachmentUploadedAt: new Date(),
@@ -404,29 +407,6 @@ export class ProfessionalCertificationsService {
       before: { attachmentName: existing.attachmentName },
       after: { attachmentName: null },
     });
-  }
-
-  private assertPdf(file: Express.Multer.File | undefined): void {
-    if (!file || !file.buffer || file.size === 0) {
-      throw new BadRequestException('Envie um arquivo PDF');
-    }
-    if (file.size > this.storage.maxFileBytes) {
-      const mb = Math.round(this.storage.maxFileBytes / (1024 * 1024));
-      throw new BadRequestException(`O arquivo excede o limite de ${mb} MB`);
-    }
-    const isPdfMime = file.mimetype === 'application/pdf';
-    const isPdfMagic = file.buffer.subarray(0, 5).toString('latin1') === '%PDF-';
-    if (!isPdfMime || !isPdfMagic) {
-      throw new BadRequestException('O anexo deve ser um arquivo PDF');
-    }
-  }
-
-  private sanitizeName(originalName: string): string {
-    const name = basename(originalName)
-      .replace(/[\\/\r\n\t\0]/g, '_')
-      .trim()
-      .slice(0, 200);
-    return name || 'certificado.pdf';
   }
 
   /** Tecnologias derivadas das certificacoes do profissional. */

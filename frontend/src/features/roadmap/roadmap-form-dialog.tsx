@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Paperclip, X } from 'lucide-react';
 import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,15 +66,25 @@ export function RoadmapFormDialog({
   onClose,
   item,
   defaultProfessionalId,
+  mode = 'global',
 }: {
   open: boolean;
   onClose: () => void;
   item?: RoadmapItem | null;
   defaultProfessionalId?: string;
+  /**
+   * `profile`: usado na aba de roadmap do perfil (D-026) — o profissional e
+   * fixo e as rotas aninhadas aplicam o escopo do CONSULTANT. `global` (padrao)
+   * usa as rotas de gestao `/roadmap`.
+   */
+  mode?: 'global' | 'profile';
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const isEditing = Boolean(item);
+  const isProfile = mode === 'profile';
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const [attachment, setAttachment] = useState<File | null>(null);
 
   const {
     register,
@@ -134,6 +145,7 @@ export function RoadmapFormDialog({
 
   useEffect(() => {
     if (!open) return;
+    setAttachment(null);
     if (item) {
       reset({
         professionalId: item.professionalId,
@@ -156,9 +168,8 @@ export function RoadmapFormDialog({
   }, [open, item, defaultProfessionalId, reset]);
 
   const mutation = useMutation({
-    mutationFn: (values: FormValues) => {
-      const payload = {
-        professionalId: values.professionalId,
+    mutationFn: async (values: FormValues) => {
+      const base = {
         title: values.title.trim(),
         objective: values.objective?.trim() || null,
         type: values.type,
@@ -168,12 +179,38 @@ export function RoadmapFormDialog({
         dueDate: values.dueDate || null,
         certificationId: values.certificationId || null,
         technologyId: values.technologyId || null,
-        ownerId: values.ownerId || null,
         notes: values.notes?.trim() || null,
       };
-      return item
-        ? roadmapService.update(item.id, payload)
-        : roadmapService.create(payload);
+
+      let saved: RoadmapItem;
+      if (isProfile) {
+        saved = item
+          ? await professionalsService.updateRoadmap(
+              values.professionalId,
+              item.id,
+              base,
+            )
+          : await professionalsService.createRoadmap(values.professionalId, base);
+      } else {
+        const payload = {
+          ...base,
+          professionalId: values.professionalId,
+          ownerId: values.ownerId || null,
+        };
+        saved = item
+          ? await roadmapService.update(item.id, payload)
+          : await roadmapService.create(payload);
+      }
+
+      // Anexo (D-026): enviado logo apos salvar o item (cadastro ou edicao).
+      if (attachment) {
+        saved = await professionalsService.uploadRoadmapAttachment(
+          saved.professionalId,
+          saved.id,
+          attachment,
+        );
+      }
+      return saved;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['roadmap'] });
@@ -220,18 +257,20 @@ export function RoadmapFormDialog({
         onSubmit={handleSubmit((values) => mutation.mutate(values))}
         noValidate
       >
-        <div className="space-y-1.5">
-          <Label htmlFor="rf-prof">Profissional *</Label>
-          <Select
-            id="rf-prof"
-            placeholder="Selecione"
-            options={professionalOptions}
-            {...register('professionalId')}
-          />
-          {errors.professionalId && (
-            <p role="alert" className="text-xs text-red-600">{errors.professionalId.message}</p>
-          )}
-        </div>
+        {!isProfile && (
+          <div className="space-y-1.5">
+            <Label htmlFor="rf-prof">Profissional *</Label>
+            <Select
+              id="rf-prof"
+              placeholder="Selecione"
+              options={professionalOptions}
+              {...register('professionalId')}
+            />
+            {errors.professionalId && (
+              <p role="alert" className="text-xs text-red-600">{errors.professionalId.message}</p>
+            )}
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <Label htmlFor="rf-type">Tipo *</Label>
@@ -333,6 +372,58 @@ export function RoadmapFormDialog({
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="rf-notes">Observações</Label>
           <Textarea id="rf-notes" rows={2} {...register('notes')} />
+        </div>
+
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="rf-attachment">Comprovante (PDF)</Label>
+          <input
+            id="rf-attachment"
+            ref={attachmentInputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              event.target.value = '';
+              if (file && file.type !== 'application/pdf') {
+                toast({
+                  title: 'Formato inválido',
+                  description: 'Selecione um arquivo PDF.',
+                  variant: 'error',
+                });
+                return;
+              }
+              setAttachment(file);
+            }}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => attachmentInputRef.current?.click()}
+            >
+              <Paperclip className="h-3.5 w-3.5" />
+              {attachment || item?.hasAttachment ? 'Substituir arquivo' : 'Selecionar arquivo'}
+            </Button>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {attachment
+                ? attachment.name
+                : item?.hasAttachment
+                  ? `Anexo atual: ${item.attachmentName}`
+                  : 'Opcional'}
+            </span>
+            {attachment && (
+              <button
+                type="button"
+                className="text-slate-400 hover:text-red-500"
+                aria-label="Remover arquivo selecionado"
+                onClick={() => setAttachment(null)}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </form>
     </Dialog>

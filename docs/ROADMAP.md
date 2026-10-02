@@ -70,6 +70,12 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > por rota autenticada. Migration `20261002150000_certification_attachment`. Versão `0.6.0`.
 > Suíte ampliada com os blocos 11f (senha provisória) e 11g (anexo).
 
+> **Roadmap (D-026) — Autoatendimento do consultor + anexo no item:** o consultor mantém o
+> próprio roadmap (certificação, renovação, curso, treinamento, projeto, laboratório) na aba
+> do perfil e anexa o PDF do comprovante a cada item; rotas aninhadas com escopo por dono. O
+> board global segue da gestão; catálogo e cadastro de profissionais seguem com ADMIN/MANAGER.
+> Migration `20261002180000_roadmap_attachment`. Versão `0.7.0`. Suíte ampliada com o bloco 11h.
+
 ## Critérios de aceite da Fase 1 (histórico)
 
 1. `docker compose up` sobe `web` + `api` + `db` do zero.

@@ -197,6 +197,11 @@ export interface RoadmapItem {
   completedAt: string | null;
   ownerId: string | null;
   notes: string | null;
+  hasAttachment: boolean;
+  attachmentName: string | null;
+  attachmentMime: string | null;
+  attachmentSize: number | null;
+  attachmentUploadedAt: string | null;
   createdAt: string;
   updatedAt: string;
   isOverdue: boolean;

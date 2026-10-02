@@ -8,7 +8,7 @@ segurança, e uma suíte de regressão automatizada de ponta a ponta.
 
 | Frente | Como foi verificado |
 |--------|---------------------|
-| API e regras de negócio | Suíte `scripts/acceptance.sh` — **160 verificações**, 100% aprovadas |
+| API e regras de negócio | Suíte `scripts/acceptance.sh` — **174 verificações**, 100% aprovadas |
 | Permissões (RBAC) | Matriz ADMIN/MANAGER/CONSULTANT em dashboard, cadastros, roadmap, relatórios, importação e dados de terceiros |
 | Segurança | Headers (Helmet), CORS, força bruta no login, reuso de refresh token, injeção em CSV, validação de entrada, exposição de erro |
 | Regras de negócio | Status dinâmico, cobertura, vencimentos, auditoria, renovação, duplicidade |
@@ -17,13 +17,13 @@ segurança, e uma suíte de regressão automatizada de ponta a ponta.
 
 ## 2. Suíte de regressão
 
-A suíte vive no repositório: **`scripts/acceptance.sh`** (160 verificações). Ela exige a
+A suíte vive no repositório: **`scripts/acceptance.sh`** (174 verificações). Ela exige a
 API e o frontend no ar e o **seed DEMO aplicado**; ao final limpa os dados de teste e
 reaplica o seed (`RESET_DEMO=0` desativa essa restauração).
 
 ```bash
 npm run seed --prefix backend      # garante o estado DEMO
-bash scripts/acceptance.sh         # 160 PASS / 0 FAIL
+bash scripts/acceptance.sh         # 174 PASS / 0 FAIL
 ```
 
 Parâmetros aceitos: `API_URL`, `WEB_URL`, `NODE_BIN`, `CURL_BIN`, `PSQL_BIN`, `NPM_BIN`,
@@ -46,7 +46,8 @@ Parâmetros aceitos: `API_URL`, `WEB_URL`, `NODE_BIN`, `CURL_BIN`, `PSQL_BIN`, `
 
 `bash scripts/smoke.sh` valida que a aplicação está no ar e funcional **sem criar, alterar
 ou remover dados**: frontend, `/health`, login, `/auth/me`, dashboard, Tec News (lista +
-resumo), configurações de IA (sem expor a chave) e a proteção da rota de anexo. É o teste
+resumo), configurações de IA (sem expor a chave), o roadmap da gestão e a proteção das rotas
+de anexo (com leitura do próprio roadmap quando o CONSULTANT é informado). É o teste
 indicado **após um deploy** em ambiente com dados reais. O **ADMIN é obrigatório**
 (`SMOKE_ADMIN_EMAIL/PASSWORD`); MANAGER e CONSULTANT são **opcionais** (`SMOKE_MANAGER_*`,
 `SMOKE_CONSULTANT_*`) — quando informados, o RBAC deles é exercitado; quando não, as
@@ -73,8 +74,9 @@ verificações são puladas (útil em ambiente real, onde só o ADMIN existe). A
 | 11e. Configurações de IA (D-023) | 8 |
 | 11f. Senha provisória (D-024) | 13 |
 | 11g. Anexo do comprovante (D-025) | 10 |
+| 11h. Roadmap próprio do consultor + anexo (D-026) | 14 |
 | 12. Limpeza e restauração do seed | 1 |
-| **Total** | **160** |
+| **Total** | **174** |
 
 Suítes das fases anteriores, reexecutadas após as correções: F2 23/23, F3 15/15,
 F4 16/16, F5 13/13, F7 6/6.
@@ -246,6 +248,21 @@ A limpeza da suíte passou a remover a pasta `backend/uploads` (anexos de teste)
 > O caminho de **substituição** (trocar o PDF existente apagando o anterior) é exercitado
 > pelo mesmo endpoint de upload e verificado indiretamente pelo estado final; o arquivo é
 > servido sempre por rota autenticada, nunca por URL pública.
+
+## 5h. Roadmap próprio do consultor + anexo (D-026)
+
+Validado na suíte (bloco 11h, 14 verificações): o CONSULTANT **cria** um item no próprio
+roadmap (`201`, `professionalId` igual ao seu, sem anexo) mas recebe **`403`** ao tentar
+criar/editar o roadmap de terceiros; **edita** o próprio item (`200`) e, mesmo enviando outro
+`professionalId`, o item **não muda de dono**; **muda o status** (`COMPLETED`); **anexa** um
+PDF (`200`, `hasAttachment: true`) e um arquivo que não é PDF é recusado (`400`); o
+**download autenticado** devolve o PDF (magic bytes `%PDF-`) e um CONSULTANT não baixa anexo
+de terceiros (`403`); a gestão remove o anexo (`204`) e cria item no roadmap de qualquer
+profissional (`201`); e o CONSULTANT **remove** o próprio item (`204`), que sai do roadmap.
+
+> Roadmap e vínculo de certificação permanecem **independentes** nesta entrega (D-026): o
+> roadmap é o plano/evolução (certificação, renovação, curso, treinamento, projeto, laboratório);
+> o vínculo é a credencial concreta. A integração automática fica para uma decisão futura.
 
 ## 6. Limitações conhecidas (aceitas no MVP)
 

@@ -440,11 +440,25 @@ async function main(): Promise<void> {
       title: 'Anexo do comprovante de certificação',
       summary: 'O consultor anexa o PDF do certificado no próprio vínculo; o arquivo fica guardado no servidor e é servido apenas por rota autenticada.',
       releasedAt: new Date('2026-10-02T15:00:00.000Z'),
-      current: true,
+      current: false,
       items: [
         { category: 'FEATURE', description: 'Anexo de PDF por certificação, com substituição e remoção (escopo do consultor no próprio perfil)' },
         { category: 'SECURITY', description: 'Arquivos fora do web root, com nome aleatório e download somente por rota autenticada' },
         { category: 'IMPROVEMENT', description: 'Validação de PDF (tipo e assinatura) e limite de tamanho; anexos entram no backup do banco' },
+      ],
+    },
+    {
+      id: 'rel-0-7-0',
+      version: '0.7.0',
+      title: 'Roadmap próprio do consultor',
+      summary: 'O consultor passa a manter o próprio roadmap (certificações, treinamentos, cursos, projetos) e anexar o comprovante em PDF a cada item.',
+      releasedAt: new Date('2026-10-02T18:00:00.000Z'),
+      current: true,
+      items: [
+        { category: 'FEATURE', description: 'O consultor cria, edita e remove os próprios itens de roadmap na aba do perfil (D-026)' },
+        { category: 'FEATURE', description: 'Anexo de PDF por item de roadmap, no cadastro/edição e depois, com substituição e remoção' },
+        { category: 'IMPROVEMENT', description: 'Roadmap cobre certificação, renovação, curso, treinamento, projeto e laboratório no mesmo registro' },
+        { category: 'SECURITY', description: 'Anexos do roadmap guardados fora do web root e servidos apenas por rota autenticada, com escopo por dono' },
       ],
     },
   ];

@@ -67,12 +67,14 @@ async function main() {
       );
     }
 
-    // 4) Anexos de comprovante (D-025): os vinculos foram removidos, os
-    //    arquivos ficariam orfaos no disco. Apaga a pasta de certificados.
+    // 4) Anexos (D-025/D-026): os vinculos/roadmap foram removidos e os
+    //    arquivos ficariam orfaos no disco. Apaga as pastas de anexos.
     const uploadsDir = process.env.UPLOADS_DIR || 'uploads';
-    const certificatesDir = path.join(uploadsDir, 'certificates');
-    await fs.rm(certificatesDir, { recursive: true, force: true });
-    await fs.mkdir(certificatesDir, { recursive: true });
+    for (const folder of ['certificates', 'roadmap']) {
+      const dir = path.join(uploadsDir, folder);
+      await fs.rm(dir, { recursive: true, force: true });
+      await fs.mkdir(dir, { recursive: true });
+    }
 
     // 5) Administrador inicial com senha definitiva.
     const admin = await prisma.professional.create({

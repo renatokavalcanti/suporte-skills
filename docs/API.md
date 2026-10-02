@@ -69,7 +69,23 @@ Toda escrita é auditada em `audit_logs`.
 | DELETE | `/roadmap/:id` | ADMIN/MANAGER | Remove. |
 | GET | `/professionals/:id/roadmap` | autenticado (escopo do consultor) | Roadmap do profissional (aba do perfil). |
 
-Cada item retorna `isOverdue` e `daysToDue` calculados no backend.
+Cada item retorna `isOverdue`, `daysToDue` e `hasAttachment` calculados no backend.
+
+#### Roadmap do profissional — autoatendimento (D-026)
+
+Rotas aninhadas usadas pela aba Roadmap do perfil. ADMIN/MANAGER em qualquer profissional;
+CONSULTANT **só no próprio** (`403` em `:id` de terceiros). O `professionalId` é fixado pela
+rota — não é possível mover o item para outro profissional.
+
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| POST | `/professionals/:id/roadmap` | ADMIN/MANAGER · CONSULTANT (só o próprio) | Cria item de roadmap. |
+| PUT | `/professionals/:id/roadmap/:itemId` | ADMIN/MANAGER · CONSULTANT (só o próprio) | Atualiza o item (não troca de dono). |
+| PATCH | `/professionals/:id/roadmap/:itemId/status` | ADMIN/MANAGER · CONSULTANT (só o próprio) | Move o status; `COMPLETED` define `completedAt`. |
+| DELETE | `/professionals/:id/roadmap/:itemId` | ADMIN/MANAGER · CONSULTANT (só o próprio) | Remove o item (e o anexo). |
+| POST | `/professionals/:id/roadmap/:itemId/attachment` | ADMIN/MANAGER · CONSULTANT (só o próprio) | Anexa/substitui o comprovante em PDF (`multipart/form-data`, campo `file`). Valida tipo, assinatura `%PDF-` e `MAX_UPLOAD_MB` (400 se inválido). |
+| GET | `/professionals/:id/roadmap/:itemId/attachment` | ADMIN/MANAGER · CONSULTANT (só o próprio) | Baixa o comprovante (rota autenticada; `Content-Type: application/pdf`, `Content-Disposition: inline`). `404` se não houver anexo. |
+| DELETE | `/professionals/:id/roadmap/:itemId/attachment` | ADMIN/MANAGER · CONSULTANT (só o próprio) | Remove o anexo (204). |
 
 ### Dashboard (Fase 5)
 

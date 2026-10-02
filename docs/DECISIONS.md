@@ -403,6 +403,38 @@ de streaming (`StreamableFile`), com rota autenticada em vez de estático. `UPLO
 
 ---
 
+## D-026 — Roadmap próprio do consultor (autoatendimento + anexo no item)
+**Data:** 02/10/2026
+**Decisão:** o **CONSULTANT** passa a ser dono do próprio **roadmap** — o registro da sua
+evolução (o que tirou ou pretende tirar). Ele vê e mantém **somente os itens dele**, na
+**mesma aba Roadmap do próprio perfil** (`/profissionais/:id`), podendo **criar, editar,
+mudar o status e remover** itens, e **anexar o PDF do comprovante** ao item — no cadastro/
+edição ou depois, com substituição e remoção. O item de roadmap é o registro único para
+certificação, renovação, curso, treinamento, projeto e laboratório (o enum `RoadmapType` já
+cobria esses casos), então **não há entidade nova** de treinamento. O **catálogo**
+(fabricantes, tecnologias, certificações) e o **cadastro de profissionais** seguem
+exclusivos de **ADMIN/MANAGER**; o board global `/roadmap` continua da gestão
+(ADMIN/MANAGER), que também enxerga e edita o roadmap de qualquer profissional. Roadmap e
+vínculo de certificação ficam **independentes** nesta entrega (o roadmap é o plano/evolução;
+o vínculo é a credencial concreta).
+**Contexto:** a D-019 deu ao consultor o autoatendimento apenas dos vínculos de certificação;
+o roadmap (que representa "o que ele tirou ou vai tirar", incluindo treinamentos e cursos)
+continuava exclusivo da gestão. O usuário pediu que cada consultor seja dono do próprio
+roadmap e registre a própria evolução, com o comprovante anexado no momento do cadastro.
+**Consequências:** segue o padrão da D-019 — **sem tela nem módulo de API novo**: rotas
+aninhadas `POST/PUT/PATCH/DELETE /professionals/:id/roadmap[/:itemId]` e
+`POST/GET/DELETE .../attachment`, com escopo garantido por `assertProfessionalAccess`
+(qualquer `:id` diferente do seu → `403`) e o `professionalId` fixado pela rota (não é
+possível mover o item para outro profissional). Nova migration
+`20261002180000_roadmap_attachment` (5 colunas nullable em `roadmap_items`). O armazenamento
+de anexos passou a ser **por pasta** (`UPLOADS_DIR/certificates` e `UPLOADS_DIR/roadmap`),
+reutilizando o `AttachmentStorageService` e a validação de PDF compartilhada; o download
+continua por rota autenticada e o go-live (`clear-data.js`) apaga as duas pastas. Suíte de
+aceite ganha o **bloco 11h** (14 verificações; total **174**) e o smoke passa a checar o
+roadmap. Versão exibida: `0.7.0`.
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.

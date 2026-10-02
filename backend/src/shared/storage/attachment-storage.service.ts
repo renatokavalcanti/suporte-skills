@@ -5,12 +5,24 @@ import { access, mkdir, rm, unlink, writeFile } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
+/** Subpastas usadas pelos anexos (cada recurso tem a sua). */
+export const ATTACHMENT_FOLDERS = {
+  certificates: 'certificates',
+  roadmap: 'roadmap',
+} as const;
+
+export type AttachmentFolder =
+  (typeof ATTACHMENT_FOLDERS)[keyof typeof ATTACHMENT_FOLDERS];
+
+const DEFAULT_FOLDER: AttachmentFolder = ATTACHMENT_FOLDERS.certificates;
+
 /**
- * Armazenamento de anexos em disco (D-025).
+ * Armazenamento de anexos em disco (D-025/D-026).
  *
  * Os arquivos ficam FORA do web root, em UPLOADS_DIR (bind mount persistente),
- * sob `certificates/`. O nome no disco e' aleatorio (UUID) e o nome original
- * fica apenas no banco; toda leitura passa por rota autenticada.
+ * sob uma subpasta por recurso (`certificates/`, `roadmap/`). O nome no disco
+ * e' aleatorio (UUID) e o nome original fica apenas no banco; toda leitura
+ * passa por rota autenticada.
  */
 @Injectable()
 export class AttachmentStorageService implements OnModuleInit {
@@ -28,17 +40,19 @@ export class AttachmentStorageService implements OnModuleInit {
   }
 
   async onModuleInit(): Promise<void> {
-    await mkdir(this.directory(), { recursive: true });
-    this.logger.log(`Anexos em ${this.directory()}`);
+    for (const folder of Object.values(ATTACHMENT_FOLDERS)) {
+      await mkdir(this.directory(folder), { recursive: true });
+    }
+    this.logger.log(`Anexos em ${this.baseDir}`);
   }
 
-  private directory(): string {
-    return join(this.baseDir, 'certificates');
+  private directory(folder: AttachmentFolder = DEFAULT_FOLDER): string {
+    return join(this.baseDir, folder);
   }
 
   /** Resolve o caminho absoluto garantindo que nao escapa do diretorio. */
-  pathOf(storedName: string): string {
-    const root = resolve(this.directory());
+  pathOf(storedName: string, folder: AttachmentFolder = DEFAULT_FOLDER): string {
+    const root = resolve(this.directory(folder));
     const full = resolve(root, storedName);
     if (full !== root && !full.startsWith(root + sep)) {
       throw new Error('Nome de arquivo invalido');
@@ -46,37 +60,60 @@ export class AttachmentStorageService implements OnModuleInit {
     return full;
   }
 
-  async save(buffer: Buffer, extension = '.pdf'): Promise<string> {
+  async save(
+    buffer: Buffer,
+    extension = '.pdf',
+    folder: AttachmentFolder = DEFAULT_FOLDER,
+  ): Promise<string> {
+    // A pasta pode ter sido removida com a aplicacao no ar (ex.: limpeza de
+    // dados); garante que existe antes de gravar.
+    await mkdir(this.directory(folder), { recursive: true });
     const storedName = `${randomUUID()}${extension}`;
-    await writeFile(this.pathOf(storedName), buffer, { flag: 'wx' });
+    await writeFile(this.pathOf(storedName, folder), buffer, { flag: 'wx' });
     return storedName;
   }
 
-  async exists(storedName: string): Promise<boolean> {
+  async exists(
+    storedName: string,
+    folder: AttachmentFolder = DEFAULT_FOLDER,
+  ): Promise<boolean> {
     try {
-      await access(this.pathOf(storedName));
+      await access(this.pathOf(storedName, folder));
       return true;
     } catch {
       return false;
     }
   }
 
-  stream(storedName: string): ReadStream {
-    return createReadStream(this.pathOf(storedName));
+  stream(
+    storedName: string,
+    folder: AttachmentFolder = DEFAULT_FOLDER,
+  ): ReadStream {
+    return createReadStream(this.pathOf(storedName, folder));
   }
 
-  async remove(storedName: string): Promise<void> {
+  async remove(
+    storedName: string,
+    folder: AttachmentFolder = DEFAULT_FOLDER,
+  ): Promise<void> {
     try {
-      await unlink(this.pathOf(storedName));
+      await unlink(this.pathOf(storedName, folder));
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
       if (code !== 'ENOENT') throw error;
     }
   }
 
-  /** Apaga todos os anexos (usado pelo go-live ao limpar os dados). */
-  async clear(): Promise<void> {
-    await rm(this.directory(), { recursive: true, force: true });
-    await mkdir(this.directory(), { recursive: true });
+  /** Apaga os anexos (usado pelo go-live ao limpar os dados). */
+  async clear(folder?: AttachmentFolder): Promise<void> {
+    if (folder) {
+      await rm(this.directory(folder), { recursive: true, force: true });
+      await mkdir(this.directory(folder), { recursive: true });
+      return;
+    }
+    for (const current of Object.values(ATTACHMENT_FOLDERS)) {
+      await rm(this.directory(current), { recursive: true, force: true });
+      await mkdir(this.directory(current), { recursive: true });
+    }
   }
 }

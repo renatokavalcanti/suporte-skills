@@ -146,13 +146,23 @@ call GET /settings/ai "$ADMIN"
 check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.apiKey')" = 'undefined' ]; echo $?)" \
   'configuracoes de IA sem expor a chave' "http=$CODE apiKey=$(q 'typeof o.apiKey')"
 
+call GET /roadmap "$ADMIN"
+check "$([ "$CODE" = '200' ]; echo $?)" 'roadmap da equipe (gestao)' "http=$CODE"
+
 if [ -n "$CONSULTANT" ]; then
   call GET /settings/ai "$CONSULTANT"
   check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa configuracoes' "http=$CODE"
+  call GET /auth/me "$CONSULTANT"
+  CONSULTANT_ID=$(q 'o.id')
+  call GET "/professionals/$CONSULTANT_ID/roadmap" "$CONSULTANT"
+  check "$([ "$CODE" = '200' ]; echo $?)" 'CONSULTANT le o proprio roadmap (D-026)' "http=$CODE"
 fi
 
 call GET '/professionals/x/certifications/y/attachment' ''
 check "$([ "$CODE" = '401' ]; echo $?)" 'anexo exige autenticacao (D-025)' "http=$CODE"
+
+call GET '/professionals/x/roadmap/y/attachment' ''
+check "$([ "$CODE" = '401' ]; echo $?)" 'anexo de roadmap exige autenticacao (D-026)' "http=$CODE"
 
 rm -f "$OUT" "$QUERY"
 echo "=================================================================="

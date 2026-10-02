@@ -322,6 +322,12 @@ model RoadmapItem {
   completedAt     DateTime?       @map("completed_at")
   ownerId         String?         @map("owner_id")
   notes           String?
+  // Anexo do comprovante do item (D-026): PDF guardado fora do banco.
+  attachmentFile       String?   @map("attachment_file")
+  attachmentName       String?   @map("attachment_name")
+  attachmentMime       String?   @map("attachment_mime")
+  attachmentSize       Int?      @map("attachment_size")
+  attachmentUploadedAt DateTime? @map("attachment_uploaded_at")
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
