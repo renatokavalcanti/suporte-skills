@@ -36,6 +36,11 @@ export interface AppConfiguration {
      *  Vazio: cai no segredo de acesso do JWT. */
     encryptionKey: string;
   };
+  uploads: {
+    /** Diretorio persistente fora do web root onde ficam os anexos (D-025). */
+    dir: string;
+    maxFileBytes: number;
+  };
   seed: {
     enabled: boolean;
   };
@@ -105,6 +110,10 @@ export default (): AppConfiguration => {
     },
     settings: {
       encryptionKey: (env.SETTINGS_ENCRYPTION_KEY ?? '').trim(),
+    },
+    uploads: {
+      dir: (env.UPLOADS_DIR ?? 'uploads').trim() || 'uploads',
+      maxFileBytes: toInt(env.MAX_UPLOAD_MB, 10) * 1024 * 1024,
     },
     seed: {
       enabled: env.SEED_DEMO === 'true',

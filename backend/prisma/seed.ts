@@ -427,11 +427,24 @@ async function main(): Promise<void> {
       title: 'Acesso com senha provisória',
       summary: 'O administrador cria o acesso do consultor com uma senha provisória e o sistema exige a troca no primeiro login.',
       releasedAt: new Date('2026-10-02T12:00:00.000Z'),
-      current: true,
+      current: false,
       items: [
         { category: 'FEATURE', description: 'Senha provisória: troca obrigatória no primeiro acesso (tela de definição de nova senha)' },
         { category: 'FEATURE', description: 'Checkbox "Exigir troca de senha no próximo acesso" no cadastro e selo "Senha provisória" na lista' },
         { category: 'SECURITY', description: 'Bloqueio do app até a troca, revogação das sessões e nova senha diferente da atual' },
+      ],
+    },
+    {
+      id: 'rel-0-6-0',
+      version: '0.6.0',
+      title: 'Anexo do comprovante de certificação',
+      summary: 'O consultor anexa o PDF do certificado no próprio vínculo; o arquivo fica guardado no servidor e é servido apenas por rota autenticada.',
+      releasedAt: new Date('2026-10-02T15:00:00.000Z'),
+      current: true,
+      items: [
+        { category: 'FEATURE', description: 'Anexo de PDF por certificação, com substituição e remoção (escopo do consultor no próprio perfil)' },
+        { category: 'SECURITY', description: 'Arquivos fora do web root, com nome aleatório e download somente por rota autenticada' },
+        { category: 'IMPROVEMENT', description: 'Validação de PDF (tipo e assinatura) e limite de tamanho; anexos entram no backup do banco' },
       ],
     },
   ];

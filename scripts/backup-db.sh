@@ -81,9 +81,25 @@ if [ "${SIZE:-0}" -lt 100 ]; then
 fi
 echo "OK: $(basename "$OUT") (${SIZE} bytes)"
 
+# Anexos (D-025): arquiva a pasta de uploads junto do dump, quando existir.
+DATA_DIR="${DATA_DIR:-$REPO_DIR/data}"
+if [ -d "$DATA_DIR" ]; then
+  UPLOADS_TAR="$BACKUP_DIR/${DB_NAME}_uploads_${STAMP}.tar.gz"
+  if tar -czf "$UPLOADS_TAR" -C "$DATA_DIR" . 2>/dev/null; then
+    USIZE="$(wc -c < "$UPLOADS_TAR" | tr -d '[:space:]')"
+    echo "OK: $(basename "$UPLOADS_TAR") (${USIZE} bytes)"
+  else
+    echo "[AVISO] falha ao arquivar $DATA_DIR (anexos fora do backup)"
+    rm -f "$UPLOADS_TAR"
+  fi
+fi
+
 if [ "$KEEP_BACKUPS" -gt 0 ]; then
   # Mantem apenas os KEEP_BACKUPS mais recentes do proprio banco.
   ls -1t "$BACKUP_DIR/${DB_NAME}_"*.sql 2>/dev/null | tail -n "+$((KEEP_BACKUPS + 1))" | while read -r old; do
+    rm -f "$old" && echo "removido backup antigo: $(basename "$old")"
+  done
+  ls -1t "$BACKUP_DIR/${DB_NAME}_uploads_"*.tar.gz 2>/dev/null | tail -n "+$((KEEP_BACKUPS + 1))" | while read -r old; do
     rm -f "$old" && echo "removido backup antigo: $(basename "$old")"
   done
 fi

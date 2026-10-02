@@ -104,6 +104,32 @@ export const professionalsService = {
   async removeCertification(id: string, recordId: string): Promise<void> {
     await api.delete(`/professionals/${id}/certifications/${recordId}`);
   },
+
+  // --- Anexo do comprovante (D-025) ---------------------------------------
+
+  async uploadAttachment(
+    id: string,
+    recordId: string,
+    file: File,
+  ): Promise<ProfessionalCertification> {
+    const form = new FormData();
+    form.append('file', file);
+    const { data } = await api.post<ProfessionalCertification>(
+      `/professionals/${id}/certifications/${recordId}/attachment`,
+      form,
+    );
+    return data;
+  },
+  async removeAttachment(id: string, recordId: string): Promise<void> {
+    await api.delete(`/professionals/${id}/certifications/${recordId}/attachment`);
+  },
+  async fetchAttachment(id: string, recordId: string): Promise<Blob> {
+    const { data } = await api.get<Blob>(
+      `/professionals/${id}/certifications/${recordId}/attachment`,
+      { responseType: 'blob' },
+    );
+    return data;
+  },
   async technologies(id: string): Promise<TechnologyCoverage[]> {
     const { data } = await api.get<TechnologyCoverage[]>(
       `/professionals/${id}/technologies`,

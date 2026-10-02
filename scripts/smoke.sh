@@ -16,8 +16,10 @@
 #
 # Variaveis (opcionais):
 #   API_URL, WEB_URL, NODE_BIN, CURL_BIN
-#   SMOKE_ADMIN_EMAIL/PASSWORD, SMOKE_MANAGER_EMAIL/PASSWORD,
-#   SMOKE_CONSULTANT_EMAIL/PASSWORD (padrao: contas DEMO)
+#   SMOKE_ADMIN_EMAIL/PASSWORD (padrao: conta DEMO)
+#   SMOKE_MANAGER_EMAIL/PASSWORD e SMOKE_CONSULTANT_EMAIL/PASSWORD: OPCIONAIS.
+#     Sem esses valores, as verificacoes de manager/consultor sao puladas (em
+#     ambiente real so o ADMIN existe). Informe-os para exercitar o RBAC.
 #   SMOKE_INSECURE=1  -> adiciona -k ao curl (certificado autoassinado)
 # ===========================================================================
 set -u
@@ -31,10 +33,10 @@ CURL_TLS=""
 
 ADMIN_EMAIL="${SMOKE_ADMIN_EMAIL:-admin@suporte.local}"
 ADMIN_PASSWORD="${SMOKE_ADMIN_PASSWORD:-Admin@123}"
-MANAGER_EMAIL="${SMOKE_MANAGER_EMAIL:-maria.oliveira@suporte.local}"
-MANAGER_PASSWORD="${SMOKE_MANAGER_PASSWORD:-Suporte@123}"
-CONSULTANT_EMAIL="${SMOKE_CONSULTANT_EMAIL:-carlos.souza@suporte.local}"
-CONSULTANT_PASSWORD="${SMOKE_CONSULTANT_PASSWORD:-Suporte@123}"
+MANAGER_EMAIL="${SMOKE_MANAGER_EMAIL:-}"
+MANAGER_PASSWORD="${SMOKE_MANAGER_PASSWORD:-}"
+CONSULTANT_EMAIL="${SMOKE_CONSULTANT_EMAIL:-}"
+CONSULTANT_PASSWORD="${SMOKE_CONSULTANT_PASSWORD:-}"
 
 WORK_DIR="${WORK_DIR:-${TMPDIR:-/tmp}/suporte-skills-smoke}"
 if command -v cygpath >/dev/null 2>&1; then
@@ -104,10 +106,22 @@ check "$([ "$CODE" = '200' ] && [ "$(q 'o.status')" = 'ok' ]; echo $?)" \
   'API saudavel' "http=$CODE status=$(q 'o.status') db=$(q 'o.database')"
 
 ADMIN=$(login "$ADMIN_EMAIL" "$ADMIN_PASSWORD")
-MANAGER=$(login "$MANAGER_EMAIL" "$MANAGER_PASSWORD")
-CONSULTANT=$(login "$CONSULTANT_EMAIL" "$CONSULTANT_PASSWORD")
-check "$([ -n "$ADMIN" ] && [ -n "$MANAGER" ] && [ -n "$CONSULTANT" ]; echo $?)" \
-  'login dos 3 papeis' "admin=${#ADMIN} manager=${#MANAGER} consultant=${#CONSULTANT}"
+check "$([ -n "$ADMIN" ]; echo $?)" 'login do ADMIN' "len=${#ADMIN}"
+
+MANAGER=""
+CONSULTANT=""
+if [ -n "$MANAGER_EMAIL" ]; then
+  MANAGER=$(login "$MANAGER_EMAIL" "$MANAGER_PASSWORD")
+  check "$([ -n "$MANAGER" ]; echo $?)" 'login do MANAGER' "len=${#MANAGER}"
+else
+  echo "[SKIP] MANAGER nao informado (SMOKE_MANAGER_EMAIL)"
+fi
+if [ -n "$CONSULTANT_EMAIL" ]; then
+  CONSULTANT=$(login "$CONSULTANT_EMAIL" "$CONSULTANT_PASSWORD")
+  check "$([ -n "$CONSULTANT" ]; echo $?)" 'login do CONSULTANT' "len=${#CONSULTANT}"
+else
+  echo "[SKIP] CONSULTANT nao informado (SMOKE_CONSULTANT_EMAIL)"
+fi
 
 call GET /auth/me "$ADMIN"
 check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.id')" = 'string' ]; echo $?)" \
@@ -121,7 +135,7 @@ call GET /news "$ADMIN"
 check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.meta.total')" = 'number' ]; echo $?)" \
   'Tec News lista novidades' "http=$CODE total=$(q 'o.meta.total')"
 
-call GET /news/digest "$CONSULTANT"
+call GET /news/digest "$ADMIN"
 check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.aiEnabled')" = 'boolean' ]; echo $?)" \
   'resumo do Tec News (leitura)' "http=$CODE aiEnabled=$(q 'o.aiEnabled')"
 
@@ -132,8 +146,13 @@ call GET /settings/ai "$ADMIN"
 check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.apiKey')" = 'undefined' ]; echo $?)" \
   'configuracoes de IA sem expor a chave' "http=$CODE apiKey=$(q 'typeof o.apiKey')"
 
-call GET /settings/ai "$CONSULTANT"
-check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa configuracoes' "http=$CODE"
+if [ -n "$CONSULTANT" ]; then
+  call GET /settings/ai "$CONSULTANT"
+  check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa configuracoes' "http=$CODE"
+fi
+
+call GET '/professionals/x/certifications/y/attachment' ''
+check "$([ "$CODE" = '401' ]; echo $?)" 'anexo exige autenticacao (D-025)' "http=$CODE"
 
 rm -f "$OUT" "$QUERY"
 echo "=================================================================="

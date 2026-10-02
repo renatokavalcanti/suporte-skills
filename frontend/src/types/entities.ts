@@ -138,6 +138,10 @@ export interface ProfessionalCertification {
   updatedAt: string;
   status: CertificationStatus;
   daysRemaining: number | null;
+  hasAttachment: boolean;
+  attachmentName: string | null;
+  attachmentSize: number | null;
+  attachmentUploadedAt: string | null;
   certification: {
     id: string;
     name: string;

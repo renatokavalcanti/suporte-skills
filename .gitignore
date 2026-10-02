@@ -32,6 +32,9 @@ certs/
 # Backups de banco (podem conter dados reais)
 backups/
 
+# Anexos enviados (comprovantes; podem conter dados pessoais)
+data/
+
 # Misc
 coverage/
 *.tsbuildinfo

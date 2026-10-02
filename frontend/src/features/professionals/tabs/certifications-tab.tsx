@@ -20,6 +20,7 @@ import { professionalsService } from '@/services/professionals.service';
 import { extractApiError } from '@/services/api';
 import type { ProfessionalCertification } from '@/types/entities';
 import { ProfessionalCertificationFormDialog } from '../professional-certification-form-dialog';
+import { CertificationAttachmentCell } from '../certification-attachment-cell';
 import { certificationLevelLabels, formatDate, formatDaysRemaining } from '@/utils/labels';
 
 export function CertificationsTab({ professionalId }: { professionalId: string }) {
@@ -94,6 +95,7 @@ export function CertificationsTab({ professionalId }: { professionalId: string }
                 <TableHead>Obtenção</TableHead>
                 <TableHead>Expiração</TableHead>
                 <TableHead>Restante</TableHead>
+                <TableHead>Anexo</TableHead>
                 <TableHead>Status</TableHead>
                 {canWrite && <TableHead className="text-right">Ações</TableHead>}
               </TableRow>
@@ -129,6 +131,13 @@ export function CertificationsTab({ professionalId }: { professionalId: string }
                   <TableCell>{formatDate(record.obtainedAt)}</TableCell>
                   <TableCell>{formatDate(record.expiresAt)}</TableCell>
                   <TableCell>{formatDaysRemaining(record.daysRemaining)}</TableCell>
+                  <TableCell>
+                    <CertificationAttachmentCell
+                      professionalId={professionalId}
+                      record={record}
+                      canWrite={canWrite}
+                    />
+                  </TableCell>
                   <TableCell>
                     <CertificationStatusBadge status={record.status} />
                   </TableCell>

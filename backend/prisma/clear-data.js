@@ -23,6 +23,8 @@
 
 const { PrismaClient } = require('@prisma/client');
 const { hash } = require('@node-rs/argon2');
+const fs = require('node:fs/promises');
+const path = require('node:path');
 
 async function main() {
   if (process.env.CONFIRM_CLEAR !== 'yes') {
@@ -65,7 +67,14 @@ async function main() {
       );
     }
 
-    // 4) Administrador inicial com senha definitiva.
+    // 4) Anexos de comprovante (D-025): os vinculos foram removidos, os
+    //    arquivos ficariam orfaos no disco. Apaga a pasta de certificados.
+    const uploadsDir = process.env.UPLOADS_DIR || 'uploads';
+    const certificatesDir = path.join(uploadsDir, 'certificates');
+    await fs.rm(certificatesDir, { recursive: true, force: true });
+    await fs.mkdir(certificatesDir, { recursive: true });
+
+    // 5) Administrador inicial com senha definitiva.
     const admin = await prisma.professional.create({
       data: {
         name,

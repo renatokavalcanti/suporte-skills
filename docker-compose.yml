@@ -54,9 +54,14 @@ services:
       AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
       AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-20000}
       SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:-}
+      UPLOADS_DIR: /app/uploads
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-10}
     command: sh -c "npx prisma migrate deploy && node dist/main.js"
     ports:
       - '${API_PORT:-4000}:4000'
+    volumes:
+      # Anexos (D-025) em pasta persistente do host (fora do web root).
+      - ./data/uploads:/app/uploads
 
   # Seed DEMO sob demanda: docker compose --profile tools run --rm seed
   seed:

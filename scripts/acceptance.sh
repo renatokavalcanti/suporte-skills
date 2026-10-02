@@ -672,6 +672,55 @@ call PUT "/professionals/$QA_PW_ID" "$MANAGER" '{"mustChangePassword":true}'
 check "$([ "$CODE" = '403' ]; echo $?)" 'MANAGER nao marca senha provisoria -> 403' "http=$CODE"
 
 # ---------------------------------------------------------------------------
+echo "--- 11g. Anexo do comprovante PDF (D-025) ---"
+CERT_ID=$(call GET '/certifications?pageSize=1' "$ADMIN"; q 'o.data[0].id')
+call POST "/professionals/$QA_PW_ID/certifications" "$ADMIN" "{\"certificationId\":\"$CERT_ID\",\"obtainedAt\":\"2026-01-01\",\"expiresAt\":\"2029-01-01\"}"
+QA_REC=$(q 'o.id')
+check "$([ "$CODE" = '201' ] && [ "$(q 'o.hasAttachment')" = 'false' ]; echo $?)" \
+  'vinculo criado sem anexo' "http=$CODE"
+
+printf '%%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%%%EOF\n' > "$WORK_DIR/valid.pdf"
+printf 'nao sou pdf' > "$WORK_DIR/fake.pdf"
+
+UPLOAD() { # UPLOAD TOKEN FILE
+  CODE=$("$CURL_BIN" -s -o "$OUT" -w "%{http_code}" -X POST \
+    "$API/professionals/$QA_PW_ID/certifications/$QA_REC/attachment" \
+    -H "Authorization: Bearer $1" -F "file=@$2;type=application/pdf")
+}
+
+UPLOAD "$ADMIN" "$WORK_DIR/valid.pdf"
+check "$([ "$CODE" = '200' ] && [ "$(q 'o.hasAttachment')" = 'true' ]; echo $?)" \
+  'ADMIN anexa PDF -> 200' "http=$CODE"
+UPLOAD "$ADMIN" "$WORK_DIR/fake.pdf"
+check "$([ "$CODE" = '400' ]; echo $?)" 'arquivo que nao e PDF -> 400' "http=$CODE"
+
+CODE=$("$CURL_BIN" -s -D "$WORK_DIR/att-head.txt" -o "$WORK_DIR/att.pdf" -w "%{http_code}" \
+  "$API/professionals/$QA_PW_ID/certifications/$QA_REC/attachment" -H "Authorization: Bearer $ADMIN")
+IS_PDF=$(head -c 5 "$WORK_DIR/att.pdf" 2>/dev/null)
+check "$([ "$CODE" = '200' ] && [ "$IS_PDF" = '%PDF-' ]; echo $?)" \
+  'download autenticado devolve o PDF' "http=$CODE magic=$IS_PDF"
+grep -qi 'content-type: application/pdf' "$WORK_DIR/att-head.txt"
+check $? 'download com Content-Type application/pdf' ""
+
+CODE=$("$CURL_BIN" -s -o /dev/null -w "%{http_code}" \
+  "$API/professionals/$QA_PW_ID/certifications/$QA_REC/attachment" -H "Authorization: Bearer $CONSULTANT")
+check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao baixa anexo de terceiros -> 403' "http=$CODE"
+CODE=$("$CURL_BIN" -s -o /dev/null -w "%{http_code}" -X DELETE \
+  "$API/professionals/$QA_PW_ID/certifications/$QA_REC/attachment" -H "Authorization: Bearer $CONSULTANT")
+check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao remove anexo de terceiros -> 403' "http=$CODE"
+
+QA_OWN=$(login "$QA_PW_EMAIL" 'NovaSenha@123')
+UPLOAD "$QA_OWN" "$WORK_DIR/valid.pdf"
+check "$([ "$CODE" = '200' ]; echo $?)" 'CONSULTANT anexa no proprio vinculo -> 200' "http=$CODE"
+
+CODE=$("$CURL_BIN" -s -o /dev/null -w "%{http_code}" -X DELETE \
+  "$API/professionals/$QA_PW_ID/certifications/$QA_REC/attachment" -H "Authorization: Bearer $ADMIN")
+check "$([ "$CODE" = '204' ]; echo $?)" 'ADMIN remove o anexo -> 204' "http=$CODE"
+call GET "/professionals/$QA_PW_ID/certifications" "$ADMIN"
+HAS=$(q "o.find(r=>r.id==='$QA_REC').hasAttachment")
+check "$([ "$HAS" = 'false' ]; echo $?)" 'vinculo volta a ficar sem anexo' "hasAttachment=$HAS"
+
+# ---------------------------------------------------------------------------
 echo "--- 12. Limpeza: restaura o estado DEMO ---"
 if [ "$RESET_DEMO" = '1' ]; then
   # Rede de seguranca: dump do banco ANTES de apagar (best-effort). Desative
@@ -708,9 +757,10 @@ DELETE FROM technologies;
 DELETE FROM vendors;
 DELETE FROM refresh_tokens;
 DELETE FROM professionals;"
+  rm -rf "$BACKEND_DIR/uploads"
   ( cd "$BACKEND_DIR" && "$NPM_BIN" run seed >/dev/null 2>&1 )
-  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '7' ]; echo $?)"
-  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 7 releases"
+  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '8' ]; echo $?)"
+  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 8 releases"
 else
   echo "[SKIP] restauracao do seed (RESET_DEMO=0)"
 fi

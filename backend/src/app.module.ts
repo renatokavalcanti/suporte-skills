@@ -6,6 +6,7 @@ import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './database/prisma.module';
 import { AuditModule } from './shared/audit/audit.module';
 import { DomainModule } from './shared/domain/domain.module';
+import { StorageModule } from './shared/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CertificationsModule } from './modules/certifications/certifications.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
@@ -35,6 +36,7 @@ import { RolesGuard } from './shared/guards/roles.guard';
     PrismaModule,
     AuditModule,
     DomainModule,
+    StorageModule,
     AuthModule,
     HealthModule,
     ProfessionalsModule,

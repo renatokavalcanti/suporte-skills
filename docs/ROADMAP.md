@@ -64,8 +64,11 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > **Acesso (D-024) — Senha provisória:** o ADMIN cria o acesso do consultor com uma senha
 > provisória; no primeiro login o sistema exige a troca (tela `/trocar-senha`), bloqueando
 > as demais rotas até a nova senha. Migration `20261002120000_must_change_password`.
-> Versão `0.5.0`.
-> Suíte de aceite ampliada para **137 verificações, 0 falhas** (versão `0.4.0`).
+
+> **Certificações (D-025) — Anexo do comprovante:** o consultor anexa o PDF do certificado
+> no próprio vínculo; o arquivo fica em `./data/uploads` (fora do web root) e é servido só
+> por rota autenticada. Migration `20261002150000_certification_attachment`. Versão `0.6.0`.
+> Suíte ampliada com os blocos 11f (senha provisória) e 11g (anexo).
 
 ## Critérios de aceite da Fase 1 (histórico)
 

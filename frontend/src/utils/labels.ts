@@ -153,6 +153,14 @@ export function formatDateTime(value: string | null | undefined): string {
   return date.toLocaleString('pt-BR');
 }
 
+/** Tamanho de arquivo legível (ex.: "1,2 MB"). */
+export function formatFileSize(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
+}
+
 export const roadmapTypeLabels: Record<RoadmapType, string> = {
   CERTIFICATION: 'Certificação',
   RENEWAL: 'Renovação',

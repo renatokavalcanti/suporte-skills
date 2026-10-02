@@ -52,8 +52,11 @@ validity_months (nullable), catalog_status, description, notes, active, timestam
 
 ### professional_certifications
 `id, professional_id, certification_id, certificate_number, obtained_at,
-expires_at (nullable), proof_url, notes, timestamps`
+expires_at (nullable), proof_url, attachment_file, attachment_name,
+attachment_mime, attachment_size, attachment_uploaded_at, notes, timestamps`
 Histórico: renovação cria **nova linha** (D-004).
+Anexo (D-025): o PDF fica **no disco** (`UPLOADS_DIR/certificates`, nome aleatório);
+o banco guarda só os metadados (`attachment_*`). `proof_url` (link externo) permanece.
 
 ### roadmap_items
 `id, professional_id, technology_id (nullable), certification_id (nullable),
@@ -156,3 +159,4 @@ Calculado por `CertificationStatusService` a partir de `expires_at` e de
 | `20261001150000_news_digest` | Campos de relevância em `news_items`, tabela `news_digests` e enum `NewsFocus` (D-022). |
 | `20261001180000_app_settings` | Tabela `app_settings` (configurações editáveis pela interface; D-023). |
 | `20261002120000_must_change_password` | Coluna `must_change_password` em `professionals` (senha provisória; D-024). |
+| `20261002150000_certification_attachment` | Colunas de anexo (`attachment_*`) em `professional_certifications` (PDF do comprovante; D-025). |

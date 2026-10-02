@@ -56,7 +56,8 @@ recente/aberta; maior volume de dados (aceitável).
 **Decisão:** Campo `proof_url` (string) em vez de upload de arquivos.
 **Contexto:** Simplicidade e ausência de storage no MVP.
 **Consequências:** Sem upload/validação de arquivos agora; upload poderá ser
-adicionado depois sem quebrar o campo existente.
+adicionado depois sem quebrar o campo existente. (Revisitada pela **D-025**, que
+adicionou o upload do PDF mantendo o `proof_url`.)
 
 ---
 
@@ -372,6 +373,33 @@ O guard não adiciona consulta ao banco (a flag já vem do `JwtStrategy`), e a r
 sessões exige novo login nos outros dispositivos. A definição de senha/marca continua
 restrita ao ADMIN, impedindo que o próprio consultor burle a troca pela edição de perfil
 (`PUT /professionals/:id` é ADMIN/MANAGER). Versão exibida: `0.5.0`.
+
+---
+
+## D-025 — Anexo do comprovante de certificação (PDF no servidor)
+**Data:** 02/10/2026
+**Decisão:** o consultor (no próprio perfil) e a gestão podem **anexar o PDF do
+comprovante** a um vínculo de certificação, com substituição e remoção. O arquivo é gravado
+**no disco do servidor**, em `UPLOADS_DIR/certificates` (bind mount `./data/uploads`, fora
+do web root), com **nome aleatório (UUID)**; o banco guarda apenas os metadados
+(`attachment_file`, `attachment_name`, `attachment_mime`, `attachment_size`,
+`attachment_uploaded_at`). A leitura é feita por rota **autenticada**
+(`GET /professionals/:id/certifications/:recordId/attachment`), nunca por URL pública, e
+segue o escopo do **D-019** (CONSULTANT só nos próprios vínculos). Só **PDF**: valida
+`Content-Type`, a assinatura `%PDF-` e o limite `MAX_UPLOAD_MB` (padrão 10 MB; teto rígido
+de 50 MB no multipart). Ao substituir, o arquivo anterior é apagado; ao remover o vínculo, o
+anexo é apagado junto. O campo `proof_url` (link externo, D-005) **permanece** como
+alternativa. O backup do banco passou a arquivar também a pasta `data/`.
+**Contexto:** os comprovantes eram apenas um link externo (D-005), o que dependia de um
+serviço de terceiros e não garantia a guarda do documento. O usuário pediu que o consultor
+possa anexar o PDF e que os arquivos fiquem numa área persistente e segura do próprio
+servidor.
+**Consequências:** nova migration `20261002150000_certification_attachment` (5 colunas
+nullable: nenhum registro existente é afetado). Aparece **estado em disco** a versionar/backup
+(o bind mount resolve a persistência entre recriações de container). Endpoints multipart e
+de streaming (`StreamableFile`), com rota autenticada em vez de estático. `UPLOADS_DIR`
+(padrão `uploads`) e `MAX_UPLOAD_MB` (1–50, padrão 10) entram no `.env`. O go-live
+(`clear-data.js`) apaga a pasta de certificados junto dos dados. Versão exibida: `0.6.0`.
 
 ---
 

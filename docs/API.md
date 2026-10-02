@@ -47,6 +47,9 @@ Toda escrita é auditada em `audit_logs`.
 | POST | `/professionals/:id/certifications` | ADMIN/MANAGER · CONSULTANT (só o próprio) | Vincula certificação. Bloqueia vínculo em vigor duplicado (409) e datas incoerentes (400). Com `renew: true` encerra o registro vigente na véspera da nova obtenção (nova linha, histórico preservado). |
 | PUT | `/professionals/:id/certifications/:recordId` | ADMIN/MANAGER · CONSULTANT (só o próprio) | Atualiza o registro (datas, nº do certificado, comprovação). Revalida a duplicidade em vigor. |
 | DELETE | `/professionals/:id/certifications/:recordId` | ADMIN/MANAGER · CONSULTANT (só o próprio) | Remove o vínculo. |
+| POST | `/professionals/:id/certifications/:recordId/attachment` | ADMIN/MANAGER · CONSULTANT (só o próprio) | Anexa/substitui o comprovante em PDF (`multipart/form-data`, campo `file`). Valida tipo e assinatura `%PDF-` e o limite `MAX_UPLOAD_MB` (400 se inválido). |
+| GET | `/professionals/:id/certifications/:recordId/attachment` | ADMIN/MANAGER · CONSULTANT (só o próprio) | Baixa o comprovante (rota autenticada; `Content-Type: application/pdf`, `Content-Disposition: inline`). `404` se não houver anexo. |
+| DELETE | `/professionals/:id/certifications/:recordId/attachment` | ADMIN/MANAGER · CONSULTANT (só o próprio) | Remove o anexo (204). |
 | GET | `/professionals/:id/technologies` | autenticado (escopo do consultor) | Tecnologias derivadas das certificações + melhor status. |
 | GET | `/professionals/:id/history` | autenticado (escopo do consultor) | Últimas 100 alterações auditadas do profissional. |
 

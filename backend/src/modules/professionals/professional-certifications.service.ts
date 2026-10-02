@@ -5,8 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { basename } from 'node:path';
 import { PrismaService } from '../../database/prisma.service';
 import { AuditService } from '../../shared/audit/audit.service';
+import { AttachmentStorageService } from '../../shared/storage/attachment-storage.service';
 import { AuthenticatedUser } from '../../shared/common/authenticated-user.interface';
 import { assertProfessionalAccess } from '../../shared/common/access';
 import {
@@ -26,6 +28,11 @@ const RECORD_SELECT = {
   obtainedAt: true,
   expiresAt: true,
   proofUrl: true,
+  attachmentFile: true,
+  attachmentName: true,
+  attachmentMime: true,
+  attachmentSize: true,
+  attachmentUploadedAt: true,
   notes: true,
   createdAt: true,
   updatedAt: true,
@@ -48,9 +55,18 @@ type RecordRow = Prisma.ProfessionalCertificationGetPayload<{
   select: typeof RECORD_SELECT;
 }>;
 
-export interface ProfessionalCertificationView extends RecordRow {
+export type ProfessionalCertificationView = Omit<RecordRow, 'attachmentFile'> & {
+  /** Indica se ha anexo sem expor o nome interno no disco (D-025). */
+  hasAttachment: boolean;
   status: CertificationStatus;
   daysRemaining: number | null;
+};
+
+export interface CertificationAttachment {
+  path: string;
+  name: string;
+  mime: string;
+  size: number;
 }
 
 export interface TechnologyCoverageItem {
@@ -68,6 +84,7 @@ export class ProfessionalCertificationsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly statusService: CertificationStatusService,
+    private readonly storage: AttachmentStorageService,
   ) {}
 
   async list(
@@ -277,6 +294,139 @@ export class ProfessionalCertificationsService {
         tx,
       );
     });
+
+    // Anexo (D-025): o arquivo no disco nao sobrevive ao vinculo.
+    if (existing.attachmentFile) {
+      await this.storage.remove(existing.attachmentFile);
+    }
+  }
+
+  // --- Anexo do comprovante (D-025) ---------------------------------------
+
+  async uploadAttachment(
+    professionalId: string,
+    recordId: string,
+    file: Express.Multer.File | undefined,
+    actor: AuthenticatedUser,
+  ): Promise<ProfessionalCertificationView> {
+    assertProfessionalAccess(professionalId, actor);
+    const existing = await this.findRecord(professionalId, recordId);
+    this.assertPdf(file);
+
+    const storedName = await this.storage.save(file!.buffer, '.pdf');
+    let updated: RecordRow;
+    try {
+      updated = await this.prisma.professionalCertification.update({
+        where: { id: recordId },
+        data: {
+          attachmentFile: storedName,
+          attachmentName: this.sanitizeName(file!.originalname),
+          attachmentMime: 'application/pdf',
+          attachmentSize: file!.size,
+          attachmentUploadedAt: new Date(),
+        },
+        select: RECORD_SELECT,
+      });
+    } catch (error) {
+      await this.storage.remove(storedName);
+      throw error;
+    }
+
+    // Substituicao: o arquivo anterior deixa de existir.
+    if (existing.attachmentFile && existing.attachmentFile !== storedName) {
+      await this.storage.remove(existing.attachmentFile);
+    }
+
+    await this.audit.record({
+      actorId: actor.id,
+      entity: 'professional_certifications',
+      entityId: recordId,
+      action: 'UPDATE',
+      before: { attachmentName: existing.attachmentName },
+      after: { attachmentName: updated.attachmentName, replaced: Boolean(existing.attachmentFile) },
+    });
+
+    return this.toView(updated);
+  }
+
+  async getAttachment(
+    professionalId: string,
+    recordId: string,
+    actor: AuthenticatedUser,
+  ): Promise<CertificationAttachment> {
+    assertProfessionalAccess(professionalId, actor);
+    const record = await this.findRecord(professionalId, recordId);
+
+    if (!record.attachmentFile) {
+      throw new NotFoundException('Esta certificacao nao possui anexo');
+    }
+    if (!(await this.storage.exists(record.attachmentFile))) {
+      throw new NotFoundException('Anexo nao encontrado no servidor');
+    }
+
+    return {
+      path: this.storage.pathOf(record.attachmentFile),
+      name: record.attachmentName ?? 'certificado.pdf',
+      mime: record.attachmentMime ?? 'application/pdf',
+      size: record.attachmentSize ?? 0,
+    };
+  }
+
+  async removeAttachment(
+    professionalId: string,
+    recordId: string,
+    actor: AuthenticatedUser,
+  ): Promise<void> {
+    assertProfessionalAccess(professionalId, actor);
+    const existing = await this.findRecord(professionalId, recordId);
+
+    if (!existing.attachmentFile) {
+      throw new NotFoundException('Esta certificacao nao possui anexo');
+    }
+
+    await this.prisma.professionalCertification.update({
+      where: { id: recordId },
+      data: {
+        attachmentFile: null,
+        attachmentName: null,
+        attachmentMime: null,
+        attachmentSize: null,
+        attachmentUploadedAt: null,
+      },
+    });
+    await this.storage.remove(existing.attachmentFile);
+
+    await this.audit.record({
+      actorId: actor.id,
+      entity: 'professional_certifications',
+      entityId: recordId,
+      action: 'UPDATE',
+      before: { attachmentName: existing.attachmentName },
+      after: { attachmentName: null },
+    });
+  }
+
+  private assertPdf(file: Express.Multer.File | undefined): void {
+    if (!file || !file.buffer || file.size === 0) {
+      throw new BadRequestException('Envie um arquivo PDF');
+    }
+    if (file.size > this.storage.maxFileBytes) {
+      const mb = Math.round(this.storage.maxFileBytes / (1024 * 1024));
+      throw new BadRequestException(`O arquivo excede o limite de ${mb} MB`);
+    }
+    const isPdfMime = file.mimetype === 'application/pdf';
+    const isPdfMagic = file.buffer.subarray(0, 5).toString('latin1') === '%PDF-';
+    if (!isPdfMime || !isPdfMagic) {
+      throw new BadRequestException('O anexo deve ser um arquivo PDF');
+    }
+  }
+
+  private sanitizeName(originalName: string): string {
+    const name = basename(originalName)
+      .replace(/[\\/\r\n\t\0]/g, '_')
+      .trim()
+      .slice(0, 200);
+    return name || 'certificado.pdf';
   }
 
   /** Tecnologias derivadas das certificacoes do profissional. */
@@ -461,8 +611,10 @@ export class ProfessionalCertificationsService {
   }
 
   private toView(row: RecordRow): ProfessionalCertificationView {
+    const { attachmentFile, ...rest } = row;
     return {
-      ...row,
+      ...rest,
+      hasAttachment: attachmentFile !== null,
       status: this.statusService.resolve(row.expiresAt),
       daysRemaining: row.expiresAt
         ? this.statusService.daysRemaining(row.expiresAt)

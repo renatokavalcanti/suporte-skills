@@ -50,6 +50,11 @@ export function validateEnv(
     errors.push('NEWS_DIGEST_MAX_ITEMS deve ser um numero inteiro entre 1 e 100');
   }
 
+  const maxUploadMb = Number(config['MAX_UPLOAD_MB'] ?? 10);
+  if (Number.isNaN(maxUploadMb) || maxUploadMb < 1 || maxUploadMb > 50) {
+    errors.push('MAX_UPLOAD_MB deve ser um numero inteiro entre 1 e 50');
+  }
+
   // Resumo inteligente (IA): so' valida quando explicitamente ligado.
   if (String(config['AI_ENABLED'] ?? '') === 'true') {
     const aiKey = String(config['AI_API_KEY'] ?? '');

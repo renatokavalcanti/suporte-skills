@@ -283,6 +283,12 @@ model ProfessionalCertification {
   obtainedAt      DateTime? @map("obtained_at") @db.Date
   expiresAt       DateTime? @map("expires_at") @db.Date
   proofUrl        String?   @map("proof_url")
+  // Anexo do comprovante (D-025): arquivo PDF guardado fora do banco.
+  attachmentFile       String?   @map("attachment_file")
+  attachmentName       String?   @map("attachment_name")
+  attachmentMime       String?   @map("attachment_mime")
+  attachmentSize       Int?      @map("attachment_size")
+  attachmentUploadedAt DateTime? @map("attachment_uploaded_at")
   notes           String?
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")

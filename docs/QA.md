@@ -179,7 +179,7 @@ Validado na suíte (bloco 11c, 12 verificações): listagem por ADMIN com **exat
 versão atual; `403` do CONSULTANT ao acessar e ao criar; criação com itens (`201`); versão
 duplicada (`409`) e formato fora de `X.Y.Z` (`400`); troca da versão atual permanecendo
 única; edição que **substitui** os itens; remoção (soft) que some da lista. A limpeza da
-suíte passou a apagar `releases` e confere 7 releases no estado DEMO final.
+suíte passou a apagar `releases` e confere 8 releases no estado DEMO final.
 
 > A constante `APP_VERSION` do frontend (`config/version.ts`) acompanha a release marcada
 > como atual; é uma duplicação consciente para exibir o rodapé sem chamada extra.
@@ -227,6 +227,20 @@ estado DEMO.
 > A suíte valida o fluxo completo de primeira sessão; a revogação das sessões anteriores
 > (refresh tokens) é coberta indiretamente pela troca de tokens e pelo login com a senha
 > antiga.
+
+## 5g. Anexo do comprovante de certificação (D-025)
+
+Validado na suíte (bloco 11g, 10 verificações): o vínculo nasce sem anexo
+(`hasAttachment: false`); o ADMIN anexa um PDF (`200`, `hasAttachment: true`); um arquivo que
+não é PDF (mesmo com `Content-Type` forjado) é recusado (`400`, validação da assinatura
+`%PDF-`); o download autenticado devolve o PDF (magic bytes `%PDF-` e `Content-Type:
+application/pdf`); o CONSULTANT não baixa nem remove anexo de terceiros (`403`) mas anexa no
+próprio vínculo (`200`); e o ADMIN remove o anexo (`204`), voltando `hasAttachment: false`.
+A limpeza da suíte passou a remover a pasta `backend/uploads` (anexos de teste).
+
+> O caminho de **substituição** (trocar o PDF existente apagando o anterior) é exercitado
+> pelo mesmo endpoint de upload e verificado indiretamente pelo estado final; o arquivo é
+> servido sempre por rota autenticada, nunca por URL pública.
 
 ## 6. Limitações conhecidas (aceitas no MVP)
 

@@ -109,6 +109,11 @@ passou a resolver a IA por `SettingsService` (assíncrono).
 - `RolesGuard` global: aplica `@Roles(...)` declarado na rota.
 - **Escopo por dono (D-019):** `assertProfessionalAccess` garante que o CONSULTANT só
   acessa/edita os próprios dados; ADMIN/MANAGER acessam qualquer profissional.
+- **Armazenamento de anexos (D-025):** o PDF do comprovante é gravado por
+  `AttachmentStorageService` em `UPLOADS_DIR/certificates` (bind mount `./data/uploads`),
+  **fora do web root**, com nome aleatório (UUID) e metadados só no banco. A leitura passa
+  pela rota autenticada `GET .../attachment` (escopo D-019). Um bind mount evita perda ao
+  recriar containers e entra no backup (`scripts/backup-db.sh`).
 - **Senha provisória (D-024):** `PasswordChangeRequiredGuard` (global, após o
   `JwtAuthGuard`) bloqueia todo o app enquanto `mustChangePassword` for `true`, exceto as
   rotas marcadas com `@AllowProvisionalPassword()` (`POST /auth/change-password`,
