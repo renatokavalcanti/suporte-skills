@@ -453,12 +453,25 @@ async function main(): Promise<void> {
       title: 'Roadmap próprio do consultor',
       summary: 'O consultor passa a manter o próprio roadmap (certificações, treinamentos, cursos, projetos) e anexar o comprovante em PDF a cada item.',
       releasedAt: new Date('2026-10-02T18:00:00.000Z'),
-      current: true,
+      current: false,
       items: [
         { category: 'FEATURE', description: 'O consultor cria, edita e remove os próprios itens de roadmap na aba do perfil (D-026)' },
         { category: 'FEATURE', description: 'Anexo de PDF por item de roadmap, no cadastro/edição e depois, com substituição e remoção' },
         { category: 'IMPROVEMENT', description: 'Roadmap cobre certificação, renovação, curso, treinamento, projeto e laboratório no mesmo registro' },
         { category: 'SECURITY', description: 'Anexos do roadmap guardados fora do web root e servidos apenas por rota autenticada, com escopo por dono' },
+      ],
+    },
+    {
+      id: 'rel-0-7-1',
+      version: '0.7.1',
+      title: 'Visão do consultor: foco no roadmap',
+      summary: 'O consultor ganha a área "Meu roadmap" na navegação e deixa de ver os cadastros de catálogo (fabricantes, tecnologias e certificações), que ficam com a gestão.',
+      releasedAt: new Date('2026-10-02T19:00:00.000Z'),
+      current: true,
+      items: [
+        { category: 'FEATURE', description: 'Nova área "Meu roadmap": o consultor registra os objetivos e anexa os comprovantes (D-027)' },
+        { category: 'IMPROVEMENT', description: 'Consultor passa a entrar direto no próprio roadmap após o login' },
+        { category: 'IMPROVEMENT', description: 'Fabricantes, Tecnologias e Certificações deixam de aparecer para o consultor (menu e abas do perfil)' },
       ],
     },
   ];

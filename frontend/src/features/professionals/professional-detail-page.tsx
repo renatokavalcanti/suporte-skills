@@ -20,7 +20,8 @@ import { HistoryTab } from './tabs/history-tab';
 export function ProfessionalDetailPage() {
   const { id = '' } = useParams();
   const { canWrite } = usePermissions();
-  const [tab, setTab] = useState('resumo');
+  // O CONSULTANT ve apenas o proprio roadmap/historico (D-027); a gestao ve tudo.
+  const [tab, setTab] = useState(canWrite ? 'resumo' : 'roadmap');
   const [editOpen, setEditOpen] = useState(false);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -91,13 +92,17 @@ export function ProfessionalDetailPage() {
           onChange={setTab}
           tabs={[
             { value: 'resumo', label: 'Resumo' },
-            {
-              value: 'certificacoes',
-              label: 'Certificações',
-              count: data.stats.certifications,
-            },
+            ...(canWrite
+              ? [
+                  {
+                    value: 'certificacoes',
+                    label: 'Certificações',
+                    count: data.stats.certifications,
+                  },
+                ]
+              : []),
             { value: 'roadmap', label: 'Roadmap', count: data.stats.openRoadmap },
-            { value: 'tecnologias', label: 'Tecnologias' },
+            ...(canWrite ? [{ value: 'tecnologias', label: 'Tecnologias' }] : []),
             { value: 'historico', label: 'Histórico' },
           ]}
         />

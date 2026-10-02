@@ -158,7 +158,7 @@ suporte-skills/
 | **Releases** | Changelog do sistema: versões com mudanças por categoria (novidade, melhoria, correção, segurança, infra) e destaque da versão atual |
 | **Relatórios** | Certificações, vencimentos, roadmap e por fabricante — em tela e **exportação CSV** (UTF-8 BOM, separador `;`) |
 | **Importação CSV** | Prévia validada linha a linha, confirmação e relatório de erros para profissionais e certificações |
-| **Acessos** | ADMIN/MANAGER com acesso total; CONSULTANT restrito ao próprio perfil, onde mantém os próprios vínculos de certificação e o próprio roadmap |
+| **Acessos** | ADMIN/MANAGER com acesso total (inclui catálogo e vínculos de certificação); CONSULTANT restrito à área "Meu roadmap", onde registra os próprios objetivos e anexa comprovantes |
 | **Senha provisória** | ADMIN cria o acesso com senha provisória; no 1º login o usuário é obrigado a definir uma nova senha (tela dedicada), com bloqueio das demais rotas e revogação das sessões |
 | **Alertas e auditoria** | Alertas de vencimento/roadmap/cobertura e log de alterações (`audit_logs`) |
 
@@ -206,7 +206,7 @@ para execução local). Principais:
 
 ## Status
 
-**Versão atual: `0.7.0`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
+**Versão atual: `0.7.1`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
 relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módulos pós-MVP:
 
 | Decisão | Entrega |
@@ -219,6 +219,7 @@ relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módul
 | D-024 | **Senha provisória** com troca obrigatória no 1º acesso |
 | D-025 | **Anexo do comprovante** (PDF) por certificação |
 | D-026 | **Roadmap próprio do consultor** (autoatendimento + anexo no item) |
+| D-027 | **Visão do consultor**: "Meu roadmap" em destaque, catálogo oculto |
 
 Typecheck e build limpos em backend e frontend; imagem Docker publicada na VM
 (10.0.0.200) com HTTPS. A suíte de aceite cobre os blocos 11f (D-024), 11g (D-025) e 11h

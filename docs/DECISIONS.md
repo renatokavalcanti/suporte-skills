@@ -435,6 +435,28 @@ roadmap. Versão exibida: `0.7.0`.
 
 ---
 
+## D-027 — Visão do CONSULTANT: roadmap em destaque, catálogo oculto
+**Data:** 02/10/2026
+**Decisão:** o **CONSULTANT** passa a ter a entrada **"Meu roadmap"** na navegação (e é para lá
+que é direcionado após o login), onde cria/edita os próprios objetivos e anexa os comprovantes.
+**Fabricantes, Tecnologias e Certificações deixam de aparecer para o CONSULTANT** — tanto no
+menu lateral quanto nas abas do perfil, que passa a exibir apenas **Resumo, Roadmap e
+Histórico**. A gestão (ADMIN/MANAGER) mantém todas as áreas e continua acessando o perfil
+completo (incluindo Certificações/Tecnologias).
+**Contexto:** a D-026 colocou o roadmap na aba do perfil, mas o consultor continuava vendo os
+cadastros de catálogo no menu (Fabricantes/Tecnologias/Certificações) e as abas Certificações/
+Tecnologias, e o roadmap não tinha entrada na navegação. O usuário reforçou que o consultor
+deve trabalhar **apenas o próprio roadmap**, com o catálogo restrito à gestão.
+**Consequências:** mudança de **navegação/UX (frontend)** — **sem alteração de API e sem
+migration** (o backend já escopava o roadmap por dono e já restringia a escrita do catálogo).
+A **leitura** do catálogo continua liberada ao autenticado porque o formulário de roadmap usa
+essas opções (certificação/tecnologia/fabricante). Como a aba **Certificações deixa de ser
+exibida ao CONSULTANT**, o autoatendimento do vínculo de certificação (D-019) e do anexo do
+vínculo (D-025) passam a ser **exclusivos de ADMIN/MANAGER**; o consultor registra a evolução
+e o comprovante **no item de roadmap (D-026)**. Versão exibida: `0.7.1`.
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.

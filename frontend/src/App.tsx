@@ -14,6 +14,7 @@ import { NewsPage } from '@/features/news/news-page';
 import { ReleasesPage } from '@/features/releases/releases-page';
 import { ImportsPage } from '@/features/imports/imports-page';
 import { RoadmapPage } from '@/features/roadmap/roadmap-page';
+import { MyRoadmapPage } from '@/features/roadmap/my-roadmap-page';
 import { ReportsPage } from '@/features/reports/reports-page';
 import { SettingsPage } from '@/pages/settings-page';
 import { NotFoundPage } from '@/pages/not-found-page';
@@ -49,6 +50,14 @@ export function App() {
           element={
             <RequireRole roles={['ADMIN', 'MANAGER']}>
               <RoadmapPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="meu-roadmap"
+          element={
+            <RequireRole roles={['CONSULTANT']}>
+              <MyRoadmapPage />
             </RequireRole>
           }
         />

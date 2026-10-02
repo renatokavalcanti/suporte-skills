@@ -186,7 +186,7 @@ Validado na suíte (bloco 11c, 12 verificações): listagem por ADMIN com **exat
 versão atual; `403` do CONSULTANT ao acessar e ao criar; criação com itens (`201`); versão
 duplicada (`409`) e formato fora de `X.Y.Z` (`400`); troca da versão atual permanecendo
 única; edição que **substitui** os itens; remoção (soft) que some da lista. A limpeza da
-suíte passou a apagar `releases` e confere 8 releases no estado DEMO final.
+suíte passou a apagar `releases` e confere 10 releases no estado DEMO final.
 
 > A constante `APP_VERSION` do frontend (`config/version.ts`) acompanha a release marcada
 > como atual; é uma duplicação consciente para exibir o rodapé sem chamada extra.
@@ -263,6 +263,17 @@ profissional (`201`); e o CONSULTANT **remove** o próprio item (`204`), que sai
 > Roadmap e vínculo de certificação permanecem **independentes** nesta entrega (D-026): o
 > roadmap é o plano/evolução (certificação, renovação, curso, treinamento, projeto, laboratório);
 > o vínculo é a credencial concreta. A integração automática fica para uma decisão futura.
+
+## 5i. Navegação do consultor (D-027)
+
+Mudança de **frontend**, sem novos endpoints: o CONSULTANT passa a ter a área **"Meu roadmap"**
+na navegação e é direcionado a ela após o login; **Fabricantes, Tecnologias e Certificações
+deixam de aparecer** para ele (menu lateral e abas do perfil). A gestão mantém todas as áreas.
+O backend não mudou (o roadmap já era escopado por dono e a escrita do catálogo já era
+ADMIN/MANAGER); a **leitura** do catálogo segue liberada porque o formulário de roadmap usa
+essas opções. Efeito colateral assumido: o autoatendimento do vínculo de certificação (D-019)
+e do anexo do vínculo (D-025) ficam restritos a ADMIN/MANAGER — o consultor usa o item de
+roadmap (D-026).
 
 ## 6. Limitações conhecidas (aceitas no MVP)
 

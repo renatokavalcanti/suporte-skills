@@ -76,6 +76,11 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > board global segue da gestão; catálogo e cadastro de profissionais seguem com ADMIN/MANAGER.
 > Migration `20261002180000_roadmap_attachment`. Versão `0.7.0`. Suíte ampliada com o bloco 11h.
 
+> **Navegação do consultor (D-027) — foco no roadmap:** o consultor passa a ter a área
+> "Meu roadmap" na navegação (e entra nela após o login); Fabricantes, Tecnologias e
+> Certificações deixam de aparecer para ele (menu e abas do perfil), ficando com a gestão.
+> Sem mudança de API/migration. Versão `0.7.1`.
+
 ## Critérios de aceite da Fase 1 (histórico)
 
 1. `docker compose up` sobe `web` + `api` + `db` do zero.

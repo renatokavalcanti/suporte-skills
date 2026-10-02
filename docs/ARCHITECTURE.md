@@ -115,10 +115,13 @@ passou a resolver a IA por `SettingsService` (assíncrono).
   **fora do web root**, com nome aleatório (UUID) e metadados só no banco. A leitura passa
   pelas rotas autenticadas `GET .../attachment` (escopo D-019/D-026). Um bind mount evita
   perda ao recriar containers e entra no backup (`scripts/backup-db.sh`).
-- **Escopo do roadmap (D-026):** a aba Roadmap do perfil usa rotas aninhadas
+- **Escopo do roadmap (D-026):** a área do roadmap usa rotas aninhadas
   `/professionals/:id/roadmap[...]`; `assertProfessionalAccess` garante que o CONSULTANT só
   acessa/edita os próprios itens (qualquer outro `:id` → `403`) e o `professionalId` é
   fixado pela rota. O board global `/roadmap` segue restrito a ADMIN/MANAGER.
+- **Navegação por papel (D-027):** o CONSULTANT entra em **"Meu roadmap"** (`/meu-roadmap`,
+  `RequireRole CONSULTANT`) e não vê Fabricantes/Tecnologias/Certificações no menu nem nas
+  abas do perfil (que ficam Resumo/Roadmap/Histórico). É só UX — o backend não mudou.
 - **Senha provisória (D-024):** `PasswordChangeRequiredGuard` (global, após o
   `JwtAuthGuard`) bloqueia todo o app enquanto `mustChangePassword` for `true`, exceto as
   rotas marcadas com `@AllowProvisionalPassword()` (`POST /auth/change-password`,
