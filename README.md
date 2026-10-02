@@ -76,9 +76,11 @@ npm run dev                    # http://localhost:5173 (proxy /api -> :4000)
 
 | Onde | Comando | O que faz |
 |------|---------|-----------|
-| raiz | `bash scripts/smoke.sh` | **Teste de fumaça não-destrutivo** (health, login, leituras) — ideal depois de um deploy |
-| raiz | `bash scripts/backup-db.sh` | **Backup do banco** (dump SQL em `backups/`) — não-destrutivo |
-| raiz | `bash scripts/acceptance.sh` | **Suíte de aceite** (137 verificações) contra a API no ar; **apaga os dados e restaura o seed DEMO** |
+| raiz | `bash scripts/smoke.sh` | **Teste de fumaça não-destrutivo** (health, login, leituras) — ideal depois de um deploy. Só o ADMIN é obrigatório; MANAGER/CONSULTANT são testados se `SMOKE_MANAGER_*`/`SMOKE_CONSULTANT_*` forem informados |
+| raiz | `bash scripts/backup-db.sh` | **Backup** (dump SQL em `backups/` + arquivo `.tar.gz` dos anexos `data/`) — não-destrutivo |
+| raiz | `bash scripts/acceptance.sh` | **Suíte de aceite** contra a API no ar; **apaga os dados e restaura o seed DEMO** (destrutiva — ver abaixo) |
+| raiz | `backend/prisma/clear-data.js` (ou `npm run clear:data`) | **Limpeza de go-live**: apaga os dados (preservando o catálogo) e cria 1 ADMIN. Exige `CONFIRM_CLEAR=yes` + `ADMIN_NAME/EMAIL/PASSWORD`; `CLEAR_CATALOG=yes` apaga tudo |
+| raiz | `bash scripts/gen-certs.sh <IP/DNS>` | Gera o certificado TLS autoassinado do nginx em `certs/` |
 | backend | `npm run typecheck` | Checagem de tipos |
 | backend | `npm run build` | Compila para `dist/` |
 | backend | `npm run seed` | Seed DEMO |
@@ -91,16 +93,28 @@ A suíte de aceite exige a API, o frontend e o seed DEMO aplicados. Ela aceita
 `DB_*`, `RESET_DEMO` e `ALLOW_DATA_LOSS` — os valores padrão servem para o
 ambiente local descrito acima.
 
+Exemplo do smoke em um ambiente real (só o admin existe):
+
+```bash
+API_URL=https://10.0.0.200/api/v1 WEB_URL=https://10.0.0.200 SMOKE_INSECURE=1 \
+NODE_BIN=node CURL_BIN=curl \
+SMOKE_ADMIN_EMAIL="admin@empresa.com" SMOKE_ADMIN_PASSWORD="..." \
+bash scripts/smoke.sh
+```
+
 ### Persistência de dados (importante)
 
 Os dados ficam num **volume Docker nomeado** (`suporte-skills_dbdata`, em
-`/var/lib/postgresql/data`) e **persistem** entre reinícios e `docker compose up -d`.
-Eles **só** voltam ao estado de demonstração quando algo roda o seed ou a limpeza
-da suíte:
+`/var/lib/postgresql/data`) e os anexos (PDFs) em **`./data/uploads`** (bind mount
+`/app/uploads`); ambos **persistem** entre reinícios e `docker compose up -d`. Eles
+**só** voltam ao estado de demonstração quando algo roda o seed ou a limpeza da suíte:
 
 - `npm run seed` → reaplica (idempotente) os registros DEMO por cima.
 - `bash scripts/acceptance.sh` com `RESET_DEMO=1` (**padrão**) → **apaga todos os
-  dados** e reaplica o seed ao final.
+  dados** (e os anexos de teste) e reaplica o seed ao final.
+- `npm run clear:data` (`clear-data.js`) → **limpeza de go-live**: apaga pessoas e
+  seus vínculos/roadmap, preserva o catálogo e as fontes, apaga os anexos e cria 1
+  ADMIN. É destrutiva e pede confirmação explícita.
 
 Por isso, **em ambiente com dados reais não rode a suíte de aceite**: use
 `RESET_DEMO=0` (não toca no banco) ou, melhor, `bash scripts/smoke.sh`
@@ -119,10 +133,13 @@ backups/arquivo.sql`).
 ```
 suporte-skills/
 ├── frontend/   SPA React
-├── backend/    API NestJS (prisma/)
+├── backend/    API NestJS (prisma/ = schema, migrations, seed, clear-data.js)
 ├── database/   Scripts de banco
-├── docs/       Documentação (ver docs/ARCHITECTURE.md)
-├── scripts/    Operações e QA (smoke.sh, backup-db.sh, acceptance.sh)
+├── docs/       Documentação (ver docs/ARCHITECTURE.md e docs/DECISIONS.md)
+├── scripts/    Operações e QA (smoke.sh, backup-db.sh, acceptance.sh, gen-certs.sh)
+├── data/       Anexos enviados (uploads/; fora do git)
+├── backups/    Backups do banco e dos anexos (fora do git)
+├── certs/      Certificado TLS do nginx (fora do git)
 └── docker-compose.yml
 ```
 
@@ -133,7 +150,7 @@ suporte-skills/
 | **Dashboard** | KPIs, distribuição de status, próximos vencimentos, cobertura tecnológica por tecnologia e alertas (tudo calculado no backend) |
 | **Profissionais** | Cadastro com cargo, tipo, senioridade, papel e status; perfil com abas de resumo, certificações, tecnologias, roadmap e histórico |
 | **Fabricantes / Tecnologias / Certificações** | Catálogo com CRUD, níveis, validade, status de catálogo e vínculos entre si |
-| **Certificações do profissional** | Vínculo com obtenção/validade, **status dinâmico** (ACTIVE/EXPIRING/EXPIRED/NO_EXPIRATION), renovação com histórico e comprovante por URL |
+| **Certificações do profissional** | Vínculo com obtenção/validade, **status dinâmico** (ACTIVE/EXPIRING/EXPIRED/NO_EXPIRATION), renovação com histórico, comprovante por **URL** e **anexo do PDF** (guardado no servidor, baixado por rota autenticada) |
 | **Roadmap técnico** | Lista com filtros, Kanban com drag-and-drop, timeline e marcação de atrasados |
 | **Tec News** | Novidades dos canais oficiais (RSS/Atom) dos fabricantes, com ingestão automática, curadoria manual, filtros por fabricante/tecnologia/tipo, destaques e leitura/salvo por usuário |
 | **Resumo inteligente (Tec News)** | Painel de destaques para o consultor, com resumo por IA focado em funcionalidades de produto e certificações técnicas; relevância e ordenação "mais relevantes" |
@@ -142,6 +159,7 @@ suporte-skills/
 | **Relatórios** | Certificações, vencimentos, roadmap e por fabricante — em tela e **exportação CSV** (UTF-8 BOM, separador `;`) |
 | **Importação CSV** | Prévia validada linha a linha, confirmação e relatório de erros para profissionais e certificações |
 | **Acessos** | ADMIN/MANAGER com acesso total; CONSULTANT restrito ao próprio perfil, onde mantém os próprios vínculos de certificação |
+| **Senha provisória** | ADMIN cria o acesso com senha provisória; no 1º login o usuário é obrigado a definir uma nova senha (tela dedicada), com bloqueio das demais rotas e revogação das sessões |
 | **Alertas e auditoria** | Alertas de vencimento/roadmap/cobertura e log de alterações (`audit_logs`) |
 
 ## Configuração
@@ -172,6 +190,8 @@ para execução local). Principais:
 | `AI_MODEL` | Modelo usado no resumo (padrão `gpt-4o-mini`) |
 | `AI_TIMEOUT_MS` | Timeout da chamada de IA (padrão 20000) |
 | `SETTINGS_ENCRYPTION_KEY` | Segredo para cifrar valores sensíveis salvos pela interface (opcional; usa o `JWT_ACCESS_SECRET` se vazio) |
+| `UPLOADS_DIR` | Pasta persistente dos anexos (padrão `uploads`; no Docker: `/app/uploads` = bind mount `./data/uploads`) |
+| `MAX_UPLOAD_MB` | Limite de tamanho por anexo em MB (1–50, padrão 10) |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | Credenciais do ADMIN no seed |
 
 ## Documentação
@@ -186,11 +206,23 @@ para execução local). Principais:
 
 ## Status
 
-**MVP concluído** — fases 0 a 8 (arquitetura, fundação, cadastros, relacionamentos,
-roadmap, dashboard, relatórios, importação e QA) implementadas e validadas, mais os módulos
-**Tec News** (D-020), **Releases** (D-021) e o **resumo inteligente** do Tec News (D-022).
-Suíte de aceite com **137 verificações, 0 falhas** (ver [`docs/QA.md`](./docs/QA.md)),
-typecheck e build limpos em backend e frontend.
+**Versão atual: `0.6.0`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
+relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módulos pós-MVP:
+
+| Decisão | Entrega |
+|---------|---------|
+| D-019 | Autoatendimento do CONSULTANT no próprio perfil |
+| D-020 | **Tec News** (RSS/Atom dos fabricantes + curadoria) |
+| D-021 | **Releases** (changelog do sistema) |
+| D-022 | **Resumo inteligente** do Tec News (IA) |
+| D-023 | **Configurações** de IA pela interface (ADMIN) |
+| D-024 | **Senha provisória** com troca obrigatória no 1º acesso |
+| D-025 | **Anexo do comprovante** (PDF) por certificação |
+
+Typecheck e build limpos em backend e frontend; imagem Docker publicada na VM
+(10.0.0.200) com HTTPS. A suíte de aceite cobre os blocos 11f (D-024) e 11g (D-025) e o
+estado DEMO de referência (ver [`docs/QA.md`](./docs/QA.md)); o deploy em ambiente com dados
+reais é validado pelo `smoke.sh` (não-destrutivo).
 
 A ingestão automática do Tec News é **opt-in** (`NEWS_SYNC_ENABLED=true`): sem ela, o
 módulo funciona com a curadoria manual e o botão "Sincronizar". Os cinco fabricantes do
@@ -203,6 +235,6 @@ variáveis de ambiente (`AI_*`, `NEWS_DIGEST_*`) — a interface tem precedênci
 guardada **cifrada** e nunca é devolvida pela API. Sem IA, o painel de destaques fica oculto
 e a lista continua ordenável por relevância.
 
-Fora do MVP (arquitetura preparada): Skills com níveis, Treinamentos, Projetos,
+Fora do MVP (arquitetura preparada): Skills com níveis, Treinamentos/Cursos, Projetos,
 Parcerias e requisitos, Gap Analysis, Capacity Planning, integração Zoho e
 scraping/monitoramento avançado de fabricantes (o Tec News cobre a via RSS/Atom).

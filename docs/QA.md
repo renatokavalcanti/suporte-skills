@@ -8,7 +8,7 @@ segurança, e uma suíte de regressão automatizada de ponta a ponta.
 
 | Frente | Como foi verificado |
 |--------|---------------------|
-| API e regras de negócio | Suíte `scripts/acceptance.sh` — **137 verificações**, 100% aprovadas |
+| API e regras de negócio | Suíte `scripts/acceptance.sh` — **160 verificações**, 100% aprovadas |
 | Permissões (RBAC) | Matriz ADMIN/MANAGER/CONSULTANT em dashboard, cadastros, roadmap, relatórios, importação e dados de terceiros |
 | Segurança | Headers (Helmet), CORS, força bruta no login, reuso de refresh token, injeção em CSV, validação de entrada, exposição de erro |
 | Regras de negócio | Status dinâmico, cobertura, vencimentos, auditoria, renovação, duplicidade |
@@ -17,13 +17,13 @@ segurança, e uma suíte de regressão automatizada de ponta a ponta.
 
 ## 2. Suíte de regressão
 
-A suíte vive no repositório: **`scripts/acceptance.sh`** (137 verificações). Ela exige a
+A suíte vive no repositório: **`scripts/acceptance.sh`** (160 verificações). Ela exige a
 API e o frontend no ar e o **seed DEMO aplicado**; ao final limpa os dados de teste e
 reaplica o seed (`RESET_DEMO=0` desativa essa restauração).
 
 ```bash
 npm run seed --prefix backend      # garante o estado DEMO
-bash scripts/acceptance.sh         # 137 PASS / 0 FAIL
+bash scripts/acceptance.sh         # 160 PASS / 0 FAIL
 ```
 
 Parâmetros aceitos: `API_URL`, `WEB_URL`, `NODE_BIN`, `CURL_BIN`, `PSQL_BIN`, `NPM_BIN`,
@@ -45,10 +45,13 @@ Parâmetros aceitos: `API_URL`, `WEB_URL`, `NODE_BIN`, `CURL_BIN`, `PSQL_BIN`, `
 ### 2.1 Teste de fumaça (não-destrutivo)
 
 `bash scripts/smoke.sh` valida que a aplicação está no ar e funcional **sem criar, alterar
-ou remover dados**: frontend, `/health`, login dos três papéis, `/auth/me`, dashboard, Tec
-News (lista + resumo) e configurações de IA (sem expor a chave; `403` para o CONSULTANT).
-É o teste indicado **após um deploy** em ambiente com dados reais. Aceita `API_URL`,
-`WEB_URL`, `NODE_BIN`, `CURL_BIN`, `SMOKE_*_EMAIL/PASSWORD` e `SMOKE_INSECURE=1` (curl `-k`).
+ou remover dados**: frontend, `/health`, login, `/auth/me`, dashboard, Tec News (lista +
+resumo), configurações de IA (sem expor a chave) e a proteção da rota de anexo. É o teste
+indicado **após um deploy** em ambiente com dados reais. O **ADMIN é obrigatório**
+(`SMOKE_ADMIN_EMAIL/PASSWORD`); MANAGER e CONSULTANT são **opcionais** (`SMOKE_MANAGER_*`,
+`SMOKE_CONSULTANT_*`) — quando informados, o RBAC deles é exercitado; quando não, as
+verificações são puladas (útil em ambiente real, onde só o ADMIN existe). Aceita também
+`API_URL`, `WEB_URL`, `NODE_BIN`, `CURL_BIN` e `SMOKE_INSECURE=1` (curl `-k`).
 
 | Bloco | Verificações |
 |-------|--------------|
@@ -68,8 +71,10 @@ News (lista + resumo) e configurações de IA (sem expor a chave; `403` para o C
 | 11c. Releases (D-021) | 12 |
 | 11d. Tec News — resumo inteligente (D-022) | 6 |
 | 11e. Configurações de IA (D-023) | 8 |
+| 11f. Senha provisória (D-024) | 13 |
+| 11g. Anexo do comprovante (D-025) | 10 |
 | 12. Limpeza e restauração do seed | 1 |
-| **Total** | **137** |
+| **Total** | **160** |
 
 Suítes das fases anteriores, reexecutadas após as correções: F2 23/23, F3 15/15,
 F4 16/16, F5 13/13, F7 6/6.
