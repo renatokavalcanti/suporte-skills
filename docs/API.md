@@ -103,8 +103,9 @@ rota — não é possível mover o item para outro profissional.
 | GET | `/reports/expirations` | ADMIN/MANAGER | Vencimentos com faixas: Vencida, Até 30, 31–60, 61–90, Acima de 90 dias. |
 | GET | `/reports/roadmap` | ADMIN/MANAGER | Situação por item: Atrasado, Próximo, Backlog, Concluído, Cancelado. |
 | GET | `/reports/vendors` | ADMIN/MANAGER | Por fabricante: tecnologias, certificações, profissionais certificados e cobertura. |
+| GET | `/reports/consultants` | ADMIN/MANAGER | Painel de consultores (D-028): um item por CONSULTANT ativo com `stats` (total/abertos/concluídos/cancelados/atrasados) e a lista resumida dos itens de roadmap (sem `format`/filtros; não é CSV). |
 
-Parâmetros comuns: `format=json|csv` (padrão `json`), `professionalId`, `vendorId`, `technologyId`.
+Parâmetros comuns (exceto `/reports/consultants`): `format=json|csv` (padrão `json`), `professionalId`, `vendorId`, `technologyId`.
 O JSON devolve `{ key, title, columns, rows, summary, generatedAt }`; com `format=csv`
 retorna `text/csv` (UTF-8 com BOM, separador `;`) como download. A mesma estrutura de
 colunas/linhas permite adicionar um exportador XLSX no futuro sem alterar a lógica (D-013).

@@ -467,11 +467,25 @@ async function main(): Promise<void> {
       title: 'Visão do consultor: foco no roadmap',
       summary: 'O consultor ganha a área "Meu roadmap" na navegação e deixa de ver os cadastros de catálogo (fabricantes, tecnologias e certificações), que ficam com a gestão.',
       releasedAt: new Date('2026-10-02T19:00:00.000Z'),
-      current: true,
+      current: false,
       items: [
         { category: 'FEATURE', description: 'Nova área "Meu roadmap": o consultor registra os objetivos e anexa os comprovantes (D-027)' },
         { category: 'IMPROVEMENT', description: 'Consultor passa a entrar direto no próprio roadmap após o login' },
         { category: 'IMPROVEMENT', description: 'Fabricantes, Tecnologias e Certificações deixam de aparecer para o consultor (menu e abas do perfil)' },
+      ],
+    },
+    {
+      id: 'rel-0-7-2',
+      version: '0.7.2',
+      title: 'Roadmap em Kanban/Timeline e painel de consultores',
+      summary: 'O roadmap do consultor ganha as visões Kanban e Timeline; a área de Relatórios ganha cards por consultor com os itens resumidos em uma janela flutuante.',
+      releasedAt: new Date('2026-10-02T20:00:00.000Z'),
+      current: true,
+      items: [
+        { category: 'FEATURE', description: 'Visões Kanban (com arrastar para mudar o status) e Timeline no roadmap do consultor (D-028)' },
+        { category: 'FEATURE', description: 'Painel "Consultores" em Relatórios: um card por consultor ativo, com contadores rápidos' },
+        { category: 'FEATURE', description: 'Ao clicar no card, janela flutuante com os itens do roadmap do consultor resumidos' },
+        { category: 'IMPROVEMENT', description: 'Novo endpoint GET /reports/consultants (uma chamada para todos os consultores e seus itens)' },
       ],
     },
   ];

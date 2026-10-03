@@ -40,17 +40,24 @@ function addMonths(date: Date, months: number): Date {
 
 export function RoadmapTimelineView({
   filters,
+  items,
   onEdit,
   canWrite,
 }: {
-  filters: RoadmapListParams;
+  filters?: RoadmapListParams;
+  /** Quando informado, usa estes itens (ex.: roadmap do proprio consultor) em
+   *  vez de buscar no board global. */
+  items?: RoadmapItem[];
   onEdit: (item: RoadmapItem) => void;
   canWrite: boolean;
 }) {
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['roadmap', 'timeline', filters],
-    queryFn: () => roadmapService.timeline(filters),
+  const controlled = items !== undefined;
+  const { data: fetched, isLoading, isError, refetch } = useQuery({
+    queryKey: ['roadmap', 'timeline', filters ?? {}],
+    queryFn: () => roadmapService.timeline(filters ?? {}),
+    enabled: !controlled,
   });
+  const data = controlled ? items : fetched;
 
   const { ranged, withoutDates, min, totalDays, months } = useMemo(() => {
     const items = data ?? [];
@@ -96,14 +103,14 @@ export function RoadmapTimelineView({
     return { ranged: sorted, withoutDates: dateless, min: minDate, totalDays: span, months: monthList };
   }, [data]);
 
-  if (isLoading) {
+  if (!controlled && isLoading) {
     return (
       <Card>
         <LoadingState label="Carregando linha do tempo..." />
       </Card>
     );
   }
-  if (isError) {
+  if (!controlled && isError) {
     return (
       <Card>
         <ErrorState

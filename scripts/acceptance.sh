@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# Suite de aceite do Suporte Skills (Fase 8 + Tec News + Releases + Resumo IA + Config + Anexo + Roadmap) — 174 verificacoes
+# Suite de aceite do Suporte Skills (Fase 8 + Tec News + Releases + Resumo IA + Config + Anexo + Roadmap) — 177 verificacoes
 #
 # Uso:
 #   bash scripts/acceptance.sh
@@ -419,6 +419,14 @@ for report in certifications expirations roadmap vendors; do
   check "$OK" "relatorio $report" "http=$CODE linhas=$(q 'o.rows.length') colunas=$(q 'o.columns.length')"
 done
 
+call GET /reports/consultants "$ADMIN"
+check "$([ "$CODE" = '200' ] && [ "$(q 'Array.isArray(o)')" = 'true' ] && [ "$(q 'typeof o[0].stats')" = 'object' ] && [ "$(q 'Array.isArray(o[0].items)')" = 'true' ]; echo $?)" \
+  'painel de consultores (cards + itens de roadmap)' "http=$CODE consultores=$(q 'o.length')"
+call GET /reports/consultants "$MANAGER"
+check "$([ "$CODE" = '200' ]; echo $?)" 'MANAGER acessa o painel de consultores' "http=$CODE"
+call GET /reports/consultants "$CONSULTANT"
+check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa o painel de consultores -> 403' "http=$CODE"
+
 "$CURL_BIN" -s -D "$WORK_DIR/csv-headers.txt" -H "Authorization: Bearer $ADMIN" "$API/reports/certifications?format=csv" -o "$WORK_DIR/report.csv"
 grep -qi "text/csv" "$WORK_DIR/csv-headers.txt"
 check $? 'exportacao CSV com content-type correto' "$(grep -i 'content-type' "$WORK_DIR/csv-headers.txt" | tr -d '\r')"
@@ -822,8 +830,8 @@ DELETE FROM refresh_tokens;
 DELETE FROM professionals;"
   rm -rf "$BACKEND_DIR/uploads"
   ( cd "$BACKEND_DIR" && "$NPM_BIN" run seed >/dev/null 2>&1 )
-  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '10' ]; echo $?)"
-  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 10 releases"
+  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '11' ]; echo $?)"
+  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 11 releases"
 else
   echo "[SKIP] restauracao do seed (RESET_DEMO=0)"
 fi

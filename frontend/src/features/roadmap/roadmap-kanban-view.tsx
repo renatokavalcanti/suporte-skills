@@ -146,25 +146,45 @@ function KanbanColumn({
 
 export function RoadmapKanbanView({
   filters,
+  items,
   onEdit,
   canWrite,
+  onMoveStatus,
 }: {
-  filters: RoadmapListParams;
+  filters?: RoadmapListParams;
+  /** Quando informado, usa estes itens (ex.: roadmap do proprio consultor) em
+   *  vez de buscar no board global. */
+  items?: RoadmapItem[];
   onEdit: (item: RoadmapItem) => void;
   canWrite: boolean;
+  /** Callback de movimento para o modo controlado; no modo normal grava pelo board. */
+  onMoveStatus?: (id: string, status: RoadmapStatus) => void;
 }) {
+  const controlled = items !== undefined;
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
 
-  const queryKey = useMemo(() => ['roadmap', 'kanban', filters], [filters]);
+  const queryKey = useMemo(() => ['roadmap', 'kanban', filters ?? {}], [filters]);
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data: fetched, isLoading, isError, refetch } = useQuery({
     queryKey,
-    queryFn: () => roadmapService.kanban(filters),
+    queryFn: () => roadmapService.kanban(filters ?? {}),
+    enabled: !controlled,
   });
+
+  const data = useMemo<Record<RoadmapStatus, RoadmapItem[]> | undefined>(() => {
+    if (controlled && items) {
+      const grouped = Object.fromEntries(
+        roadmapStatusOrder.map((status) => [status, [] as RoadmapItem[]]),
+      ) as Record<RoadmapStatus, RoadmapItem[]>;
+      for (const item of items) grouped[item.status].push(item);
+      return grouped;
+    }
+    return fetched;
+  }, [controlled, items, fetched]);
 
   const moveMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: RoadmapStatus }) =>
@@ -219,17 +239,18 @@ export function RoadmapKanbanView({
       : undefined;
 
     if (!current || current.status === targetStatus) return;
-    moveMutation.mutate({ id: itemId, status: targetStatus });
+    if (onMoveStatus) onMoveStatus(itemId, targetStatus);
+    else moveMutation.mutate({ id: itemId, status: targetStatus });
   };
 
-  if (isLoading) {
+  if (!controlled && isLoading) {
     return (
       <Card>
         <LoadingState label="Carregando quadro..." />
       </Card>
     );
   }
-  if (isError || !data) {
+  if (!controlled && (isError || !data)) {
     return (
       <Card>
         <ErrorState
@@ -239,6 +260,7 @@ export function RoadmapKanbanView({
       </Card>
     );
   }
+  if (!data) return null;
 
   const total = roadmapStatusOrder.reduce((sum, status) => sum + data[status].length, 0);
   if (total === 0) {

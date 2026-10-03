@@ -8,7 +8,7 @@ segurança, e uma suíte de regressão automatizada de ponta a ponta.
 
 | Frente | Como foi verificado |
 |--------|---------------------|
-| API e regras de negócio | Suíte `scripts/acceptance.sh` — **174 verificações**, 100% aprovadas |
+| API e regras de negócio | Suíte `scripts/acceptance.sh` — **177 verificações**, 100% aprovadas |
 | Permissões (RBAC) | Matriz ADMIN/MANAGER/CONSULTANT em dashboard, cadastros, roadmap, relatórios, importação e dados de terceiros |
 | Segurança | Headers (Helmet), CORS, força bruta no login, reuso de refresh token, injeção em CSV, validação de entrada, exposição de erro |
 | Regras de negócio | Status dinâmico, cobertura, vencimentos, auditoria, renovação, duplicidade |
@@ -17,13 +17,13 @@ segurança, e uma suíte de regressão automatizada de ponta a ponta.
 
 ## 2. Suíte de regressão
 
-A suíte vive no repositório: **`scripts/acceptance.sh`** (174 verificações). Ela exige a
+A suíte vive no repositório: **`scripts/acceptance.sh`** (177 verificações). Ela exige a
 API e o frontend no ar e o **seed DEMO aplicado**; ao final limpa os dados de teste e
 reaplica o seed (`RESET_DEMO=0` desativa essa restauração).
 
 ```bash
 npm run seed --prefix backend      # garante o estado DEMO
-bash scripts/acceptance.sh         # 174 PASS / 0 FAIL
+bash scripts/acceptance.sh         # 177 PASS / 0 FAIL
 ```
 
 Parâmetros aceitos: `API_URL`, `WEB_URL`, `NODE_BIN`, `CURL_BIN`, `PSQL_BIN`, `NPM_BIN`,
@@ -65,7 +65,7 @@ verificações são puladas (útil em ambiente real, onde só o ADMIN existe). A
 | 6. Cadastros | 8 |
 | 7. Relacionamentos e histórico | 11 |
 | 8. Roadmap | 8 |
-| 9. Relatórios e CSV | 8 |
+| 9. Relatórios e CSV | 11 |
 | 10. Importação CSV | 9 |
 | 11. Frontend e proxy | 2 |
 | 11b. Tec News (D-020) | 19 |
@@ -76,7 +76,7 @@ verificações são puladas (útil em ambiente real, onde só o ADMIN existe). A
 | 11g. Anexo do comprovante (D-025) | 10 |
 | 11h. Roadmap próprio do consultor + anexo (D-026) | 14 |
 | 12. Limpeza e restauração do seed | 1 |
-| **Total** | **174** |
+| **Total** | **177** |
 
 Suítes das fases anteriores, reexecutadas após as correções: F2 23/23, F3 15/15,
 F4 16/16, F5 13/13, F7 6/6.
@@ -186,7 +186,7 @@ Validado na suíte (bloco 11c, 12 verificações): listagem por ADMIN com **exat
 versão atual; `403` do CONSULTANT ao acessar e ao criar; criação com itens (`201`); versão
 duplicada (`409`) e formato fora de `X.Y.Z` (`400`); troca da versão atual permanecendo
 única; edição que **substitui** os itens; remoção (soft) que some da lista. A limpeza da
-suíte passou a apagar `releases` e confere 10 releases no estado DEMO final.
+suíte passou a apagar `releases` e confere 11 releases no estado DEMO final.
 
 > A constante `APP_VERSION` do frontend (`config/version.ts`) acompanha a release marcada
 > como atual; é uma duplicação consciente para exibir o rodapé sem chamada extra.
@@ -274,6 +274,16 @@ ADMIN/MANAGER); a **leitura** do catálogo segue liberada porque o formulário d
 essas opções. Efeito colateral assumido: o autoatendimento do vínculo de certificação (D-019)
 e do anexo do vínculo (D-025) ficam restritos a ADMIN/MANAGER — o consultor usa o item de
 roadmap (D-026).
+
+## 5j. Roadmap em Kanban/Timeline e painel de consultores (D-028)
+
+Validado na suíte (bloco 9, +3 verificações): `GET /reports/consultants` responde ao
+ADMIN/MANAGER com um array em que cada item traz `stats` e `items` do roadmap, e o
+CONSULTANT recebe **`403`**. No frontend, a área "Meu roadmap" (e a aba Roadmap do perfil)
+ganha o seletor **Lista / Kanban / Timeline** — no Kanban, arrastar o cartão muda o status
+pelo endpoint do próprio profissional. Em **Relatórios**, a aba **Consultores** mostra um
+card por consultor ativo (abertos, atrasados, total) e o clique abre a janela flutuante com
+os itens resumidos. O endpoint devolve tudo numa chamada, sem N requisições.
 
 ## 6. Limitações conhecidas (aceitas no MVP)
 

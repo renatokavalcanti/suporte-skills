@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma, RoadmapStatus } from '@prisma/client';
+import {
+  Prisma,
+  RoadmapPriority,
+  RoadmapStatus,
+  RoadmapType,
+  Role,
+} from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import {
   CertificationStatus,
@@ -17,6 +23,34 @@ export type ReportKey =
   | 'expirations'
   | 'roadmap'
   | 'vendors';
+
+/** Item de roadmap resumido para o painel de consultores (D-028). */
+export interface ConsultantRoadmapItemView {
+  id: string;
+  title: string;
+  type: RoadmapType;
+  priority: RoadmapPriority;
+  status: RoadmapStatus;
+  dueDate: string | null;
+  isOverdue: boolean;
+  hasAttachment: boolean;
+  technology: string | null;
+  certification: string | null;
+}
+
+export interface ConsultantReportItem {
+  professionalId: string;
+  name: string;
+  position: string | null;
+  stats: {
+    total: number;
+    open: number;
+    completed: number;
+    cancelled: number;
+    overdue: number;
+  };
+  items: ConsultantRoadmapItemView[];
+}
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const ROADMAP_CLOSED: RoadmapStatus[] = [
@@ -44,6 +78,86 @@ export class ReportsService {
       case 'vendors':
         return this.vendorsReport(filters);
     }
+  }
+
+  /**
+   * Painel de consultores (D-028): um item por CONSULTANT ativo com o resumo e
+   * os itens do roadmap dele. Uma unica consulta evita N chamadas no frontend.
+   */
+  async consultants(): Promise<ConsultantReportItem[]> {
+    const professionals = await this.prisma.professional.findMany({
+      where: { role: Role.CONSULTANT, active: true },
+      select: { id: true, name: true, position: true },
+      orderBy: { name: 'asc' },
+    });
+    if (professionals.length === 0) return [];
+
+    const items = await this.prisma.roadmapItem.findMany({
+      where: { professionalId: { in: professionals.map((p) => p.id) } },
+      select: {
+        id: true,
+        professionalId: true,
+        title: true,
+        type: true,
+        priority: true,
+        status: true,
+        dueDate: true,
+        attachmentFile: true,
+        technology: { select: { name: true } },
+        certification: { select: { name: true } },
+      },
+      orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }, { title: 'asc' }],
+    });
+
+    const today = this.today();
+    const byProfessional = new Map<string, ConsultantRoadmapItemView[]>();
+    for (const item of items) {
+      const overdue =
+        item.dueDate !== null &&
+        this.dateOnly(item.dueDate).getTime() < today.getTime() &&
+        item.status !== RoadmapStatus.COMPLETED &&
+        item.status !== RoadmapStatus.CANCELLED;
+      const list = byProfessional.get(item.professionalId) ?? [];
+      list.push({
+        id: item.id,
+        title: item.title,
+        type: item.type,
+        priority: item.priority,
+        status: item.status,
+        dueDate: item.dueDate
+          ? this.dateOnly(item.dueDate).toISOString()
+          : null,
+        isOverdue: overdue,
+        hasAttachment: item.attachmentFile !== null,
+        technology: item.technology?.name ?? null,
+        certification: item.certification?.name ?? null,
+      });
+      byProfessional.set(item.professionalId, list);
+    }
+
+    return professionals.map((professional) => {
+      const list = byProfessional.get(professional.id) ?? [];
+      const completed = list.filter(
+        (item) => item.status === RoadmapStatus.COMPLETED,
+      ).length;
+      const cancelled = list.filter(
+        (item) => item.status === RoadmapStatus.CANCELLED,
+      ).length;
+      const overdue = list.filter((item) => item.isOverdue).length;
+      return {
+        professionalId: professional.id,
+        name: professional.name,
+        position: professional.position,
+        stats: {
+          total: list.length,
+          open: list.length - completed - cancelled,
+          completed,
+          cancelled,
+          overdue,
+        },
+        items: list,
+      };
+    });
   }
 
   // -------------------------------------------------------------------------

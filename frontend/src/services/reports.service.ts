@@ -1,6 +1,10 @@
 import axios from 'axios';
 import { api } from './api';
-import type { ReportKey, ReportResult } from '@/types/entities';
+import type {
+  ConsultantReportItem,
+  ReportKey,
+  ReportResult,
+} from '@/types/entities';
 
 export interface ReportParams {
   professionalId?: string;
@@ -9,6 +13,12 @@ export interface ReportParams {
 }
 
 export const reportsService = {
+  /** Painel de consultores (D-028): cards + itens de roadmap por consultor. */
+  async consultants(): Promise<ConsultantReportItem[]> {
+    const { data } = await api.get<ConsultantReportItem[]>('/reports/consultants');
+    return data;
+  },
+
   async get(key: ReportKey, params: ReportParams): Promise<ReportResult> {
     const { data } = await api.get<ReportResult>(`/reports/${key}`, {
       params: { ...params, format: 'json' },

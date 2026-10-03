@@ -149,6 +149,10 @@ check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.apiKey')" = 'undefined' ]; echo
 call GET /roadmap "$ADMIN"
 check "$([ "$CODE" = '200' ]; echo $?)" 'roadmap da equipe (gestao)' "http=$CODE"
 
+call GET /reports/consultants "$ADMIN"
+check "$([ "$CODE" = '200' ] && [ "$(q 'Array.isArray(o)')" = 'true' ]; echo $?)" \
+  'painel de consultores (D-028)' "http=$CODE consultores=$(q 'o.length')"
+
 if [ -n "$CONSULTANT" ]; then
   call GET /settings/ai "$CONSULTANT"
   check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa configuracoes' "http=$CODE"

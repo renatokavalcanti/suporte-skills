@@ -305,6 +305,33 @@ export interface ReportResult {
 
 export type ReportKey = 'certifications' | 'expirations' | 'roadmap' | 'vendors';
 
+export interface ConsultantRoadmapItem {
+  id: string;
+  title: string;
+  type: RoadmapType;
+  priority: RoadmapPriority;
+  status: RoadmapStatus;
+  dueDate: string | null;
+  isOverdue: boolean;
+  hasAttachment: boolean;
+  technology: string | null;
+  certification: string | null;
+}
+
+export interface ConsultantReportItem {
+  professionalId: string;
+  name: string;
+  position: string | null;
+  stats: {
+    total: number;
+    open: number;
+    completed: number;
+    cancelled: number;
+    overdue: number;
+  };
+  items: ConsultantRoadmapItem[];
+}
+
 export type ImportType = 'professionals' | 'certifications';
 
 export interface ImportRowResult {

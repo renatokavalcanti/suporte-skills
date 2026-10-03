@@ -43,6 +43,12 @@ export class ReportsController {
     return this.respond('vendors', query, res);
   }
 
+  /** Painel de consultores (D-028): cards com o roadmap resumido por consultor. */
+  @Get('consultants')
+  consultants() {
+    return this.service.consultants();
+  }
+
   private async respond(
     key: ReportKey,
     query: QueryReportDto,

@@ -22,6 +22,7 @@ import { vendorsService } from '@/services/vendors.service';
 import { reportsService } from '@/services/reports.service';
 import { extractApiError } from '@/services/api';
 import type { ReportCellValue, ReportKey, ReportResult } from '@/types/entities';
+import { ConsultantsPanel } from './consultants-panel';
 import {
   catalogStatusLabels,
   certificationLevelLabels,
@@ -32,7 +33,10 @@ import {
   roadmapTypeLabels,
 } from '@/utils/labels';
 
-const reportTabs: { value: ReportKey; label: string }[] = [
+type ReportTab = ReportKey | 'consultants';
+
+const reportTabs: { value: ReportTab; label: string }[] = [
+  { value: 'consultants', label: 'Consultores' },
   { value: 'certifications', label: 'Certificações' },
   { value: 'expirations', label: 'Vencimentos' },
   { value: 'roadmap', label: 'Roadmap' },
@@ -137,7 +141,8 @@ function ReportTable({ report }: { report: ReportResult }) {
 
 export function ReportsPage() {
   const { toast } = useToast();
-  const [key, setKey] = useState<ReportKey>('certifications');
+  const [key, setKey] = useState<ReportTab>('consultants');
+  const isConsultants = key === 'consultants';
   const [professionalId, setProfessionalId] = useState('');
   const [vendorId, setVendorId] = useState('');
   const [exporting, setExporting] = useState(false);
@@ -163,14 +168,16 @@ export function ReportsPage() {
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['reports', key, params],
-    queryFn: () => reportsService.get(key, params),
+    queryFn: () => reportsService.get(key as ReportKey, params),
+    enabled: !isConsultants,
   });
 
   const onExport = async (): Promise<void> => {
+    if (isConsultants) return;
     setExporting(true);
     try {
       await reportsService.downloadCsv(
-        key,
+        key as ReportKey,
         params,
         `suporte-skills-${key}.csv`,
       );
@@ -190,70 +197,78 @@ export function ReportsPage() {
     <>
       <PageHeader
         title="Relatórios"
-        description="Certificações, vencimentos, roadmap e visão por fabricante."
+        description="Consultores, certificações, vencimentos, roadmap e visão por fabricante."
         actions={
-          <Button variant="outline" onClick={() => void onExport()} disabled={exporting}>
-            <Download className="h-4 w-4" />
-            Exportar CSV
-          </Button>
+          !isConsultants && (
+            <Button variant="outline" onClick={() => void onExport()} disabled={exporting}>
+              <Download className="h-4 w-4" />
+              Exportar CSV
+            </Button>
+          )
         }
       />
 
       <div className="mb-4">
-        <Tabs value={key} onChange={(value) => setKey(value as ReportKey)} tabs={reportTabs} />
+        <Tabs value={key} onChange={(value) => setKey(value as ReportTab)} tabs={reportTabs} />
       </div>
 
-      <Card className="mb-4 p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Select
-            className="sm:w-56"
-            placeholder="Todos os profissionais"
-            value={professionalId}
-            onChange={(event) => setProfessionalId(event.target.value)}
-            options={(professionals?.data ?? []).map((item) => ({
-              value: item.id,
-              label: item.name,
-            }))}
-          />
-          <Select
-            className="sm:w-56"
-            placeholder="Todos os fabricantes"
-            value={vendorId}
-            onChange={(event) => setVendorId(event.target.value)}
-            options={(vendors?.data ?? []).map((item) => ({
-              value: item.id,
-              label: item.name,
-            }))}
-          />
-        </div>
-      </Card>
-
-      {isLoading && (
-        <Card>
-          <TableSkeleton rows={8} />
-        </Card>
-      )}
-
-      {isError && (
-        <Card>
-          <ErrorState
-            message="Não foi possível gerar o relatório."
-            onRetry={() => void refetch()}
-          />
-        </Card>
-      )}
-
-      {data && (
-        <div className="space-y-3">
-          <SummaryChips summary={data.summary} />
-          <Card className="overflow-hidden">
-            <ReportTable report={data} />
+      {isConsultants ? (
+        <ConsultantsPanel />
+      ) : (
+        <>
+          <Card className="mb-4 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Select
+                className="sm:w-56"
+                placeholder="Todos os profissionais"
+                value={professionalId}
+                onChange={(event) => setProfessionalId(event.target.value)}
+                options={(professionals?.data ?? []).map((item) => ({
+                  value: item.id,
+                  label: item.name,
+                }))}
+              />
+              <Select
+                className="sm:w-56"
+                placeholder="Todos os fabricantes"
+                value={vendorId}
+                onChange={(event) => setVendorId(event.target.value)}
+                options={(vendors?.data ?? []).map((item) => ({
+                  value: item.id,
+                  label: item.name,
+                }))}
+              />
+            </div>
           </Card>
-          <p className="text-right text-xs text-slate-400">
-            {data.rows.length} registro(s) · gerado em{' '}
-            {new Date(data.generatedAt).toLocaleString('pt-BR')}
-          </p>
-        </div>
+
+          {isLoading && (
+            <Card>
+              <TableSkeleton rows={8} />
+            </Card>
+          )}
+
+          {isError && (
+            <Card>
+              <ErrorState
+                message="Não foi possível gerar o relatório."
+                onRetry={() => void refetch()}
+              />
+            </Card>
+          )}
+
+          {data && (
+            <div className="space-y-3">
+              <SummaryChips summary={data.summary} />
+              <Card className="overflow-hidden">
+                <ReportTable report={data} />
+              </Card>
+              <p className="text-right text-xs text-slate-400">
+                {data.rows.length} registro(s) · gerado em{' '}
+                {new Date(data.generatedAt).toLocaleString('pt-BR')}
+              </p>
+            </div>
+          )}
+        </>
       )}
     </>
   );

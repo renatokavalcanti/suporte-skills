@@ -151,12 +151,12 @@ suporte-skills/
 | **Profissionais** | Cadastro com cargo, tipo, senioridade, papel e status; perfil com abas de resumo, certificações, tecnologias, roadmap e histórico |
 | **Fabricantes / Tecnologias / Certificações** | Catálogo com CRUD, níveis, validade, status de catálogo e vínculos entre si |
 | **Certificações do profissional** | Vínculo com obtenção/validade, **status dinâmico** (ACTIVE/EXPIRING/EXPIRED/NO_EXPIRATION), renovação com histórico, comprovante por **URL** e **anexo do PDF** (guardado no servidor, baixado por rota autenticada) |
-| **Roadmap técnico** | Lista com filtros, Kanban com drag-and-drop, timeline e marcação de atrasados; o CONSULTANT mantém o próprio roadmap (certificação, renovação, curso, treinamento, projeto, laboratório) na aba do perfil, com anexo do comprovante em PDF |
+| **Roadmap técnico** | Lista com filtros, Kanban com drag-and-drop e timeline; o CONSULTANT mantém o próprio roadmap (certificação, renovação, curso, treinamento, projeto, laboratório) nas três visões, com anexo do comprovante em PDF |
 | **Tec News** | Novidades dos canais oficiais (RSS/Atom) dos fabricantes, com ingestão automática, curadoria manual, filtros por fabricante/tecnologia/tipo, destaques e leitura/salvo por usuário |
 | **Resumo inteligente (Tec News)** | Painel de destaques para o consultor, com resumo por IA focado em funcionalidades de produto e certificações técnicas; relevância e ordenação "mais relevantes" |
 | **Configurações** | Página administrativa (ADMIN) para ativar/ajustar a IA do Tec News pela interface, com teste de conexão; chave guardada cifrada |
 | **Releases** | Changelog do sistema: versões com mudanças por categoria (novidade, melhoria, correção, segurança, infra) e destaque da versão atual |
-| **Relatórios** | Certificações, vencimentos, roadmap e por fabricante — em tela e **exportação CSV** (UTF-8 BOM, separador `;`) |
+| **Relatórios** | Painel de **Consultores** (card por consultor + janela com os itens do roadmap), certificações, vencimentos, roadmap e por fabricante — em tela e **exportação CSV** (UTF-8 BOM, separador `;`) |
 | **Importação CSV** | Prévia validada linha a linha, confirmação e relatório de erros para profissionais e certificações |
 | **Acessos** | ADMIN/MANAGER com acesso total (inclui catálogo e vínculos de certificação); CONSULTANT restrito à área "Meu roadmap", onde registra os próprios objetivos e anexa comprovantes |
 | **Senha provisória** | ADMIN cria o acesso com senha provisória; no 1º login o usuário é obrigado a definir uma nova senha (tela dedicada), com bloqueio das demais rotas e revogação das sessões |
@@ -206,7 +206,7 @@ para execução local). Principais:
 
 ## Status
 
-**Versão atual: `0.7.1`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
+**Versão atual: `0.7.2`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
 relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módulos pós-MVP:
 
 | Decisão | Entrega |
@@ -220,6 +220,7 @@ relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módul
 | D-025 | **Anexo do comprovante** (PDF) por certificação |
 | D-026 | **Roadmap próprio do consultor** (autoatendimento + anexo no item) |
 | D-027 | **Visão do consultor**: "Meu roadmap" em destaque, catálogo oculto |
+| D-028 | **Roadmap em Kanban/Timeline** + painel de consultores em Relatórios |
 
 Typecheck e build limpos em backend e frontend; imagem Docker publicada na VM
 (10.0.0.200) com HTTPS. A suíte de aceite cobre os blocos 11f (D-024), 11g (D-025) e 11h

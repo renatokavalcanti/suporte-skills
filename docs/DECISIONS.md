@@ -457,6 +457,28 @@ e o comprovante **no item de roadmap (D-026)**. Versão exibida: `0.7.1`.
 
 ---
 
+## D-028 — Roadmap do consultor em Kanban/Timeline + painel de consultores
+**Data:** 02/10/2026
+**Decisão:** (a) o roadmap do consultor (área "Meu roadmap" e aba Roadmap do perfil) passa a
+ter as visões **Lista, Kanban e Timeline**, com o mesmo desenho da área de gestão; no Kanban,
+**arrastar** o cartão muda o status (gravando pelo endpoint do próprio profissional). (b) A
+área de **Relatórios** ganha a aba **Consultores**: um **card por CONSULTANT ativo** com
+contadores rápidos (abertos, atrasados, total); ao **clicar**, abre uma **janela flutuante**
+com os itens do roadmap daquele consultor resumidos (título, tecnologia/certificação, tipo,
+prioridade, status, prazo/atraso e se tem anexo).
+**Contexto:** a D-026/D-027 deram ao consultor o próprio roadmap, mas apenas na visão de
+lista, e a gestão não tinha uma visão consolidada por consultor. O usuário pediu Kanban/
+Timeline para o consultor e cards por consultor em Relatórios, com o detalhe em janela
+flutuante.
+**Consequências:** novo endpoint **`GET /reports/consultants`** (ADMIN/MANAGER) que devolve,
+numa **única chamada**, os consultores ativos com `stats` e a lista resumida de itens —
+evita N requisições no frontend. **Sem migration.** Os componentes de Kanban/Timeline passam
+a aceitar `items` (modo controlado), reaproveitando o mesmo desenho com os dados do
+profissional. A suíte ganha 3 verificações (bloco 9; **177** no total) e o smoke passa a
+checar o painel. Versão exibida: `0.7.2`.
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.
