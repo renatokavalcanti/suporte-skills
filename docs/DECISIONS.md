@@ -479,6 +479,43 @@ checar o painel. Versão exibida: `0.7.2`.
 
 ---
 
+## D-029 — Módulo Tickets: medições mensais a partir de chamados do Zoho Desk (espelho)
+**Data:** 09/10/2026
+**Decisão:** criar o módulo **Tickets**, que **espelha (somente leitura)** os chamados do
+**Zoho Desk** para o banco local e gera **Medições Mensais** — um relatório por cliente que
+consolida os chamados atendidos/faturados no mês, servindo de **comprovação formal de serviço
+para faturamento**. O módulo fica **desligado por padrão** (`TICKETS_ENABLED=false`) e a
+sincronização com o Zoho é **opt-in** (`ZOHO_SYNC_ENABLED=false`), no mesmo padrão do
+`NEWS_SYNC_ENABLED`. O acesso é restrito a **ADMIN/MANAGER** (o CONSULTANT não acessa).
+Entrega incremental em 8 fases: 0 baseline/ADR, 1 banco (Prisma), 2 CRUD interno (Clients/
+Tickets), 3 integração Zoho (sync espelhado), 4 medições mensais, 5 frontend, 6 exportação
+CSV/PDF, 7 QA/documentação e 8 release controlado.
+**Contexto:** o Gerente de Serviços precisa comprovar formalmente o serviço prestado por
+cliente/mês para faturar; hoje essa consolidação é manual. Os chamados já existem no Zoho Desk
+e devem ser reunidos **localmente** (sem depender de consulta ao Zoho no fechamento), para
+permitir medição reprodutível, auditável e exportável.
+**Premissas (algumas a confirmar na Fase 1/4):**
+- Modelos `Client` (1:N com `Ticket`) e `Ticket` (espelho do Zoho; `zohoTicketId` **único**);
+  `clientId` é FK obrigatória de `Ticket` com `onDelete: Restrict`.
+- Datas em **UTC**; o "mês da medição" é interpretado em `BUSINESS_TIMEZONE`
+  (`America/Sao_Paulo`). **Critério de mês proposto (a confirmar antes da Fase 4):** o chamado
+  entra na medição do mês pela **`closeDate`** (encerrado no mês) e apenas quando
+  `isBillable=true`.
+- `status` é guardado como **texto livre** (o Zoho muda rótulos) + `statusType`; não vira enum.
+- `slaCompliant` **nullable** (o Zoho pode não calcular SLA).
+- Chamados sem `Client` mapeado vão para uma fila de **"não mapeados"** (não se adivinha o
+  cliente nem se perde o chamado).
+- Escrita sempre auditada; medição **FECHADA é imutável** (reabertura só ADMIN, com auditoria
+  e justificativa), com **snapshot** dos chamados no fechamento.
+**Consequências:** o módulo é **aditivo e retrocompatível** — nada muda nos modelos/rotas
+existentes e nenhum dado é removido. A primeira migration cria `clients` e `tickets`. Segredos
+do Zoho só por variável de ambiente ou pela tela de Configurações (cifrados, nunca devolvidos).
+O snapshot da medição evita que uma nova sincronização altere um fechamento já faturado. As
+flags (`TICKETS_ENABLED`/`ZOHO_SYNC_ENABLED`) permitem desligar o módulo e o sync sem alteração
+de código. Versão prevista: `0.8.0`.
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.
