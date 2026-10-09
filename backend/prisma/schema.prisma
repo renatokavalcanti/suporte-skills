@@ -520,3 +520,63 @@ model ReleaseItem {
   @@index([releaseId])
   @@map("release_items")
 }
+
+// ---------------------------------------------------------------------------
+// Tickets - espelho local (somente leitura) dos chamados do Zoho Desk e os
+// clientes usados na Medicao Mensal (D-029). O modulo e' opt-in
+// (TICKETS_ENABLED=false) e a sincronizacao com o Zoho tambem
+// (ZOHO_SYNC_ENABLED=false). Datas em UTC; a MEDICAO MENSAL usa close_date
+// como referencia do mes, interpretada em BUSINESS_TIMEZONE no backend.
+// ---------------------------------------------------------------------------
+
+model Client {
+  id            String   @id @default(cuid())
+  name          String
+  // CNPJ/NIF do cliente. Unico quando informado.
+  document      String?  @unique
+  // Id da conta no Zoho Desk (mapeamento do espelho). Unico quando informado.
+  zohoAccountId String?  @unique @map("zoho_account_id")
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tickets Ticket[]
+
+  @@index([active])
+  @@map("clients")
+}
+
+model Ticket {
+  id       String @id @default(cuid())
+  // Chave de idempotencia do espelho: o id do chamado no Zoho Desk.
+  zohoTicketId String  @unique @map("zoho_ticket_id")
+  ticketNumber String? @map("ticket_number")
+  title        String
+  // Status vem como TEXTO LIVRE do Zoho (os rotulos mudam com o tempo); o
+  // campo status_type guarda a classificacao estavel do Zoho, quando houver.
+  status     String
+  statusType String? @map("status_type")
+  priority   String?
+  category   String?
+  assigneeName String? @map("assignee_name")
+  openDate  DateTime  @map("open_date")
+  // Data de referencia da Medicao Mensal (chamado encerrado no mes).
+  closeDate DateTime? @map("close_date")
+  timeSpentMinutes Int     @default(0) @map("time_spent_minutes")
+  // Nullable: o Zoho pode nao calcular SLA para todos os chamados.
+  slaCompliant Boolean? @map("sla_compliant")
+  isBillable   Boolean  @default(true) @map("is_billable")
+  // Usado para sincronizacao incremental (so busca o que mudou desde a ultima).
+  zohoModifiedAt DateTime? @map("zoho_modified_at")
+  lastSyncedAt   DateTime? @map("last_synced_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  clientId String @map("client_id")
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@index([clientId, closeDate])
+  @@index([clientId, openDate])
+  @@index([status])
+  @@map("tickets")
+}

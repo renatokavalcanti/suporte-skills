@@ -19,6 +19,7 @@ Vendor 1─N NewsItem N─1 Technology (opcional)
 NewsSource 1─N NewsItem
 NewsItem 1─N NewsReadState N─1 Professional   (N:N)
 Release 1─N ReleaseItem
+Client 1─N Ticket
 ```
 
 Decisão **D-003**: `users` e `professionals` são a **mesma tabela**
@@ -107,6 +108,26 @@ soft delete.
 position, timestamps`
 Itens de uma release; `position` define a ordem de exibição (cascade ao remover a release).
 
+### clients
+`id, name, document (único, nullable), zoho_account_id (único, nullable), active,
+timestamps`
+Cliente usado na Medição Mensal (D-029). `document` (CNPJ/NIF) e `zoho_account_id`
+(conta no Zoho Desk) são únicos quando informados.
+
+### tickets
+`id, zoho_ticket_id (único), ticket_number (nullable), title, status, status_type
+(nullable), priority (nullable), category (nullable), assignee_name (nullable),
+open_date, close_date (nullable), time_spent_minutes (0), sla_compliant (nullable),
+is_billable (true), zoho_modified_at (nullable), last_synced_at (nullable), client_id,
+timestamps`
+Espelho local (somente leitura) dos chamados do Zoho Desk (D-029). Datas em **UTC**;
+`close_date` é a **data de referência da Medição Mensal** (interpretada em
+`BUSINESS_TIMEZONE` no backend). `status` é **texto livre** (os rótulos do Zoho mudam);
+`sla_compliant` é **nullable** (o Zoho pode não calcular SLA). `client_id` é FK
+**obrigatória** com `onDelete: Restrict`. `zoho_modified_at` habilita a sincronização
+incremental (Fase 3). Índices: `(client_id, close_date)`, `(client_id, open_date)`,
+`status`.
+
 ### app_settings
 `key (PK), value (jsonb), timestamps`
 Configurações editáveis pela interface (D-023). Hoje guarda `key = 'ai'` com as preferências
@@ -164,3 +185,4 @@ Calculado por `CertificationStatusService` a partir de `expires_at` e de
 | `20261002120000_must_change_password` | Coluna `must_change_password` em `professionals` (senha provisória; D-024). |
 | `20261002150000_certification_attachment` | Colunas de anexo (`attachment_*`) em `professional_certifications` (PDF do comprovante; D-025). |
 | `20261002180000_roadmap_attachment` | Colunas de anexo (`attachment_*`) em `roadmap_items` (PDF do comprovante do item; D-026). |
+| `20261009201718_add_tickets_clients` | Tabelas `clients` e `tickets` (espelho dos chamados do Zoho Desk + Medições Mensais; D-029). |
