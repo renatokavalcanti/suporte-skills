@@ -266,6 +266,25 @@ nem registradas em log). Requer `TICKETS_ENABLED=true`; as rotas abaixo são res
 > campos de conta/contato/departamento/responsável e a **tecnologia** (campo personalizado
 > configurável em Configurações) também são preenchidos no `Ticket`.
 
+#### Contratos de serviço (D-030)
+
+Contratos do cliente (franquia, valores e política de saldo) que alimentam a **regra de
+faturamento (B3)**. Requer `TICKETS_ENABLED=true`; acesso de **ADMIN/MANAGER**; escrita auditada.
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/contracts` | Lista paginada. Filtros: `clientId`, `active`, `search` (plano), `sort`, `order`. Cada item traz `client { id, name }`. |
+| GET | `/contracts/:id` | Detalhe. `404` se não existir. |
+| POST | `/contracts` | Cria (`clientId`, `planName`, `includedMinutes`, `monthlyValue`, `extraHourValue`, `balancePolicy` ∈ `EXPIRE|ACCUMULATE`, `startDate` `YYYY-MM-DD`, `endDate?`, `financeEmail?`, `active?`). Cliente inexistente → `404`; validação → `400`. |
+| PUT | `/contracts/:id` | Atualiza (parcial). |
+| PATCH | `/contracts/:id/status` | Ativa/desativa (`{ active }`). |
+| DELETE | `/contracts/:id` | Desativação (soft delete, `204`). |
+
+> A regra de faturamento (B3) é uma função pura (`computeBilling`): `adicionais =
+> max(0, horas − franquia)`; `PADRÃO` se `adicionais = 0`, senão `COM HORAS ADICIONAIS`;
+> `total = valor_mensal + adicionais × valor_hora`. Com `ACCUMULATE`, o saldo de meses
+> anteriores (`carriedMinutes`) é somado à franquia; com `EXPIRE`, é ignorado.
+
 #### Medições Mensais (Fase 4)
 
 Consolida, por **cliente/mês**, os chamados faturados (`isBillable=true`, `close_date` no mês

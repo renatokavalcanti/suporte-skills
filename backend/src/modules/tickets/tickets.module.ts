@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ContractsController } from './contracts/contracts.controller';
+import { ContractsService } from './contracts/contracts.service';
 import { MeasurementsController } from './measurements.controller';
 import { MeasurementsService } from './measurements.service';
 import { TicketsController } from './tickets.controller';
@@ -16,12 +18,14 @@ import { ZohoSyncService } from './zoho-sync.service';
   controllers: [
     TicketsController,
     MeasurementsController,
+    ContractsController,
     ZohoIntegrationController,
     ZohoOAuthController,
   ],
   providers: [
     TicketsService,
     MeasurementsService,
+    ContractsService,
     ZohoSettingsService,
     ZohoCredentialsService,
     ZohoClientService,
@@ -29,6 +33,6 @@ import { ZohoSyncService } from './zoho-sync.service';
     ZohoSyncService,
     ZohoSyncScheduler,
   ],
-  exports: [TicketsService, ZohoSyncService, MeasurementsService],
+  exports: [TicketsService, ZohoSyncService, MeasurementsService, ContractsService],
 })
 export class TicketsModule {}
