@@ -250,6 +250,8 @@ fechamento); reabertura é exclusiva de **ADMIN**, com justificativa auditada. R
 | POST | `/measurements` | ADMIN/MANAGER | Gera/recalcula o **rascunho** (`{ clientId, year, month }`): recalcula os totais e substitui o snapshot. `409` se a medição já estiver fechada. |
 | POST | `/measurements/:id/close` | ADMIN/MANAGER | Fecha (`closedById`/`closedAt`). `409` se já estiver fechada. Uma medição fechada não é recalculada. |
 | POST | `/measurements/:id/reopen` | ADMIN | Reabre (`{ justification }`, obrigatória). `400` se não estiver fechada; a justificativa fica na auditoria. |
+| GET | `/measurements/:id/export.csv` | ADMIN/MANAGER | Exporta a medição **fechada** em CSV (UTF-8 com BOM, separador `;`, mesmo formato dos Relatórios/D-018). `400` se não estiver fechada. |
+| GET | `/measurements/:id/export.pdf` | ADMIN/MANAGER | Exporta a medição **fechada** em PDF: cabeçalho (cliente, CNPJ/NIF, período, totais), lista de chamados, **código de verificação** (hash) e data/usuário de fechamento. `400` se não estiver fechada. |
 
 > Totais: `ticketCount`, `timeSpentMinutes`, `slaEvaluatedCount` (chamados com SLA avaliado) e
 > `slaCompliantCount`; `slaPercentage = slaCompliantCount / slaEvaluatedCount` (null quando não

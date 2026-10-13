@@ -6,9 +6,12 @@ import {
   Param,
   Post,
   Query,
+  Res,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
+import { Response } from 'express';
 import { AuthenticatedUser } from '../../shared/common/authenticated-user.interface';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import { Roles } from '../../shared/decorators/roles.decorator';
@@ -56,6 +59,28 @@ export class MeasurementsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.service.reopen(id, dto.justification, user);
+  }
+
+  @Get(':id/export.csv')
+  async exportCsv(
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { filename, body } = await this.service.exportCsv(id);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return body;
+  }
+
+  @Get(':id/export.pdf')
+  async exportPdf(
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { filename, body } = await this.service.exportPdf(id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return new StreamableFile(body);
   }
 
   @Get(':id')
