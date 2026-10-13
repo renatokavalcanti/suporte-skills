@@ -243,7 +243,7 @@ espelhamento do Zoho entra na Fase 3.
 > `status` é **texto livre** (rótulo do Zoho). `close_date` é a data de referência da medição
 > mensal. Toda escrita de cliente é auditada em `audit_logs` (`entity: "clients"`).
 
-#### Espelhamento do Zoho Desk (Fase 3)
+#### Espelhamento do Zoho Desk (Fases 3–4)
 
 Integração **opt-in** e **somente leitura** no Zoho (`ZOHO_SYNC_ENABLED`; credenciais por
 variável de ambiente **ou** pela tela de Configurações, cifradas — nunca devolvidas pela API
@@ -259,6 +259,12 @@ nem registradas em log). Requer `TICKETS_ENABLED=true`; as rotas abaixo são res
 > Chamados cujo `accountId` não corresponde a nenhum `Client.zohoAccountId` vão para a fila de
 > **não mapeados** (não se adivinha o cliente). O log de execução é auditado
 > (`entity: "zoho_sync"`) e a última execução fica em `app_settings` (key `zoho_sync`).
+>
+> Por chamado espelhado, a sincronização também busca os **lançamentos de tempo**
+> (`GET /tickets/{id}/timeEntries`), grava cada um em `time_entries` (minutos inteiros, agente,
+> `executedTime`, `isBillable`) e recalcula `time_spent_minutes` como a **soma** (D-030). Os
+> campos de conta/contato/departamento/responsável e a **tecnologia** (campo personalizado
+> configurável em Configurações) também são preenchidos no `Ticket`.
 
 #### Medições Mensais (Fase 4)
 

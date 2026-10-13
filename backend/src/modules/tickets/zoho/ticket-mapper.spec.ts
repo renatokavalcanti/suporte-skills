@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mapZohoTicket } from './ticket-mapper';
+import { mapZohoTimeEntry, mapZohoTicket } from './ticket-mapper';
 
 test('mapZohoTicket: mapeia um payload completo', () => {
   const mapped = mapZohoTicket({
@@ -51,4 +51,60 @@ test('mapZohoTicket: aplica defaults sem "adivinhar"', () => {
 test('mapZohoTicket: slaCompliant null quando o Zoho não calcula', () => {
   const mapped = mapZohoTicket({ id: 'Z-10', slaCompliant: null });
   assert.equal(mapped.slaCompliant, null);
+});
+
+test('mapZohoTicket: preenche conta, contato e tecnologia (D-030)', () => {
+  const mapped = mapZohoTicket(
+    {
+      id: 'Z-77',
+      subject: 'X',
+      accountId: 'acc-1',
+      accountName: 'Cliente X',
+      contactId: 'c-1',
+      departmentId: 'd-1',
+      assigneeId: 'a-1',
+      cf: { Tecnologia: 'VMware' },
+    },
+    'Tecnologia',
+  );
+
+  assert.equal(mapped.accountId, 'acc-1');
+  assert.equal(mapped.accountName, 'Cliente X');
+  assert.equal(mapped.contactId, 'c-1');
+  assert.equal(mapped.departmentId, 'd-1');
+  assert.equal(mapped.assigneeId, 'a-1');
+  assert.equal(mapped.technologyName, 'VMware');
+});
+
+test('mapZohoTimeEntry: converte horas/min/seg em minutos inteiros', () => {
+  const entry = mapZohoTimeEntry(
+    {
+      id: 'T-1',
+      ownerId: 'u1',
+      ownerName: 'Ana',
+      executedTime: '2026-10-05T12:00:00Z',
+      hoursSpent: 1,
+      minutesSpent: 30,
+      secondsSpent: 45,
+      description: 'Ajuste de rede',
+      isBillable: false,
+    },
+    'ticket-db-1',
+  );
+
+  assert.ok(entry);
+  assert.equal(entry!.zohoTimeEntryId, 'T-1');
+  assert.equal(entry!.ticketId, 'ticket-db-1');
+  assert.equal(entry!.minutes, 90); // 1h30 (45s truncados) -> 90 min
+  assert.equal(entry!.ownerId, 'u1');
+  assert.equal(entry!.ownerName, 'Ana');
+  assert.equal(entry!.isBillable, false);
+  assert.equal(entry!.executedAt.toISOString(), '2026-10-05T12:00:00.000Z');
+});
+
+test('mapZohoTimeEntry: null quando falta o id', () => {
+  assert.equal(
+    mapZohoTimeEntry({ id: undefined as unknown as string }, 't1'),
+    null,
+  );
 });

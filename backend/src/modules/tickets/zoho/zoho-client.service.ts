@@ -13,6 +13,11 @@ export interface ZohoTicketPayload {
   category?: string;
   assignee?: { name?: string } | null;
   assigneeName?: string;
+  assigneeId?: string;
+  contactId?: string;
+  departmentId?: string;
+  /** Campos personalizados do Zoho Desk, por nome de API (ex.: Tecnologia). */
+  cf?: Record<string, unknown>;
   createdTime?: string;
   closedTime?: string | null;
   modifiedTime?: string;
@@ -29,6 +34,21 @@ export interface ListTicketsParams {
   modifiedSince?: string | null;
   limit: number;
   from: number;
+}
+
+/** Lancamento de tempo de um chamado do Zoho Desk (`/timeEntries`). */
+export interface ZohoTimeEntryPayload {
+  id: string | number;
+  ownerId?: string;
+  ownerName?: string;
+  owner?: { id?: string; name?: string } | null;
+  executedTime?: string;
+  hoursSpent?: number | string;
+  minutesSpent?: number | string;
+  secondsSpent?: number | string;
+  description?: string;
+  isBillable?: boolean;
+  [key: string]: unknown;
 }
 
 /** Overrides para o teste de conexao (nao salvos). */
@@ -101,6 +121,45 @@ export class ZohoClientService {
 
     const json = (await response.json()) as TicketsResponse;
     return Array.isArray(json.data) ? json.data : [];
+  }
+
+  /**
+   * Lista os lancamentos de tempo de um chamado (D-030): usa o **id interno** do
+   * chamado no Zoho, paginando por `from`/`limit`.
+   */
+  async listTimeEntries(ticketId: string): Promise<ZohoTimeEntryPayload[]> {
+    const creds = this.credentials.get();
+    if (!creds) throw new Error('Zoho Desk nao configurado');
+
+    const token = await this.accessToken(creds);
+    const pageSize = 100;
+    const all: ZohoTimeEntryPayload[] = [];
+    let from = 0;
+
+    while (all.length < 500) {
+      const query = new URLSearchParams({
+        from: String(from),
+        limit: String(pageSize),
+      });
+      const response = await this.request(
+        `${creds.apiBaseUrl}/tickets/${encodeURIComponent(ticketId)}/timeEntries?${query.toString()}`,
+        {
+          method: 'GET',
+          headers: {
+            authorization: `Zoho-oauthtoken ${token}`,
+            orgId: creds.orgId,
+          },
+        },
+        creds.fetchTimeoutMs,
+      );
+      const json = (await response.json()) as { data?: ZohoTimeEntryPayload[] };
+      const batch = Array.isArray(json.data) ? json.data : [];
+      all.push(...batch);
+      if (batch.length < pageSize) break;
+      from += batch.length;
+    }
+
+    return all;
   }
 
   /**

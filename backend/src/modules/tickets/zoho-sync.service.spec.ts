@@ -6,6 +6,7 @@ import { AuthenticatedUser } from '../../shared/common/authenticated-user.interf
 import { PrismaService } from '../../database/prisma.service';
 import { ZohoClientService, ZohoTicketPayload } from './zoho/zoho-client.service';
 import { ZohoCredentialsService } from './zoho/zoho-credentials.service';
+import { ZohoSettingsService } from './zoho/zoho-settings.service';
 import { ZohoSyncService } from './zoho-sync.service';
 
 const actor: AuthenticatedUser = {
@@ -44,6 +45,11 @@ function harness(
         calls.ticketUpsert.push(a);
         return { id: 't1' };
       },
+      update: async () => ({ id: 't1' }),
+    },
+    timeEntry: {
+      upsert: async () => ({}),
+      deleteMany: async () => ({ count: 0 }),
     },
     unmappedTicket: {
       upsert: async (a: any) => {
@@ -55,14 +61,23 @@ function harness(
     $transaction: async (ops: Promise<unknown>[]) => Promise.all(ops),
   } as unknown as PrismaService;
 
-  const zoho = { listTickets: async () => batch } as unknown as ZohoClientService;
+  const zoho = {
+    listTickets: async () => batch,
+    listTimeEntries: async () => [],
+  } as unknown as ZohoClientService;
   const credentials = {
     isConfigured: () => true,
     isSyncEnabled: () => true,
     maxTicketsPerRun: () => 100,
   } as unknown as ZohoCredentialsService;
+  const settings = {
+    getResolved: () => ({ technologyField: null }),
+  } as unknown as ZohoSettingsService;
 
-  return { service: new ZohoSyncService(prisma, noopAudit, credentials, zoho), calls };
+  return {
+    service: new ZohoSyncService(prisma, noopAudit, credentials, zoho, settings),
+    calls,
+  };
 }
 
 test('syncAll: cria o chamado mapeado e enfileira o não mapeado', async () => {
@@ -96,6 +111,7 @@ test('syncAll: 503 quando o Zoho não está configurado', async () => {
     noopAudit,
     { isConfigured: () => false } as unknown as ZohoCredentialsService,
     {} as unknown as ZohoClientService,
+    {} as unknown as ZohoSettingsService,
   );
 
   await assert.rejects(() => service.syncAll(null), ServiceUnavailableException);

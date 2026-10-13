@@ -14,9 +14,14 @@ import {
   buildMeta,
   paginationArgs,
 } from '../../shared/common/pagination';
-import { mapZohoTicket } from './zoho/ticket-mapper';
-import { ZohoClientService, ZohoTicketPayload } from './zoho/zoho-client.service';
+import { mapZohoTimeEntry, mapZohoTicket } from './zoho/ticket-mapper';
+import {
+  ZohoClientService,
+  ZohoTimeEntryPayload,
+  ZohoTicketPayload,
+} from './zoho/zoho-client.service';
 import { ZohoCredentialsService } from './zoho/zoho-credentials.service';
+import { ZohoSettingsService } from './zoho/zoho-settings.service';
 
 const SYNC_STATE_KEY = 'zoho_sync';
 const PAGE_SIZE = 100;
@@ -92,6 +97,7 @@ export class ZohoSyncService {
     private readonly audit: AuditService,
     private readonly credentials: ZohoCredentialsService,
     private readonly client: ZohoClientService,
+    private readonly settings: ZohoSettingsService,
   ) {}
 
   async status(): Promise<{
@@ -263,7 +269,10 @@ export class ZohoSyncService {
     });
     if (!client) throw new NotFoundException('Cliente nao encontrado');
 
-    const mapped = mapZohoTicket(row.raw as unknown as ZohoTicketPayload);
+    const mapped = mapZohoTicket(
+      row.raw as unknown as ZohoTicketPayload,
+      this.technologyField(),
+    );
     const existing = await this.prisma.ticket.findUnique({
       where: { zohoTicketId: mapped.zohoTicketId },
       select: { id: true },
@@ -291,7 +300,7 @@ export class ZohoSyncService {
   }
 
   private async processTicket(payload: ZohoTicketPayload): Promise<ProcessResult> {
-    const mapped = mapZohoTicket(payload);
+    const mapped = mapZohoTicket(payload, this.technologyField());
     const accountId = text(payload.accountId);
     const accountName = text(payload.accountName);
     const subject = text(payload.subject);
@@ -315,6 +324,7 @@ export class ZohoSyncService {
           where: { id: alreadyMapped.id },
           data: { ...mapped, lastSyncedAt: new Date() },
         });
+        await this.afterTicketWrite(alreadyMapped.id, mapped.zohoTicketId);
         return { kind: 'updated', modifiedAt: mapped.zohoModifiedAt };
       }
 
@@ -343,16 +353,76 @@ export class ZohoSyncService {
       select: { id: true },
     });
 
-    await this.prisma.ticket.upsert({
+    const ticket = await this.prisma.ticket.upsert({
       where: { zohoTicketId: mapped.zohoTicketId },
       create: { ...mapped, clientId: client.id, lastSyncedAt: new Date() },
       update: { ...mapped, clientId: client.id, lastSyncedAt: new Date() },
+      select: { id: true },
     });
+
+    await this.afterTicketWrite(ticket.id, mapped.zohoTicketId);
 
     return {
       kind: existing ? 'updated' : 'created',
       modifiedAt: mapped.zohoModifiedAt,
     };
+  }
+
+  private technologyField(): string | null {
+    return this.settings.getResolved().technologyField;
+  }
+
+  /**
+   * Espelha os lancamentos de tempo do chamado e recalcula `timeSpentMinutes`
+   * como a **soma** dos lancamentos (D-030). Se a busca falhar, mantem o tempo
+   * atual (nao zera nem derruba a sincronizacao do chamado).
+   */
+  private async afterTicketWrite(
+    ticketId: string,
+    zohoTicketId: string,
+  ): Promise<void> {
+    let entries: ZohoTimeEntryPayload[];
+    try {
+      entries = await this.client.listTimeEntries(zohoTicketId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Falha ao buscar lancamentos do chamado ${zohoTicketId}: ${message}`,
+      );
+      return;
+    }
+
+    const seen: string[] = [];
+    let total = 0;
+
+    for (const raw of entries) {
+      const entry = mapZohoTimeEntry(raw, ticketId);
+      if (!entry) continue;
+      seen.push(entry.zohoTimeEntryId);
+      total += entry.minutes;
+      await this.prisma.timeEntry.upsert({
+        where: { zohoTimeEntryId: entry.zohoTimeEntryId },
+        create: entry,
+        update: {
+          ticketId: entry.ticketId,
+          ownerId: entry.ownerId,
+          ownerName: entry.ownerName,
+          executedAt: entry.executedAt,
+          minutes: entry.minutes,
+          description: entry.description,
+          isBillable: entry.isBillable,
+        },
+      });
+    }
+
+    await this.prisma.timeEntry.deleteMany({
+      where: { ticketId, zohoTimeEntryId: { notIn: seen } },
+    });
+
+    await this.prisma.ticket.update({
+      where: { id: ticketId },
+      data: { timeSpentMinutes: total },
+    });
   }
 
   private async loadState(): Promise<ZohoSyncState> {
