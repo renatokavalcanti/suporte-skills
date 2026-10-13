@@ -276,6 +276,8 @@ nem registradas em log). Requer `TICKETS_ENABLED=true`; as rotas abaixo são res
 | GET | `/tickets/sync/status` | `{ syncEnabled, configured, lastRun }` (última execução: data, status e contagens). Nunca expõe credenciais. |
 | GET | `/tickets/unmapped` | Lista paginada da fila de chamados **sem cliente mapeado** (payload cru preservado). |
 | POST | `/tickets/unmapped/:id/link` | Vincula o chamado da fila a um cliente (`{ clientId }`): cria/atualiza o `Ticket`, remove da fila e audita. |
+| GET | `/tickets/unmapped/groups` | (ADMIN) Agrupa a fila por conta do Zoho: `[{ accountId, accountName, count }]`, ordenado por volume (D-031). |
+| POST | `/tickets/unmapped/link` | (ADMIN) **Vínculo em lote** (D-031): `{ clientId, accountId? , ids? }` — vincula todos os chamados de uma conta **ou** as linhas selecionadas. Devolve `{ requested, linked, created, updated, notFound }`; `400` sem `accountId` nem `ids`. |
 
 > Chamados cujo `accountId` não corresponde a nenhum `Client.zohoAccountId` vão para a fila de
 > **não mapeados** (não se adivinha o cliente). O log de execução é auditado

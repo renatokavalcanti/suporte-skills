@@ -163,6 +163,44 @@ export class ZohoClientService {
   }
 
   /**
+   * Resolve o nome da conta no Zoho Desk (`GET /accounts/{id}`) para exibir a
+   * fila de nao mapeados (D-031): a listagem de chamados devolve apenas o
+   * `accountId`. Falha de forma silenciosa (retorna null) para nao interromper a
+   * sincronizacao.
+   */
+  async getAccountName(accountId: string): Promise<string | null> {
+    const creds = this.credentials.get();
+    if (!creds) return null;
+
+    try {
+      const token = await this.accessToken(creds);
+      const response = await this.request(
+        `${creds.apiBaseUrl}/accounts/${encodeURIComponent(accountId)}`,
+        {
+          method: 'GET',
+          headers: {
+            authorization: `Zoho-oauthtoken ${token}`,
+            orgId: creds.orgId,
+          },
+        },
+        creds.fetchTimeoutMs,
+      );
+      const json = (await response.json()) as {
+        accountName?: string;
+        name?: string;
+      };
+      const name = (json.accountName ?? json.name ?? '').trim();
+      return name === '' ? null : name;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Falha ao resolver o nome da conta ${accountId} no Zoho: ${message}`,
+      );
+      return null;
+    }
+  }
+
+  /**
    * Testa a conexao com o Zoho Desk (GET /tickets?limit=1) usando a configuracao
    * efetiva e/ou os overrides informados. Lança `BadRequestException` com o
    * motivo detalhado (credencial, escopo, orgId ou dominio).

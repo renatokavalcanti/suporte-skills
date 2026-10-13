@@ -1,0 +1,13 @@
+{
+  "version": "0.9.1",
+  "title": "Fila de não mapeados: vínculo em lote, limpeza automática e nome da conta",
+  "summary": "A fila de chamados sem cliente mapeado ganha vínculo em lote (por conta do Zoho ou por seleção), limpeza automática ao mapear e exibição do nome da conta — ajuste aditivo, sem migration (D-031).",
+  "releasedAt": "2026-10-13T18:00:00.000Z",
+  "current": true,
+  "items": [
+    { "category": "FEATURE", "description": "Vínculo em lote na fila de não mapeados: todos os chamados de uma conta do Zoho ou os selecionados (D-031)", "position": 0 },
+    { "category": "FEATURE", "description": "Limpeza automática da fila quando o cliente passa a existir ou o chamado é vinculado", "position": 1 },
+    { "category": "FEATURE", "description": "Nome da conta na fila (resolvido no Zoho Desk sob demanda), em vez de exibir apenas o id", "position": 2 },
+    { "category": "IMPROVEMENT", "description": "Novos endpoints aditivos GET /tickets/unmapped/groups e POST /tickets/unmapped/link", "position": 3 }
+  ]
+}

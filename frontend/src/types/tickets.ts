@@ -41,6 +41,20 @@ export interface UnmappedTicket {
   lastSeenAt: string;
 }
 
+export interface UnmappedGroup {
+  accountId: string | null;
+  accountName: string | null;
+  count: number;
+}
+
+export interface BulkLinkResult {
+  requested: number;
+  linked: number;
+  created: number;
+  updated: number;
+  notFound: number;
+}
+
 export type MeasurementStatus = 'DRAFT' | 'CLOSED';
 
 export interface MeasurementItem {

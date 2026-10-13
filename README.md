@@ -215,7 +215,7 @@ para execução local). Principais:
 
 ## Status
 
-**Versão atual: `0.9.0`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
+**Versão atual: `0.9.1`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
 relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módulos pós-MVP:
 
 | Decisão | Entrega |
@@ -232,10 +232,11 @@ relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módul
 | D-028 | **Roadmap em Kanban/Timeline** + painel de consultores em Relatórios |
 | D-029 | **Módulo Tickets**: espelho do Zoho Desk, clientes e Medições Mensais (CSV/PDF) — opt-in |
 | D-030 | **Módulo Chamados**: configuração do Zoho pela interface (OAuth), lançamentos de tempo, contratos e Relatórios Financeiro/Cliente — opt-in |
+| D-031 | **Fila de não mapeados**: vínculo em lote (por conta/seleção), limpeza automática e nome da conta — ajuste aditivo no módulo Chamados |
 
 Typecheck e build limpos em backend e frontend; imagem Docker publicada na VM
 (10.0.0.200) com HTTPS. A suíte de aceite cobre os blocos 11f (D-024), 11g (D-025), 11h
-(D-026), 11i (D-029) e 11j (D-030) e o estado DEMO de referência (ver [`docs/QA.md`](./docs/QA.md)); o deploy
+(D-026), 11i (D-029), 11j (D-030) e 11k (D-031) e o estado DEMO de referência (ver [`docs/QA.md`](./docs/QA.md)); o deploy
 em ambiente com dados reais é validado pelo `smoke.sh` (não-destrutivo). Os releases dos módulos
 Tickets e Chamados seguem o runbook em [`docs/RELEASE.md`](./docs/RELEASE.md); o guia técnico do
 módulo está em [`docs/CHAMADOS.md`](./docs/CHAMADOS.md).

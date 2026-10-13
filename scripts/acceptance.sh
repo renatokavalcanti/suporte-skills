@@ -968,6 +968,55 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+echo "--- 11k. Fila de nao mapeados: vinculo em lote e limpeza (D-031) ---"
+call GET /contracts "$ADMIN"
+if [ "$CODE" = '404' ]; then
+  echo "[SKIP] modulo Chamados desligado (TICKETS_ENABLED=false)"
+else
+  call POST /clients "$ADMIN" "{\"name\":\"QA Fila $TS\"}"
+  QA_FCLIENT=$(q 'o.id')
+  check "$([ "$CODE" = '201' ] && [ -n "$QA_FCLIENT" ]; echo $?)" \
+    'criar cliente (fila de nao mapeados) -> 201' "http=$CODE"
+
+  "$PSQL_BIN" -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -q -c "
+    INSERT INTO unmapped_tickets (id, zoho_ticket_id, account_id, account_name, subject, raw, first_seen_at, last_seen_at) VALUES
+      ('qa-um-$TS-1','QA-UM-$TS-1','qa-acc-$TS','Conta QA','Rede','{\"id\":\"QA-UM-$TS-1\",\"subject\":\"Rede\"}', now(), now()),
+      ('qa-um-$TS-2','QA-UM-$TS-2','qa-acc-$TS','Conta QA','Email','{\"id\":\"QA-UM-$TS-2\",\"subject\":\"Email\"}', now(), now()),
+      ('qa-um-$TS-3','QA-UM-$TS-3','qa-acc2-$TS','Outra Conta','VPN','{\"id\":\"QA-UM-$TS-3\",\"subject\":\"VPN\"}', now(), now());" 2>/dev/null
+  UM=$(count "SELECT count(*) FROM unmapped_tickets WHERE zoho_ticket_id LIKE 'QA-UM-$TS-%'")
+  check "$([ "$UM" = '3' ]; echo $?)" 'fila de nao mapeados populada' "linhas=$UM"
+
+  call GET /tickets/unmapped/groups "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'Array.isArray(o)')" = 'true' ]; echo $?)" \
+    'agrupamento da fila por conta (ADMIN)' "http=$CODE"
+
+  call POST /tickets/unmapped/link "$ADMIN" "{\"clientId\":\"$QA_FCLIENT\"}"
+  check "$([ "$CODE" = '400' ]; echo $?)" 'vinculo em lote sem ids/accountId -> 400' "http=$CODE"
+
+  call POST /tickets/unmapped/link "$ADMIN" "{\"clientId\":\"$QA_FCLIENT\",\"accountId\":\"qa-acc-$TS\"}"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'o.linked')" = '2' ] && [ "$(q 'o.created')" = '2' ]; echo $?)" \
+    'vinculo em lote por conta (D-031)' "linked=$(q 'o.linked') created=$(q 'o.created')"
+
+  LEFT=$(count "SELECT count(*) FROM unmapped_tickets WHERE zoho_ticket_id LIKE 'QA-UM-$TS-%'")
+  check "$([ "$LEFT" = '1' ]; echo $?)" 'auto-limpeza da fila apos vinculo' "restantes=$LEFT"
+
+  call POST /tickets/unmapped/link "$ADMIN" "{\"clientId\":\"$QA_FCLIENT\",\"ids\":[\"qa-um-$TS-3\"]}"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'o.linked')" = '1' ]; echo $?)" \
+    'vinculo em lote por selecao' "linked=$(q 'o.linked')"
+
+  LINKED_T=$(count "SELECT count(*) FROM tickets WHERE zoho_ticket_id LIKE 'QA-UM-$TS-%' AND client_id = '$QA_FCLIENT'")
+  check "$([ "$LINKED_T" = '3' ]; echo $?)" 'chamados criados e ligados ao cliente' "tickets=$LINKED_T"
+
+  call POST /tickets/unmapped/link "$CONSULTANT" "{\"clientId\":\"$QA_FCLIENT\",\"accountId\":\"qa-acc-$TS\"}"
+  check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao vincula em lote -> 403' "http=$CODE"
+
+  "$PSQL_BIN" -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -q -c "
+    DELETE FROM tickets WHERE zoho_ticket_id LIKE 'QA-UM-$TS-%';
+    DELETE FROM unmapped_tickets WHERE zoho_ticket_id LIKE 'QA-UM-$TS-%';" 2>/dev/null
+  call DELETE "/clients/$QA_FCLIENT" "$ADMIN"
+fi
+
+# ---------------------------------------------------------------------------
 echo "--- 12. Limpeza: restaura o estado DEMO ---"
 if [ "$RESET_DEMO" = '1' ]; then
   # Rede de seguranca: dump do banco ANTES de apagar (best-effort). Desative
@@ -1014,8 +1063,8 @@ DELETE FROM refresh_tokens;
 DELETE FROM professionals;"
   rm -rf "$BACKEND_DIR/uploads"
   ( cd "$BACKEND_DIR" && "$NPM_BIN" run seed >/dev/null 2>&1 )
-  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '11' ] && [ "$(count 'SELECT count(*) FROM clients')" = '0' ] && [ "$(count 'SELECT count(*) FROM tickets')" = '0' ] && [ "$(count 'SELECT count(*) FROM contracts')" = '0' ] && [ "$(count 'SELECT count(*) FROM time_entries')" = '0' ] && [ "$(count 'SELECT count(*) FROM generated_reports')" = '0' ]; echo $?)"
-  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 11 releases / 0 clientes / 0 chamados / 0 contratos / 0 lancamentos / 0 relatorios"
+  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '12' ] && [ "$(count 'SELECT count(*) FROM clients')" = '0' ] && [ "$(count 'SELECT count(*) FROM tickets')" = '0' ] && [ "$(count 'SELECT count(*) FROM contracts')" = '0' ] && [ "$(count 'SELECT count(*) FROM time_entries')" = '0' ] && [ "$(count 'SELECT count(*) FROM generated_reports')" = '0' ]; echo $?)"
+  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 12 releases / 0 clientes / 0 chamados / 0 contratos / 0 lancamentos / 0 relatorios"
 else
   echo "[SKIP] restauracao do seed (RESET_DEMO=0)"
 fi

@@ -80,8 +80,9 @@ verificações são puladas (útil em ambiente real, onde só o ADMIN existe). A
 | 11h. Roadmap próprio do consultor + anexo (D-026) | 14 |
 | 11i. Tickets e Medições Mensais (D-029) | 20 |
 | 11j. Chamados — contratos e relatórios (D-030) | 25 |
+| 11k. Fila de não mapeados: vínculo em lote e limpeza (D-031) | 9 |
 | 12. Limpeza e restauração do seed | 1 |
-| **Total** | **222** |
+| **Total** | **231** |
 
 Suítes das fases anteriores, reexecutadas após as correções: F2 23/23, F3 15/15,
 F4 16/16, F5 13/13, F7 6/6.
@@ -353,6 +354,19 @@ inteiro vira `[SKIP]` (a 1ª chamada a `/contracts` retorna `404`). Com o módul
 > cobrindo `message/rfc822` com anexo, `sendMail` do Graph e o `testConnection` com erro
 > detalhado. A limpeza da suíte passou a incluir `contracts`, `time_entries` e
 > `generated_reports` — o estado DEMO volta com **0 contratos / 0 lançamentos / 0 relatórios**.
+
+O **bloco 11k** (9 verificações) cobre a **fila de não mapeados** e o **vínculo em lote** (D-031).
+A suíte insere (via banco) 3 linhas na `unmapped_tickets` (2 de uma conta, 1 de outra) e, com o
+módulo ligado:
+
+- **Agrupamento** (`GET /tickets/unmapped/groups`) responde `200` com um array.
+- **Vínculo em lote**: sem `ids` nem `accountId` → **`400`**; por **conta** vincula as **2** linhas
+  (`linked=2, created=2`); por **seleção** vincula a restante (`linked=1`).
+- **Auto-limpeza**: após o vínculo por conta a fila cai de **3 → 1** linha; ao final, os **3**
+  chamados existem **ligados ao cliente**.
+- **Posse**: o **CONSULTANT** recebe **`403`**.
+
+Os artefatos da 11k (chamados, linhas da fila e cliente) são removidos ao fim do próprio bloco.
 
 ## 6. Limitações conhecidas (aceitas no MVP)
 

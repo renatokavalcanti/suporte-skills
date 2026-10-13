@@ -1,9 +1,11 @@
 import { api } from './api';
 import type { Paginated } from '@/types/entities';
 import type {
+  BulkLinkResult,
   Ticket,
   TicketSyncStatus,
   TicketSyncSummary,
+  UnmappedGroup,
   UnmappedTicket,
 } from '@/types/tickets';
 
@@ -56,6 +58,21 @@ export const ticketsService = {
       zohoTicketId: string;
       clientId: string;
     }>(`/tickets/unmapped/${id}/link`, { clientId });
+    return data;
+  },
+  async unmappedGroups(): Promise<UnmappedGroup[]> {
+    const { data } = await api.get<UnmappedGroup[]>('/tickets/unmapped/groups');
+    return data;
+  },
+  async linkUnmappedBulk(payload: {
+    clientId: string;
+    ids?: string[];
+    accountId?: string;
+  }): Promise<BulkLinkResult> {
+    const { data } = await api.post<BulkLinkResult>(
+      '/tickets/unmapped/link',
+      payload,
+    );
     return data;
   },
 };

@@ -101,6 +101,11 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > Zoho → OAuth → `time_entries` → contratos/regras → relatórios backend → Financeiro → Cliente
 > → frontend → QA). Versão prevista: `0.9.0`.
 
+> **Ajuste pós-MVP (D-031) — fila de não mapeados:** vínculo **em lote** (todos os chamados de uma
+> conta do Zoho ou os selecionados), **limpeza automática** da fila ao mapear e **nome da conta**
+> (resolvido no Zoho Desk sob demanda). Aditivo — sem migration; rotas novas
+> `GET /tickets/unmapped/groups` e `POST /tickets/unmapped/link`. Bloco 11k da suíte. Versão: `0.9.1`.
+
 ## Critérios de aceite da Fase 1 (histórico)
 
 1. `docker compose up` sobe `web` + `api` + `db` do zero.

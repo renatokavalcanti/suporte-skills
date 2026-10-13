@@ -32,6 +32,26 @@ git fetch --tags origin && git checkout -f main   # .env/data/certs/backups perm
 
 ---
 
+# Release — 0.9.1 (D-031) — fila de não mapeados
+
+**Escopo:** vínculo em lote na fila `unmapped_tickets` (por conta ou por seleção), **auto-limpeza**
+ao mapear e **nome da conta** na fila. **Aditivo** — sem migration nem modelo novo.
+
+- **Backend:** `GET /tickets/unmapped/groups`, `POST /tickets/unmapped/link`; `linkRow`
+  reaproveitado pelo vínculo individual; auto-limpeza no sync; `getAccountName`
+  (`GET /accounts/{id}`) com cache por execução.
+- **Frontend:** `unmapped-dialog` com seletor de destino, **"Vincular todos (N)"** por conta e
+  **"Vincular selecionados (k)"**.
+- **Testes:** backend **69/69**; aceite bloco **11k** (total **231**).
+
+**Deploy:** `bash scripts/deploy.sh` (ou `bash scripts/deploy.sh v0.9.1`). Sem migration; a
+release do changelog é criada a partir de `scripts/releases/0.9.1.json`.
+
+**Rollback:** `git checkout -f v0.9.0 && docker compose up -d --build` (as rotas novas somem;
+nenhum dado é afetado).
+
+---
+
 # Release — Módulo Tickets (v0.8.0, D-029)
 
 Runbook do release **controlado** do módulo Tickets (espelho do Zoho Desk + Medições

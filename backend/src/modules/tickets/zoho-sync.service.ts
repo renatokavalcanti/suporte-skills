@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   NotFoundException,
@@ -75,6 +76,29 @@ interface UnmappedListItem {
   lastSeenAt: Date;
 }
 
+/** Agrupamento da fila de nao mapeados por conta do Zoho (D-031). */
+export interface UnmappedGroup {
+  accountId: string | null;
+  accountName: string | null;
+  count: number;
+}
+
+/** Resultado do vinculo em lote (D-031). */
+export interface BulkLinkResult {
+  requested: number;
+  linked: number;
+  created: number;
+  updated: number;
+  notFound: number;
+}
+
+interface LinkRowResult {
+  id: string;
+  zohoTicketId: string;
+  clientId: string;
+  created: boolean;
+}
+
 function text(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
@@ -139,6 +163,7 @@ export class ZohoSyncService {
     let lastModified: Date | null = watermark ? new Date(watermark) : null;
 
     const maxPerRun = this.credentials.maxTicketsPerRun();
+    const accountNames = new Map<string, string | null>();
     let from = 0;
 
     try {
@@ -154,7 +179,7 @@ export class ZohoSyncService {
         for (const payload of batch) {
           summary.fetched += 1;
           try {
-            const result = await this.processTicket(payload);
+            const result = await this.processTicket(payload, accountNames);
             if (result.kind === 'created') summary.created += 1;
             else if (result.kind === 'updated') summary.updated += 1;
             else summary.unmapped += 1;
@@ -253,6 +278,31 @@ export class ZohoSyncService {
     return { data, meta: buildMeta(total, query) };
   }
 
+  /** Agrupa a fila por conta do Zoho (para vinculo em lote — D-031). */
+  async listUnmappedGroups(): Promise<UnmappedGroup[]> {
+    const rows = await this.prisma.unmappedTicket.findMany({
+      select: { accountId: true, accountName: true },
+    });
+    const groups = new Map<string, UnmappedGroup>();
+    for (const row of rows) {
+      const key = row.accountId ?? '';
+      const current = groups.get(key);
+      if (current) {
+        current.count += 1;
+        if (!current.accountName && row.accountName) {
+          current.accountName = row.accountName;
+        }
+      } else {
+        groups.set(key, {
+          accountId: row.accountId,
+          accountName: row.accountName,
+          count: 1,
+        });
+      }
+    }
+    return [...groups.values()].sort((a, b) => b.count - a.count);
+  }
+
   /** Vincula manualmente um chamado da fila ao cliente correto. */
   async linkUnmapped(
     id: string,
@@ -263,12 +313,98 @@ export class ZohoSyncService {
     if (!row) {
       throw new NotFoundException('Chamado nao mapeado nao encontrado');
     }
+    await this.assertClient(clientId);
+
+    const linked = await this.linkRow(row, clientId);
+
+    await this.audit.record({
+      actorId: actor.id,
+      entity: 'unmapped_tickets',
+      entityId: id,
+      action: 'UPDATE',
+      before: { accountId: row.accountId },
+      after: {
+        ticketAction: linked.created ? 'created' : 'updated',
+        id: linked.id,
+        zohoTicketId: linked.zohoTicketId,
+        clientId: linked.clientId,
+      },
+    });
+
+    return {
+      id: linked.id,
+      zohoTicketId: linked.zohoTicketId,
+      clientId: linked.clientId,
+    };
+  }
+
+  /**
+   * Vincula em lote os chamados da fila a um cliente (D-031): todos de uma conta
+   * (`accountId`) ou as linhas selecionadas (`ids`). Reaproveita o mesmo
+   * `linkRow` do vinculo individual (idempotente por `zohoTicketId`).
+   */
+  async linkUnmappedBulk(
+    input: { clientId: string; ids?: string[]; accountId?: string },
+    actor: AuthenticatedUser,
+  ): Promise<BulkLinkResult> {
+    await this.assertClient(input.clientId);
+
+    const accountId = text(input.accountId);
+    const ids = (input.ids ?? []).filter(
+      (id) => typeof id === 'string' && id.trim() !== '',
+    );
+    if (!accountId && ids.length === 0) {
+      throw new BadRequestException(
+        'Informe `ids` ou `accountId` para vincular em lote',
+      );
+    }
+
+    const rows = accountId
+      ? await this.prisma.unmappedTicket.findMany({ where: { accountId } })
+      : await this.prisma.unmappedTicket.findMany({
+          where: { id: { in: ids } },
+        });
+
+    const result: BulkLinkResult = {
+      requested: accountId ? rows.length : ids.length,
+      linked: 0,
+      created: 0,
+      updated: 0,
+      notFound: 0,
+    };
+    if (!accountId) result.notFound = ids.length - rows.length;
+
+    for (const row of rows) {
+      const linked = await this.linkRow(row, input.clientId);
+      result.linked += 1;
+      if (linked.created) result.created += 1;
+      else result.updated += 1;
+    }
+
+    await this.audit.record({
+      actorId: actor.id,
+      entity: 'unmapped_tickets',
+      entityId: accountId ? `account:${accountId}` : `ids:${ids.length}`,
+      action: 'UPDATE',
+      after: { action: 'bulk_link', clientId: input.clientId, ...result },
+    });
+
+    return result;
+  }
+
+  private async assertClient(clientId: string): Promise<void> {
     const client = await this.prisma.client.findUnique({
       where: { id: clientId },
       select: { id: true },
     });
     if (!client) throw new NotFoundException('Cliente nao encontrado');
+  }
 
+  /** Mapeia a linha da fila, cria/atualiza o Ticket e remove da fila. */
+  private async linkRow(
+    row: { id: string; raw: unknown },
+    clientId: string,
+  ): Promise<LinkRowResult> {
     const mapped = mapZohoTicket(
       row.raw as unknown as ZohoTicketPayload,
       this.technologyField(),
@@ -280,29 +416,23 @@ export class ZohoSyncService {
 
     const ticket = await this.prisma.ticket.upsert({
       where: { zohoTicketId: mapped.zohoTicketId },
-      create: { ...mapped, clientId: client.id, lastSyncedAt: new Date() },
-      update: { ...mapped, clientId: client.id, lastSyncedAt: new Date() },
+      create: { ...mapped, clientId, lastSyncedAt: new Date() },
+      update: { ...mapped, clientId, lastSyncedAt: new Date() },
       select: { id: true, zohoTicketId: true, clientId: true },
     });
 
-    await this.prisma.unmappedTicket.delete({ where: { id } });
+    await this.prisma.unmappedTicket.delete({ where: { id: row.id } });
 
-    await this.audit.record({
-      actorId: actor.id,
-      entity: 'unmapped_tickets',
-      entityId: id,
-      action: 'UPDATE',
-      before: { accountId: row.accountId },
-      after: { ticketAction: existing ? 'updated' : 'created', ...ticket },
-    });
-
-    return ticket;
+    return { ...ticket, created: !existing };
   }
 
-  private async processTicket(payload: ZohoTicketPayload): Promise<ProcessResult> {
+  private async processTicket(
+    payload: ZohoTicketPayload,
+    accountNames: Map<string, string | null>,
+  ): Promise<ProcessResult> {
     const mapped = mapZohoTicket(payload, this.technologyField());
     const accountId = text(payload.accountId);
-    const accountName = text(payload.accountName);
+    let accountName = text(payload.accountName);
     const subject = text(payload.subject);
 
     const client = accountId
@@ -324,8 +454,18 @@ export class ZohoSyncService {
           where: { id: alreadyMapped.id },
           data: { ...mapped, lastSyncedAt: new Date() },
         });
+        // Limpa eventual linha obsoleta da fila (D-031).
+        await this.prisma.unmappedTicket.deleteMany({
+          where: { zohoTicketId: mapped.zohoTicketId },
+        });
         await this.afterTicketWrite(alreadyMapped.id, mapped.zohoTicketId);
         return { kind: 'updated', modifiedAt: mapped.zohoModifiedAt };
+      }
+
+      // A listagem do Zoho nao traz o nome da conta; resolve sob demanda uma
+      // vez por conta (D-031) para a fila nao exibir apenas o id.
+      if (!accountName && accountId) {
+        accountName = await this.resolveAccountName(accountId, accountNames);
       }
 
       await this.prisma.unmappedTicket.upsert({
@@ -360,6 +500,12 @@ export class ZohoSyncService {
       select: { id: true },
     });
 
+    // O cliente passou a existir: remove a linha da fila de nao mapeados e
+    // mantem o espelho (D-031).
+    await this.prisma.unmappedTicket.deleteMany({
+      where: { zohoTicketId: mapped.zohoTicketId },
+    });
+
     await this.afterTicketWrite(ticket.id, mapped.zohoTicketId);
 
     return {
@@ -370,6 +516,17 @@ export class ZohoSyncService {
 
   private technologyField(): string | null {
     return this.settings.getResolved().technologyField;
+  }
+
+  /** Resolve (e memoriza por execucao) o nome da conta no Zoho. */
+  private async resolveAccountName(
+    accountId: string,
+    cache: Map<string, string | null>,
+  ): Promise<string | null> {
+    if (cache.has(accountId)) return cache.get(accountId) ?? null;
+    const name = await this.client.getAccountName(accountId);
+    cache.set(accountId, name);
+    return name;
   }
 
   /**

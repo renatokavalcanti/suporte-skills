@@ -509,7 +509,7 @@ async function main(): Promise<void> {
       title: 'Integração Zoho configurável e Relatórios de Chamados',
       summary: 'A integração com o Zoho Desk passa a ser configurável pela interface (credenciais cifradas e OAuth) e os chamados ganham lançamentos de tempo. Novos relatórios: Financeiro (e-mail com PDF) e Relatório do Cliente (PDF/HTML). Módulo opt-in (TICKETS_ENABLED).',
       releasedAt: new Date('2026-10-13T12:00:00.000Z'),
-      current: true,
+      current: false,
       items: [
         { category: 'FEATURE', description: 'Configuração da integração com o Zoho Desk pela interface: data center, credenciais cifradas, escopos, campo de tecnologia, status "fechado" e frequência (D-030)' },
         { category: 'FEATURE', description: 'Conexão via OAuth 2.0 ("Conectar com Zoho"), com Testar conexão, Sincronizar agora, Desconectar e log de sincronização' },
@@ -518,6 +518,20 @@ async function main(): Promise<void> {
         { category: 'FEATURE', description: 'Relatório Financeiro: e-mail (HTML+texto) com PDF anexo e ações Copiar/Baixar .eml/Enviar por SMTP ou Microsoft Graph' },
         { category: 'FEATURE', description: 'Relatório do Cliente: PDF/HTML com identidade visual, KPIs, gráficos e paginação (sem valores de contrato)' },
         { category: 'FEATURE', description: 'Contratos por cliente (franquia, valores e política de saldo) e Identidade Visual editáveis em Configurações' },
+      ],
+    },
+    {
+      id: 'rel-0-9-1',
+      version: '0.9.1',
+      title: 'Fila de não mapeados: vínculo em lote, limpeza automática e nome da conta',
+      summary: 'A fila de chamados sem cliente mapeado ganha vínculo em lote (por conta do Zoho ou por seleção), limpeza automática ao mapear e exibição do nome da conta — ajuste aditivo, sem migration (D-031).',
+      releasedAt: new Date('2026-10-13T18:00:00.000Z'),
+      current: true,
+      items: [
+        { category: 'FEATURE', description: 'Vínculo em lote na fila de não mapeados: todos os chamados de uma conta do Zoho ou os selecionados (D-031)' },
+        { category: 'FEATURE', description: 'Limpeza automática da fila quando o cliente passa a existir ou o chamado é vinculado' },
+        { category: 'FEATURE', description: 'Nome da conta na fila (resolvido no Zoho Desk sob demanda), em vez de exibir apenas o id' },
+        { category: 'IMPROVEMENT', description: 'Novos endpoints aditivos GET /tickets/unmapped/groups e POST /tickets/unmapped/link' },
       ],
     },
   ];

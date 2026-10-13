@@ -594,6 +594,36 @@ tela de Configuração só é editável por **ADMIN**. Versão prevista: `0.9.0`
 
 ---
 
+## D-031 — Fila de não mapeados: vínculo em lote, auto-limpeza e nome da conta
+**Data:** 13/10/2026
+**Decisão:** aprimorar a **fila `unmapped_tickets`** (D-029/D-030) em três pontos, sem novas
+telas nem quebra de contrato: (1) **vínculo em lote** — vincular **todos os chamados de uma
+conta** do Zoho ou **as linhas selecionadas** de uma vez; (2) **auto-limpeza** — ao mapear um
+chamado (cliente passou a existir ou foi vinculado), **remover** a linha correspondente da fila;
+(3) **nome da conta** — resolver o `accountName` sob demanda (`GET /accounts/{id}`), pois a
+listagem de chamados devolve só o `accountId`.
+**Contexto:** no primeiro uso real, a sincronização trouxe 199 chamados de 5 contas e **todos**
+caíram na fila (nenhum cliente cadastrado ainda) — o que é o comportamento correto, mas (a) o
+vínculo era **um a um** (199 cliques), (b) a fila **não se limpava** quando o cliente passava a
+existir e (c) as linhas mostravam **apenas o id** da conta. Ajustes pequenos resolvem a operação
+sem redesenhar o fluxo.
+**Decisões:**
+1. **API aditiva**: `GET /tickets/unmapped/groups` (agrupamento por conta) e
+   `POST /tickets/unmapped/link` (`{ clientId, accountId? , ids? }`; exatamente um dos dois).
+   O vínculo individual (`POST /tickets/unmapped/:id/link`) **permanece**.
+2. **Idempotência preservada**: o lote reaproveita o mesmo `linkRow` do vínculo individual
+   (upsert por `zohoTicketId`) e remove a linha da fila ao final.
+3. **Auto-limpeza no sync**: quando o cliente passa a existir (ou o chamado já estava mapeado),
+   a linha obsoleta da fila é removida.
+4. **Nome da conta**: consultado **uma vez por conta e por execução** (cache em memória);
+   falha isolada **não** interrompe o sync (a linha fica com o id).
+5. **Papéis**: as rotas seguem **ADMIN**; a interface mantém o seletor de cliente de destino.
+**Consequências:** mudança **aditiva e retrocompatível** (nenhum modelo/prisma-migration; só
+rotas e lógica de serviço). Fila "suja" deixa de ocorrer; a operação vira poucos cliques por
+conta. **Sem dependência nova.** Versão: `0.9.1`.
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.

@@ -139,7 +139,9 @@ etc.). O **banco sobrepõe o ambiente**.
 - `tickets/zoho-sync.service.ts` — orquestra o sync: busca `GET /tickets` com
   `sortBy=modifiedTime` e marca d'água em `zoho_sync.lastModifiedAt`; para cada chamado,
   **upsert por `zoho_ticket_id`**; se o `accountId` não casar com nenhum `Client.zoho_account_id`,
-  vai para **`unmapped_tickets`** (não se adivinha o cliente). Após gravar o chamado,
+  vai para **`unmapped_tickets`** (não se adivinha o cliente) — resolvendo o **nome da conta** em
+  `GET /accounts/{id}` (cache por execução) e **removendo a linha** da fila quando o cliente passa
+  a existir (D-031). Após gravar o chamado,
   `afterTicketWrite` busca `timeEntries`, faz upsert por `zoho_time_entry_id`, remove lançamentos
   que sumiram e **recalcula `time_spent_minutes` = Σ minutos**. Registra o **histórico** (20
   últimas execuções).
@@ -214,7 +216,7 @@ Endpoints completos em [API.md](./API.md). Resumo:
 | Grupo | Rotas |
 |-------|-------|
 | **Clientes** | `GET/POST/PUT/PATCH/DELETE /clients` |
-| **Chamados** | `GET /tickets`, `GET /tickets/:id`, `GET /tickets/unmapped`, `POST /tickets/unmapped/:id/link`, `GET /tickets/sync/status`, `POST /tickets/sync` |
+| **Chamados** | `GET /tickets`, `GET /tickets/:id`, `GET /tickets/unmapped`, `POST /tickets/unmapped/:id/link`, `GET /tickets/unmapped/groups`, `POST /tickets/unmapped/link`, `GET /tickets/sync/status`, `POST /tickets/sync` |
 | **Medições (D-029)** | `/measurements` (+ `close/reopen`, `export.csv|pdf`) |
 | **Contratos** | `GET/POST/PUT/PATCH/DELETE /contracts` |
 | **Relatórios** | `GET /ticket-reports/preview`; `POST /ticket-reports`; `GET /ticket-reports[/:id]` |
@@ -308,7 +310,10 @@ Além das gerais (README), as do módulo:
 
 - **Incremental:** só o que mudou desde a última execução (`modifiedTime`).
 - **Idempotente:** rodar de novo não duplica (upsert por id interno).
-- **Não mapeados** vão para `unmapped_tickets`; vincule na tela **Tickets > Não mapeados**.
+- **Não mapeados** vão para `unmapped_tickets`; vincule na tela **Tickets > Não mapeados**
+  — **um a um**, **por conta** (todos os chamados da conta) ou **por seleção** (vários de uma vez)
+  —, ver **D-031**. Ao mapear um chamado (cliente passou a existir ou vínculo manual), a linha
+  **sai da fila automaticamente**; o **nome da conta** é resolvido sob demanda (`GET /accounts/{id}`).
 - **Log:** histórico em `app_settings` (`zoho_sync.history`), exposto em
   `GET /settings/zoho/sync-log` e na tela de Configurações.
 - **Rate limit:** paginação + timeout; o teto por execução (`ZOHO_MAX_TICKETS_PER_RUN`) evita
