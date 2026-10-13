@@ -3,6 +3,8 @@ import { ContractsController } from './contracts/contracts.controller';
 import { ContractsService } from './contracts/contracts.service';
 import { MeasurementsController } from './measurements.controller';
 import { MeasurementsService } from './measurements.service';
+import { TicketReportsController } from './reports/ticket-reports.controller';
+import { TicketReportsService } from './reports/ticket-reports.service';
 import { TicketsController } from './tickets.controller';
 import { TicketsService } from './tickets.service';
 import { ZohoClientService } from './zoho/zoho-client.service';
@@ -19,6 +21,7 @@ import { ZohoSyncService } from './zoho-sync.service';
     TicketsController,
     MeasurementsController,
     ContractsController,
+    TicketReportsController,
     ZohoIntegrationController,
     ZohoOAuthController,
   ],
@@ -26,6 +29,7 @@ import { ZohoSyncService } from './zoho-sync.service';
     TicketsService,
     MeasurementsService,
     ContractsService,
+    TicketReportsService,
     ZohoSettingsService,
     ZohoCredentialsService,
     ZohoClientService,
@@ -33,6 +37,12 @@ import { ZohoSyncService } from './zoho-sync.service';
     ZohoSyncService,
     ZohoSyncScheduler,
   ],
-  exports: [TicketsService, ZohoSyncService, MeasurementsService, ContractsService],
+  exports: [
+    TicketsService,
+    ZohoSyncService,
+    MeasurementsService,
+    ContractsService,
+    TicketReportsService,
+  ],
 })
 export class TicketsModule {}

@@ -24,12 +24,42 @@ export function zonedMonthRange(
   };
 }
 
+/**
+ * Limites [start, end) de um intervalo de dias (datas `YYYY-MM-DD`, inclusivas
+ * nas duas pontas), no fuso informado. `start` = 00:00 do primeiro dia e `end` =
+ * 00:00 do dia seguinte ao ultimo. Usado pelos Relatorios de Chamados (D-030).
+ */
+export function zonedDayRange(
+  fromDate: string,
+  toDate: string,
+  timeZone: string,
+): { start: Date; end: Date } {
+  return {
+    start: zonedDateStartUtc(fromDate, timeZone),
+    end: zonedDateStartUtc(addDays(toDate, 1), timeZone),
+  };
+}
+
+/** Instante UTC do inicio (00:00) de um dia `YYYY-MM-DD` no fuso informado. */
+export function zonedDateStartUtc(dateStr: string, timeZone: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return zonedMidnightToUtc(year, month, timeZone, day);
+}
+
+function addDays(dateStr: string, days: number): string {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+
 function zonedMidnightToUtc(
   year: number,
   month: number,
   timeZone: string,
+  day = 1,
 ): Date {
-  const utcGuess = Date.UTC(year, month - 1, 1, 0, 0, 0);
+  const utcGuess = Date.UTC(year, month - 1, day, 0, 0, 0);
   const offset = timeZoneOffsetMs(new Date(utcGuess), timeZone);
   return new Date(utcGuess - offset);
 }

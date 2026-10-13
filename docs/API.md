@@ -285,6 +285,23 @@ faturamento (B3)**. Requer `TICKETS_ENABLED=true`; acesso de **ADMIN/MANAGER**; 
 > `total = valor_mensal + adicionais × valor_hora`. Com `ACCUMULATE`, o saldo de meses
 > anteriores (`carriedMinutes`) é somado à franquia; com `EXPIRE`, é ignorado.
 
+#### Relatórios de Chamados (D-030)
+
+Métricas (B2) por cliente/período + prévia, geração auditada e lista. Requer
+`TICKETS_ENABLED=true`; **ADMIN/MANAGER**. Período por `year`+`month` OU `from`+`to`
+(`YYYY-MM-DD`), interpretado em `BUSINESS_TIMEZONE`.
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/ticket-reports/preview` | Prévia: `metrics` (fechados por `closeDate`; abertos no período; abertos ao fim; horas por lançamento/`executedTime` em HH:MM; tempo médio de solução; horas e chamados por tecnologia) + `billing` (B3, quando há cliente+contrato) + `alerts` (fechado sem horas, sem tecnologia, cliente sem contrato). Sem período → `400`. |
+| POST | `/ticket-reports` | Gera e registra o relatório em `generated_reports`: `clientId`, `type` ∈ `FINANCIAL|CLIENT`, período. Devolve `{ report, preview }`. |
+| GET | `/ticket-reports` | Lista paginada dos relatórios gerados. Filtros: `clientId`, `type`, `from`/`to` (período), `sort`, `order`. |
+| GET | `/ticket-reports/:id` | Detalhe do relatório gerado (inclui quem gerou). |
+
+> Horas = soma dos **lançamentos** no período (`executedTime`). Fechados = `closeDate` no
+> período; abertos ao fim = `closeDate` nulo com abertura antes do fim do período. O
+> faturamento usa a regra B3 (ver Contratos).
+
 #### Medições Mensais (Fase 4)
 
 Consolida, por **cliente/mês**, os chamados faturados (`isBillable=true`, `close_date` no mês
