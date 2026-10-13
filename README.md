@@ -78,6 +78,7 @@ npm run dev                    # http://localhost:5173 (proxy /api -> :4000)
 |------|---------|-----------|
 | raiz | `bash scripts/smoke.sh` | **Teste de fumaça não-destrutivo** (health, login, leituras) — ideal depois de um deploy. Só o ADMIN é obrigatório; MANAGER/CONSULTANT são testados se `SMOKE_MANAGER_*`/`SMOKE_CONSULTANT_*` forem informados |
 | raiz | `bash scripts/backup-db.sh` | **Backup** (dump SQL em `backups/` + arquivo `.tar.gz` dos anexos `data/`) — não-destrutivo |
+| servidor | `bash scripts/deploy.sh [ref]` | **Deploy por git na VM** (fetch + checkout, backup, build, `up -d`, espera `/health`, cria a release do changelog). Opções `--no-build`, `--skip-backup` — ver [RELEASE.md](./docs/RELEASE.md) |
 | raiz | `bash scripts/acceptance.sh` | **Suíte de aceite** contra a API no ar; **apaga os dados e restaura o seed DEMO** (destrutiva — ver abaixo) |
 | raiz | `backend/prisma/clear-data.js` (ou `npm run clear:data`) | **Limpeza de go-live**: apaga os dados (preservando o catálogo) e cria 1 ADMIN. Exige `CONFIRM_CLEAR=yes` + `ADMIN_NAME/EMAIL/PASSWORD`; `CLEAR_CATALOG=yes` apaga tudo |
 | raiz | `bash scripts/gen-certs.sh <IP/DNS>` | Gera o certificado TLS autoassinado do nginx em `certs/` |

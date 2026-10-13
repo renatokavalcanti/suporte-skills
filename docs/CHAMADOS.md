@@ -336,21 +336,19 @@ Além das gerais (README), as do módulo:
 
 ## 14. Deploy e rollback
 
-Runbook completo em [RELEASE.md](./RELEASE.md) (seções **D-029** e **D-030**). Resumo (VM):
+Runbook completo em [RELEASE.md](./RELEASE.md). A VM roda um **checkout git**; o deploy padrão é:
 
 ```bash
-# 1) Backup pré-deploy
-bash scripts/backup-db.sh
-
-# 2) Migrações (aditivas; não alteram dados existentes)
-docker compose exec api npx prisma migrate deploy
-
-# 3) Código/SPA (a flag do SPA é repassada como build arg)
-git pull && docker compose build && docker compose up -d
-
-# 4) Validação
-bash scripts/smoke.sh
+cd /home/renato/suporte-skills
+bash scripts/deploy.sh            # fetch+checkout, backup, build, up, health, release
+bash scripts/deploy.sh v0.9.0     # (opcional) checkout de uma tag especifica
 ```
+
+O script faz `git fetch/checkout`, **backup** do banco (dump via container), `build` (api+web),
+`up -d`, aguarda `/health=200` e cria a **release do changelog** (a partir de
+`scripts/releases/<versão>.json`). As migrações rodam no start do container da API
+(`prisma migrate deploy` — **aditivas**). **Nunca** use `seed`/`acceptance.sh` na VM (dados reais);
+valide com `scripts/smoke.sh`.
 
 **Rollback:** desligar a flag (`TICKETS_ENABLED=false` + rebuild com `VITE_TICKETS_ENABLED=false`)
 → `git checkout <tag anterior>` + `docker compose up -d --build` → (se preciso) restaurar o dump

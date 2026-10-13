@@ -1,0 +1,16 @@
+{
+  "version": "0.9.0",
+  "title": "Integração Zoho configurável e Relatórios de Chamados",
+  "summary": "A integração com o Zoho Desk passa a ser configurável pela interface (credenciais cifradas e OAuth) e os chamados ganham lançamentos de tempo. Novos relatórios: Financeiro (e-mail com PDF) e Relatório do Cliente (PDF/HTML). Módulo opt-in (TICKETS_ENABLED).",
+  "releasedAt": "2026-10-13T12:00:00.000Z",
+  "current": true,
+  "items": [
+    { "category": "FEATURE", "description": "Configuração da integração com o Zoho Desk pela interface: data center, credenciais cifradas, escopos, campo de tecnologia, status \"fechado\" e frequência (D-030)", "position": 0 },
+    { "category": "FEATURE", "description": "Conexão via OAuth 2.0 (\"Conectar com Zoho\"), com Testar conexão, Sincronizar agora, Desconectar e log de sincronização", "position": 1 },
+    { "category": "FEATURE", "description": "Importação dos lançamentos de tempo dos chamados (por agente) e recálculo do tempo como soma", "position": 2 },
+    { "category": "FEATURE", "description": "Relatórios de Chamados: prévia de métricas (B2), faturamento por contrato (B3) e alertas de inconsistência", "position": 3 },
+    { "category": "FEATURE", "description": "Relatório Financeiro: e-mail (HTML+texto) com PDF anexo e ações Copiar/Baixar .eml/Enviar por SMTP ou Microsoft Graph", "position": 4 },
+    { "category": "FEATURE", "description": "Relatório do Cliente: PDF/HTML com identidade visual, KPIs, gráficos e paginação (sem valores de contrato)", "position": 5 },
+    { "category": "FEATURE", "description": "Contratos por cliente (franquia, valores e política de saldo) e Identidade Visual editáveis em Configurações", "position": 6 }
+  ]
+}

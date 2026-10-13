@@ -1,0 +1,14 @@
+{
+  "version": "0.8.0",
+  "title": "Módulo Tickets e Medições Mensais",
+  "summary": "Espelhamento dos chamados do Zoho Desk, cadastro de clientes e geração de Medições Mensais por cliente/mês, com comprovação em CSV/PDF. Módulo opt-in (TICKETS_ENABLED) e sincronização opt-in (ZOHO_SYNC_ENABLED).",
+  "releasedAt": "2026-10-13T00:00:00.000Z",
+  "current": false,
+  "items": [
+    { "category": "FEATURE", "description": "Espelhamento (somente leitura, opt-in) dos chamados do Zoho Desk para o banco local (D-029)", "position": 0 },
+    { "category": "FEATURE", "description": "Cadastro de clientes (com conta do Zoho) e fila de chamados sem cliente mapeado, com vínculo manual", "position": 1 },
+    { "category": "FEATURE", "description": "Medições Mensais por cliente/mês: chamados faturados por close_date no fuso de negócio, com snapshot imutável no fechamento e reabertura só por ADMIN (justificada)", "position": 2 },
+    { "category": "FEATURE", "description": "Exportação da medição fechada em CSV (UTF-8 BOM, separador ;) e PDF com código de verificação e data/usuário de fechamento", "position": 3 },
+    { "category": "IMPROVEMENT", "description": "Módulo desligado por padrão (TICKETS_ENABLED) e sincronização com o Zoho separadamente opt-in (ZOHO_SYNC_ENABLED)", "position": 4 }
+  ]
+}

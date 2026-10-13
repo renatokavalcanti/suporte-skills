@@ -1,3 +1,37 @@
+# Deploy e releases — Suporte Skills
+
+## Deploy padrão (por GIT) — VM Ubuntu (10.0.0.200)
+
+A VM roda um **checkout git** do repositório em `/home/renato/suporte-skills`. O deploy é
+padronizado por [`scripts/deploy.sh`](../scripts/deploy.sh):
+
+```bash
+cd /home/renato/suporte-skills
+bash scripts/deploy.sh              # deploya main
+bash scripts/deploy.sh v0.9.0       # (opcional) deploya uma tag especifica
+```
+
+Passos do script: `git fetch` → `git checkout -f <ref>` → **backup do banco** (dump via container)
+→ `docker compose build api web` → `docker compose up -d` → **aguarda `GET /api/v1/health = 200`**
+→ cria a **release do changelog** a partir de `scripts/releases/<APP_VERSION>.json` (best-effort).
+Opções: `--skip-backup`, `--no-build`.
+
+- **Nunca** rode `npm run seed` nem `scripts/acceptance.sh` na VM (dados reais) — valide com
+  `scripts/smoke.sh` (não-destrutivo).
+- `docker compose up -d` retorna **antes** da API ficar pronta — o script já espera o health (senão
+  o nginx responde `502`).
+- `.env`, `data/`, `certs/` e `backups/` estão no `.gitignore` — o `git checkout` **não** os altera.
+
+## Preparo inicial do servidor (uma vez)
+
+```bash
+cd /home/renato/suporte-skills
+git init && git remote add origin https://github.com/renatokavalcanti/suporte-skills.git
+git fetch --tags origin && git checkout -f main   # .env/data/certs/backups permanecem
+```
+
+---
+
 # Release — Módulo Tickets (v0.8.0, D-029)
 
 Runbook do release **controlado** do módulo Tickets (espelho do Zoho Desk + Medições
