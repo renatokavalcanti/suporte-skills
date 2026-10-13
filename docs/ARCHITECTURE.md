@@ -103,6 +103,22 @@ Módulo `settings` (ADMIN): guarda parâmetros editáveis pela interface em `app
 (`news-ai.service.ts`) e pelo teste de conexão (`POST /settings/ai/test`). O módulo `news`
 passou a resolver a IA por `SettingsService` (assíncrono).
 
+### 3.4 Chamados (D-029/D-030)
+
+Módulo do atendimento/faturamento, **opt-in** (`TICKETS_ENABLED`). Camadas:
+
+- **Configurações** em `app_settings` (`zoho`, `email`, `branding`, `zoho_sync`), editáveis por
+  ADMIN, com segredos **cifrados** (AES-256-GCM) — ver `shared/crypto/`.
+- **Cliente Zoho** (`modules/tickets/zoho/*`): data centers, credenciais, OAuth "Conectar",
+  testar, sync incremental e log.
+- **Relatórios** (`modules/tickets/reports/*`): métricas B2 + faturamento B3 (`billing.ts`),
+  prévia e `generated_reports` (auditoria).
+- **Saída** — `shared/reporting/pdf.ts` (PDF sem dependência, com cabeçalho/rodapé repetidos e
+  gráficos), `shared/reporting/email.ts` (MIME) e `modules/settings/mailer.service.ts` (SMTP ou
+  Microsoft Graph).
+
+Detalhes, regras e mapa de arquivos: **[CHAMADOS.md](./CHAMADOS.md)**.
+
 ## 4. Segurança
 
 - `JwtAuthGuard` global: toda rota exige autenticação, exceto `@Public()`.

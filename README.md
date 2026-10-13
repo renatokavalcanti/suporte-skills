@@ -159,6 +159,7 @@ suporte-skills/
 | **Relatórios** | Painel de **Consultores** (card por consultor + janela com os itens do roadmap), certificações, vencimentos, roadmap e por fabricante — em tela e **exportação CSV** (UTF-8 BOM, separador `;`) |
 | **Importação CSV** | Prévia validada linha a linha, confirmação e relatório de erros para profissionais e certificações |
 | **Tickets / Medições Mensais** | **Espelhamento** (somente leitura, opt-in) dos chamados do **Zoho Desk**, cadastro de **clientes** e **Medições Mensais** por cliente/mês — consolidação dos chamados faturados com **comprovação em CSV e PDF** (inclui código de verificação). Módulo desligado por padrão (`TICKETS_ENABLED=false`) |
+| **Chamados (D-030)** | Sobre o espelho: **configuração da integração Zoho pela interface** (data center, credenciais cifradas, OAuth "Conectar", testar/sincronizar/desconectar, log), **lançamentos de tempo** por agente, **contratos** (franquia/valores/saldo) e **Relatórios de Chamados** — **Financeiro** (e-mail HTML+texto com PDF anexo, Copiar/`.eml`/Enviar por **SMTP ou Microsoft Graph**) e **Relatório do Cliente** (PDF/HTML com identidade visual, KPIs e gráficos, sem valores). Opt-in (`TICKETS_ENABLED`). |
 | **Acessos** | ADMIN/MANAGER com acesso total (inclui catálogo e vínculos de certificação); CONSULTANT restrito à área "Meu roadmap", onde registra os próprios objetivos e anexa comprovantes |
 | **Senha provisória** | ADMIN cria o acesso com senha provisória; no 1º login o usuário é obrigado a definir uma nova senha (tela dedicada), com bloqueio das demais rotas e revogação das sessões |
 | **Alertas e auditoria** | Alertas de vencimento/roadmap/cobertura e log de alterações (`audit_logs`) |
@@ -206,6 +207,7 @@ para execução local). Principais:
 - [Arquitetura](./docs/ARCHITECTURE.md)
 - [Banco de dados](./docs/DATABASE.md)
 - [API](./docs/API.md)
+- [Módulo Chamados (D-029/D-030)](./docs/CHAMADOS.md)
 - [Roadmap / fases](./docs/ROADMAP.md)
 - [Decisões (ADR)](./docs/DECISIONS.md)
 - [QA / qualidade](./docs/QA.md)
@@ -228,12 +230,14 @@ relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módul
 | D-027 | **Visão do consultor**: "Meu roadmap" em destaque, catálogo oculto |
 | D-028 | **Roadmap em Kanban/Timeline** + painel de consultores em Relatórios |
 | D-029 | **Módulo Tickets**: espelho do Zoho Desk, clientes e Medições Mensais (CSV/PDF) — opt-in |
+| D-030 | **Módulo Chamados**: configuração do Zoho pela interface (OAuth), lançamentos de tempo, contratos e Relatórios Financeiro/Cliente — opt-in |
 
 Typecheck e build limpos em backend e frontend; imagem Docker publicada na VM
 (10.0.0.200) com HTTPS. A suíte de aceite cobre os blocos 11f (D-024), 11g (D-025), 11h
-(D-026) e 11i (D-029) e o estado DEMO de referência (ver [`docs/QA.md`](./docs/QA.md)); o deploy
-em ambiente com dados reais é validado pelo `smoke.sh` (não-destrutivo). O **release do módulo
-Tickets** segue o runbook em [`docs/RELEASE.md`](./docs/RELEASE.md).
+(D-026), 11i (D-029) e 11j (D-030) e o estado DEMO de referência (ver [`docs/QA.md`](./docs/QA.md)); o deploy
+em ambiente com dados reais é validado pelo `smoke.sh` (não-destrutivo). Os releases dos módulos
+Tickets e Chamados seguem o runbook em [`docs/RELEASE.md`](./docs/RELEASE.md); o guia técnico do
+módulo está em [`docs/CHAMADOS.md`](./docs/CHAMADOS.md).
 
 A ingestão automática do Tec News é **opt-in** (`NEWS_SYNC_ENABLED=true`): sem ela, o
 módulo funciona com a curadoria manual e o botão "Sincronizar". Os cinco fabricantes do
