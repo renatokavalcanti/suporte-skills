@@ -214,9 +214,12 @@ JWT) e **nunca** devolvidos (a resposta traz `clientSecretSet`/`refreshTokenSet`
 | POST | `/settings/zoho/sync` | Sincroniza agora (equivalente a `POST /tickets/sync`). |
 | GET | `/settings/zoho/sync-log` | Histórico das últimas 20 sincronizações (`at, status, fetched, created, updated, unmapped, errors`). |
 | POST | `/settings/zoho/disconnect` | Apaga as credenciais salvas (volta a depender do ambiente, se houver). |
+| GET | `/settings/zoho/auth-url` | (ADMIN) Devolve `{ url }` de consentimento do Zoho (escopos + `redirect_uri` + `state` de uso único, válido por 10 min). Exige Client ID e Secret já salvos. |
+| GET | `/settings/zoho/callback` | **Público** (o navegador volta aqui do Zoho, sem token). Valida o `state`, troca o `code` pelo **Refresh Token** (cifrado e salvo) e redireciona a interface para `PUBLIC_WEB_URL/configuracoes?zoho=connected` (ou `...&warn=...`/`zoho=error&reason=...`). |
 
-> O fluxo OAuth "Conectar com Zoho" (Authorization Code) entra na Fase 3 (callback em
-> `redirectUri`). Frequência `MANUAL` desliga o agendador; as demais ligam o sync periódico.
+> Frequência `MANUAL` desliga o agendador; as demais ligam o sync periódico. "Conectar com
+> Zoho" conclui o fluxo OAuth (Authorization Code, `access_type=offline`) e a interface relata
+> o resultado; "Testar conexão" continua disponível a qualquer momento.
 
 ### Tickets — clientes e chamados (D-029)
 

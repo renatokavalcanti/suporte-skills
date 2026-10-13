@@ -312,6 +312,8 @@ export class ZohoSettingsService implements OnModuleInit {
       );
     }
 
+    const before = this.redact(this.cache);
+
     await this.persist(next);
 
     await this.audit.record({
@@ -319,22 +321,44 @@ export class ZohoSettingsService implements OnModuleInit {
       entity: 'app_settings',
       entityId: ZOHO_SETTING_KEY,
       action: 'UPDATE',
-      before: this.redact(this.cache),
+      before,
       after: this.redact(next),
     });
 
     return this.getView();
   }
 
+  /** Grava o Refresh Token obtido no fluxo OAuth (cifrado) e audita. */
+  async saveRefreshToken(
+    refreshToken: string,
+    actorId: string | null,
+  ): Promise<void> {
+    const before = this.redact(this.cache);
+    const next: StoredZohoSettings = {
+      ...this.cache,
+      refreshTokenEnc: encryptSecret(refreshToken, this.encryptionSecret()),
+    };
+    await this.persist(next);
+    await this.audit.record({
+      actorId,
+      entity: 'app_settings',
+      entityId: ZOHO_SETTING_KEY,
+      action: 'UPDATE',
+      before,
+      after: this.redact(next),
+    });
+  }
+
   /** Apaga as credenciais salvas (volta a depender so' do ambiente, se houver). */
   async disconnect(actor: AuthenticatedUser): Promise<ZohoSettingsView> {
+    const before = this.redact(this.cache);
     await this.persist({});
     await this.audit.record({
       actorId: actor.id,
       entity: 'app_settings',
       entityId: ZOHO_SETTING_KEY,
       action: 'DELETE',
-      before: this.redact(this.cache),
+      before,
       after: this.redact({}),
     });
     return this.getView();

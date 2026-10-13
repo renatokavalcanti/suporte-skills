@@ -16,6 +16,7 @@ import { TestZohoConnectionDto } from '../dto/test-zoho-settings.dto';
 import { UpdateZohoSettingsDto } from '../dto/update-zoho-settings.dto';
 import { ZohoSyncService } from '../zoho-sync.service';
 import { ZohoClientService } from './zoho-client.service';
+import { ZohoOAuthService } from './zoho-oauth.service';
 import { ZohoSettingsService } from './zoho-settings.service';
 
 /**
@@ -31,11 +32,17 @@ export class ZohoIntegrationController {
     private readonly settings: ZohoSettingsService,
     private readonly client: ZohoClientService,
     private readonly sync: ZohoSyncService,
+    private readonly oauth: ZohoOAuthService,
   ) {}
 
   @Get()
   view() {
     return this.settings.getView();
+  }
+
+  @Get('auth-url')
+  authUrl(@CurrentUser() user: AuthenticatedUser) {
+    return this.oauth.startUrl(user);
   }
 
   @Put()

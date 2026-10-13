@@ -3,6 +3,8 @@ export interface AppConfiguration {
   port: number;
   /** URL publica da API (base da Redirect URI do OAuth do Zoho). */
   publicUrl: string;
+  /** URL publica da interface web (destino do callback OAuth do Zoho). */
+  publicWebUrl: string;
   corsOrigin: string[];
   databaseUrl: string;
   auth: {
@@ -87,6 +89,11 @@ export default (): AppConfiguration => {
     env: env.NODE_ENV ?? 'development',
     port: toInt(env.API_PORT, 4000),
     publicUrl: (env.PUBLIC_API_URL ?? 'http://localhost:4000').replace(/\/+$/, ''),
+    publicWebUrl: (
+      env.PUBLIC_WEB_URL ??
+      corsOrigin[0] ??
+      DEFAULT_CORS_ORIGIN
+    ).replace(/\/+$/, ''),
     // Lista vazia (ex.: CORS_ORIGIN="") cai no padrao em vez de bloquear tudo.
     corsOrigin: corsOrigin.length > 0 ? corsOrigin : [DEFAULT_CORS_ORIGIN],
     databaseUrl: env.DATABASE_URL ?? '',

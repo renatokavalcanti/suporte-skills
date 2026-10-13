@@ -147,6 +147,54 @@ export class ZohoClientService {
     }
   }
 
+  /**
+   * Troca o `code` do fluxo Authorization Code pelo refresh token
+   * (`access_type=offline`). Usado pelo callback do OAuth para conectar a conta.
+   */
+  async exchangeCode(
+    creds: Pick<
+      ZohoCredentials,
+      'clientId' | 'clientSecret' | 'accountsBaseUrl' | 'fetchTimeoutMs'
+    >,
+    code: string,
+    redirectUri: string,
+  ): Promise<{ refreshToken: string; accessToken: string }> {
+    const body = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: creds.clientId,
+      client_secret: creds.clientSecret,
+      redirect_uri: redirectUri,
+      code,
+    });
+
+    const response = await this.request(
+      `${creds.accountsBaseUrl}/oauth/v2/token`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      },
+      creds.fetchTimeoutMs,
+    );
+
+    const json = (await response.json()) as {
+      access_token?: string;
+      refresh_token?: string;
+      error?: string;
+    };
+    if (!json.refresh_token) {
+      throw new ZohoApiError(
+        response.status,
+        json.error ?? null,
+        `O Zoho nao devolveu refresh token (${json.error ?? 'sem refresh_token'})`,
+      );
+    }
+    return {
+      refreshToken: json.refresh_token,
+      accessToken: json.access_token ?? '',
+    };
+  }
+
   private async probeTickets(
     creds: ZohoCredentials,
     token: string,
