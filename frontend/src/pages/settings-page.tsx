@@ -17,6 +17,10 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { useTheme } from '@/hooks/use-theme';
 import { roleLabels } from '@/utils/labels';
 import { AiSettingsCard } from '@/features/settings/ai-settings-card';
+import { ZohoSettingsCard } from '@/features/settings/zoho-settings-card';
+import { EmailSettingsCard } from '@/features/settings/email-settings-card';
+import { BrandingSettingsCard } from '@/features/settings/branding-settings-card';
+import { TICKETS_ENABLED } from '@/config/features';
 import type { HealthResponse } from '@/types/api';
 
 function HealthCard() {
@@ -72,6 +76,13 @@ export function SettingsPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {isAdmin && <AiSettingsCard />}
+        {isAdmin && TICKETS_ENABLED && (
+          <>
+            <ZohoSettingsCard />
+            <EmailSettingsCard />
+            <BrandingSettingsCard />
+          </>
+        )}
 
         <Card>
           <CardHeader>

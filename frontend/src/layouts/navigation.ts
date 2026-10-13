@@ -5,6 +5,7 @@ import {
   Building2,
   ClipboardList,
   Cpu,
+  FileText,
   LayoutDashboard,
   Map,
   Newspaper,
@@ -96,6 +97,18 @@ export const navItems: NavItem[] = [
           to: '/medicoes',
           label: 'Medições',
           icon: ClipboardList,
+          roles: ['ADMIN', 'MANAGER'],
+        },
+        {
+          to: '/contratos',
+          label: 'Contratos',
+          icon: FileText,
+          roles: ['ADMIN', 'MANAGER'],
+        },
+        {
+          to: '/relatorios-chamados',
+          label: 'Relatórios de Chamados',
+          icon: BarChart3,
           roles: ['ADMIN', 'MANAGER'],
         },
       ] satisfies NavItem[])

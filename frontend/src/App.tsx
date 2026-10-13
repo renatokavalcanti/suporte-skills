@@ -19,6 +19,8 @@ import { ReportsPage } from '@/features/reports/reports-page';
 import { ClientsPage } from '@/features/tickets/clients-page';
 import { TicketsPage } from '@/features/tickets/tickets-page';
 import { MeasurementsPage } from '@/features/tickets/measurements-page';
+import { ContractsPage } from '@/features/tickets/contracts-page';
+import { TicketReportsPage } from '@/features/tickets/ticket-reports-page';
 import { TICKETS_ENABLED } from '@/config/features';
 import { SettingsPage } from '@/pages/settings-page';
 import { NotFoundPage } from '@/pages/not-found-page';
@@ -104,6 +106,22 @@ export function App() {
               element={
                 <RequireRole roles={['ADMIN', 'MANAGER']}>
                   <MeasurementsPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="contratos"
+              element={
+                <RequireRole roles={['ADMIN', 'MANAGER']}>
+                  <ContractsPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="relatorios-chamados"
+              element={
+                <RequireRole roles={['ADMIN', 'MANAGER']}>
+                  <TicketReportsPage />
                 </RequireRole>
               }
             />
