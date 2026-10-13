@@ -156,30 +156,31 @@ enum ReleaseCategory {
 // ---------------------------------------------------------------------------
 
 model Professional {
-  id               String            @id @default(cuid())
-  name             String
-  email            String            @unique
-  passwordHash     String?           @map("password_hash")
-  providerId       String?           @map("provider_id")
-  role             Role              @default(CONSULTANT)
-  active           Boolean           @default(true)
+  id                 String            @id @default(cuid())
+  name               String
+  email              String            @unique
+  passwordHash       String?           @map("password_hash")
+  providerId         String?           @map("provider_id")
+  role               Role              @default(CONSULTANT)
+  active             Boolean           @default(true)
   // Senha provisoria: obriga a troca no proximo login (D-024).
-  mustChangePassword Boolean         @default(false) @map("must_change_password")
-  position         String?
-  professionalType ProfessionalType? @map("professional_type")
-  seniority        Seniority?
-  hireDate         DateTime?         @map("hire_date") @db.Date
-  notes            String?
-  createdAt        DateTime          @default(now()) @map("created_at")
-  updatedAt        DateTime          @updatedAt @map("updated_at")
+  mustChangePassword Boolean           @default(false) @map("must_change_password")
+  position           String?
+  professionalType   ProfessionalType? @map("professional_type")
+  seniority          Seniority?
+  hireDate           DateTime?         @map("hire_date") @db.Date
+  notes              String?
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
 
-  certifications ProfessionalCertification[]
-  roadmapItems   RoadmapItem[]            @relation("ProfessionalRoadmap")
-  ownedRoadmap   RoadmapItem[]            @relation("RoadmapOwner")
-  refreshTokens  RefreshToken[]
-  auditLogs      AuditLog[]
-  newsReadStates NewsReadState[]
-  closedMeasurements MonthlyMeasurement[] @relation("MeasurementClosedBy")
+  certifications     ProfessionalCertification[]
+  roadmapItems       RoadmapItem[]               @relation("ProfessionalRoadmap")
+  ownedRoadmap       RoadmapItem[]               @relation("RoadmapOwner")
+  refreshTokens      RefreshToken[]
+  auditLogs          AuditLog[]
+  newsReadStates     NewsReadState[]
+  closedMeasurements MonthlyMeasurement[]        @relation("MeasurementClosedBy")
+  generatedReports   GeneratedReport[]           @relation("ReportGeneratedBy")
 
   @@index([active])
   @@index([role])
@@ -187,12 +188,12 @@ model Professional {
 }
 
 model RefreshToken {
-  id             String       @id @default(cuid())
-  professionalId String       @map("professional_id")
-  tokenHash      String       @map("token_hash")
-  expiresAt      DateTime     @map("expires_at")
-  revokedAt      DateTime?    @map("revoked_at")
-  createdAt      DateTime     @default(now()) @map("created_at")
+  id             String    @id @default(cuid())
+  professionalId String    @map("professional_id")
+  tokenHash      String    @map("token_hash")
+  expiresAt      DateTime  @map("expires_at")
+  revokedAt      DateTime? @map("revoked_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
 
   professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
 
@@ -205,18 +206,18 @@ model RefreshToken {
 // ---------------------------------------------------------------------------
 
 model Vendor {
-  id                    String            @id @default(cuid())
-  name                  String            @unique
-  website               String?
-  logoUrl               String?           @map("logo_url")
-  partnershipStatus     PartnershipStatus @default(NONE) @map("partnership_status")
-  partnershipLevel      String?           @map("partnership_level")
-  partnershipStartDate  DateTime?         @map("partnership_start_date") @db.Date
-  partnershipRenewalDate DateTime?        @map("partnership_renewal_date") @db.Date
-  notes                 String?
-  active                Boolean           @default(true)
-  createdAt             DateTime          @default(now()) @map("created_at")
-  updatedAt             DateTime          @updatedAt @map("updated_at")
+  id                     String            @id @default(cuid())
+  name                   String            @unique
+  website                String?
+  logoUrl                String?           @map("logo_url")
+  partnershipStatus      PartnershipStatus @default(NONE) @map("partnership_status")
+  partnershipLevel       String?           @map("partnership_level")
+  partnershipStartDate   DateTime?         @map("partnership_start_date") @db.Date
+  partnershipRenewalDate DateTime?         @map("partnership_renewal_date") @db.Date
+  notes                  String?
+  active                 Boolean           @default(true)
+  createdAt              DateTime          @default(now()) @map("created_at")
+  updatedAt              DateTime          @updatedAt @map("updated_at")
 
   technologies   Technology[]
   certifications Certification[]
@@ -237,7 +238,7 @@ model Technology {
   createdAt   DateTime            @default(now()) @map("created_at")
   updatedAt   DateTime            @updatedAt @map("updated_at")
 
-  vendor         Vendor           @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  vendor         Vendor          @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   certifications Certification[]
   roadmapItems   RoadmapItem[]
   newsSources    NewsSource[]
@@ -264,10 +265,10 @@ model Certification {
   createdAt      DateTime            @default(now()) @map("created_at")
   updatedAt      DateTime            @updatedAt @map("updated_at")
 
-  vendor                   Vendor                     @relation(fields: [vendorId], references: [id], onDelete: Restrict)
-  technology               Technology?                @relation(fields: [technologyId], references: [id], onDelete: SetNull)
+  vendor                     Vendor                      @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  technology                 Technology?                 @relation(fields: [technologyId], references: [id], onDelete: SetNull)
   professionalCertifications ProfessionalCertification[]
-  roadmapItems             RoadmapItem[]
+  roadmapItems               RoadmapItem[]
 
   @@index([vendorId])
   @@index([technologyId])
@@ -277,22 +278,22 @@ model Certification {
 
 // Historico (D-004): renovacao gera NOVA linha, nunca sobrescreve.
 model ProfessionalCertification {
-  id              String    @id @default(cuid())
-  professionalId  String    @map("professional_id")
-  certificationId String    @map("certification_id")
-  certificateNumber String? @map("certificate_number")
-  obtainedAt      DateTime? @map("obtained_at") @db.Date
-  expiresAt       DateTime? @map("expires_at") @db.Date
-  proofUrl        String?   @map("proof_url")
+  id                   String    @id @default(cuid())
+  professionalId       String    @map("professional_id")
+  certificationId      String    @map("certification_id")
+  certificateNumber    String?   @map("certificate_number")
+  obtainedAt           DateTime? @map("obtained_at") @db.Date
+  expiresAt            DateTime? @map("expires_at") @db.Date
+  proofUrl             String?   @map("proof_url")
   // Anexo do comprovante (D-025): arquivo PDF guardado fora do banco.
   attachmentFile       String?   @map("attachment_file")
   attachmentName       String?   @map("attachment_name")
   attachmentMime       String?   @map("attachment_mime")
   attachmentSize       Int?      @map("attachment_size")
   attachmentUploadedAt DateTime? @map("attachment_uploaded_at")
-  notes           String?
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  notes                String?
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
 
   professional  Professional  @relation(fields: [professionalId], references: [id], onDelete: Cascade)
   certification Certification @relation(fields: [certificationId], references: [id], onDelete: Restrict)
@@ -308,29 +309,29 @@ model ProfessionalCertification {
 // ---------------------------------------------------------------------------
 
 model RoadmapItem {
-  id              String          @id @default(cuid())
-  professionalId  String          @map("professional_id")
-  technologyId    String?         @map("technology_id")
-  certificationId String?         @map("certification_id")
-  title           String
-  objective       String?
-  description     String?
-  type            RoadmapType
-  priority        RoadmapPriority @default(MEDIUM)
-  status          RoadmapStatus   @default(BACKLOG)
-  startDate       DateTime?       @map("start_date") @db.Date
-  dueDate         DateTime?       @map("due_date") @db.Date
-  completedAt     DateTime?       @map("completed_at")
-  ownerId         String?         @map("owner_id")
-  notes           String?
+  id                   String          @id @default(cuid())
+  professionalId       String          @map("professional_id")
+  technologyId         String?         @map("technology_id")
+  certificationId      String?         @map("certification_id")
+  title                String
+  objective            String?
+  description          String?
+  type                 RoadmapType
+  priority             RoadmapPriority @default(MEDIUM)
+  status               RoadmapStatus   @default(BACKLOG)
+  startDate            DateTime?       @map("start_date") @db.Date
+  dueDate              DateTime?       @map("due_date") @db.Date
+  completedAt          DateTime?       @map("completed_at")
+  ownerId              String?         @map("owner_id")
+  notes                String?
   // Anexo do comprovante do item (D-026): PDF guardado fora do banco.
-  attachmentFile       String?   @map("attachment_file")
-  attachmentName       String?   @map("attachment_name")
-  attachmentMime       String?   @map("attachment_mime")
-  attachmentSize       Int?      @map("attachment_size")
-  attachmentUploadedAt DateTime? @map("attachment_uploaded_at")
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
+  attachmentFile       String?         @map("attachment_file")
+  attachmentName       String?         @map("attachment_name")
+  attachmentMime       String?         @map("attachment_mime")
+  attachmentSize       Int?            @map("attachment_size")
+  attachmentUploadedAt DateTime?       @map("attachment_uploaded_at")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
 
   professional  Professional   @relation("ProfessionalRoadmap", fields: [professionalId], references: [id], onDelete: Cascade)
   owner         Professional?  @relation("RoadmapOwner", fields: [ownerId], references: [id], onDelete: SetNull)
@@ -397,32 +398,32 @@ model NewsSource {
 }
 
 model NewsItem {
-  id           String    @id @default(cuid())
-  sourceId     String?   @map("source_id")
-  vendorId     String?   @map("vendor_id")
-  technologyId String?   @map("technology_id")
-  externalId   String?   @map("external_id")
-  url          String    @unique
-  title        String
-  summary      String?
-  author       String?
-  kind         NewsKind  @default(GENERAL)
-  origin       String    @default("feed")
-  publishedAt  DateTime? @map("published_at")
-  pinned       Boolean   @default(false)
-  hidden       Boolean   @default(false)
+  id             String     @id @default(cuid())
+  sourceId       String?    @map("source_id")
+  vendorId       String?    @map("vendor_id")
+  technologyId   String?    @map("technology_id")
+  externalId     String?    @map("external_id")
+  url            String     @unique
+  title          String
+  summary        String?
+  author         String?
+  kind           NewsKind   @default(GENERAL)
+  origin         String     @default("feed")
+  publishedAt    DateTime?  @map("published_at")
+  pinned         Boolean    @default(false)
+  hidden         Boolean    @default(false)
   // Ranking de relevancia para o consultor (0..100), foco e motivo curto.
   // Preenchidos por heuristica e/ou pelo resumo inteligente (IA).
-  relevanceScore Int       @default(0) @map("relevance_score")
+  relevanceScore Int        @default(0) @map("relevance_score")
   relevanceFocus NewsFocus? @map("relevance_focus")
-  relevanceNote  String?   @map("relevance_note")
-  scoredAt       DateTime? @map("scored_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  relevanceNote  String?    @map("relevance_note")
+  scoredAt       DateTime?  @map("scored_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
 
-  source     NewsSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
-  vendor     Vendor?     @relation(fields: [vendorId], references: [id], onDelete: SetNull)
-  technology Technology? @relation(fields: [technologyId], references: [id], onDelete: SetNull)
+  source     NewsSource?     @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  vendor     Vendor?         @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  technology Technology?     @relation(fields: [technologyId], references: [id], onDelete: SetNull)
   readStates NewsReadState[]
 
   @@index([vendorId])
@@ -541,47 +542,60 @@ model Client {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  tickets      Ticket[]
-  measurements MonthlyMeasurement[]
+  tickets          Ticket[]
+  measurements     MonthlyMeasurement[]
+  contracts        Contract[]
+  generatedReports GeneratedReport[]
 
   @@index([active])
   @@map("clients")
 }
 
 model Ticket {
-  id       String @id @default(cuid())
+  id               String    @id @default(cuid())
   // Chave de idempotencia do espelho: o id do chamado no Zoho Desk.
-  zohoTicketId String  @unique @map("zoho_ticket_id")
-  ticketNumber String? @map("ticket_number")
-  title        String
+  zohoTicketId     String    @unique @map("zoho_ticket_id")
+  ticketNumber     String?   @map("ticket_number")
+  title            String
   // Status vem como TEXTO LIVRE do Zoho (os rotulos mudam com o tempo); o
   // campo status_type guarda a classificacao estavel do Zoho, quando houver.
-  status     String
-  statusType String? @map("status_type")
-  priority   String?
-  category   String?
-  assigneeName String? @map("assignee_name")
-  openDate  DateTime  @map("open_date")
+  status           String
+  statusType       String?   @map("status_type")
+  priority         String?
+  category         String?
+  assigneeName     String?   @map("assignee_name")
+  openDate         DateTime  @map("open_date")
   // Data de referencia da Medicao Mensal (chamado encerrado no mes).
-  closeDate DateTime? @map("close_date")
-  timeSpentMinutes Int     @default(0) @map("time_spent_minutes")
+  closeDate        DateTime? @map("close_date")
+  timeSpentMinutes Int       @default(0) @map("time_spent_minutes")
   // Nullable: o Zoho pode nao calcular SLA para todos os chamados.
-  slaCompliant Boolean? @map("sla_compliant")
-  isBillable   Boolean  @default(true) @map("is_billable")
+  slaCompliant     Boolean?  @map("sla_compliant")
+  isBillable       Boolean   @default(true) @map("is_billable")
+  // Campos do espelho completados na D-030 (contato/departamento/conta e
+  // tecnologia). Opcionais: o Zoho pode nao trazer todos.
+  contactId        String?   @map("contact_id")
+  departmentId     String?   @map("department_id")
+  accountId        String?   @map("account_id")
+  accountName      String?   @map("account_name")
+  assigneeId       String?   @map("assignee_id")
+  // Valores do campo personalizado de "Tecnologia" normalizados.
+  technologyName   String?   @map("technology_name")
   // Usado para sincronizacao incremental (so busca o que mudou desde a ultima).
-  zohoModifiedAt DateTime? @map("zoho_modified_at")
-  lastSyncedAt   DateTime? @map("last_synced_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  zohoModifiedAt   DateTime? @map("zoho_modified_at")
+  lastSyncedAt     DateTime? @map("last_synced_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
   clientId String @map("client_id")
   client   Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
 
   measurementItems MonthlyMeasurementItem[]
+  timeEntries      TimeEntry[]
 
   @@index([clientId, closeDate])
   @@index([clientId, openDate])
   @@index([status])
+  @@index([technologyName])
   @@map("tickets")
 }
 
@@ -615,13 +629,13 @@ enum MeasurementStatus {
 }
 
 model MonthlyMeasurement {
-  id      String @id @default(cuid())
-  clientId String @map("client_id")
-  client  Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  year    Int
+  id       String            @id @default(cuid())
+  clientId String            @map("client_id")
+  client   Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  year     Int
   // 1..12
-  month   Int
-  status  MeasurementStatus @default(DRAFT)
+  month    Int
+  status   MeasurementStatus @default(DRAFT)
 
   ticketCount       Int @default(0) @map("ticket_count")
   timeSpentMinutes  Int @default(0) @map("time_spent_minutes")
@@ -649,8 +663,8 @@ model MonthlyMeasurementItem {
   measurementId String             @map("measurement_id")
   measurement   MonthlyMeasurement @relation(fields: [measurementId], references: [id], onDelete: Cascade)
   // Referencia ao chamado (SetNull: o snapshot sobrevive se o chamado sumir).
-  ticketId String? @map("ticket_id")
-  ticket   Ticket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  ticketId      String?            @map("ticket_id")
+  ticket        Ticket?            @relation(fields: [ticketId], references: [id], onDelete: SetNull)
 
   // Snapshot imutavel dos campos relevantes no fechamento.
   zohoTicketId     String    @map("zoho_ticket_id")
@@ -665,4 +679,91 @@ model MonthlyMeasurementItem {
 
   @@index([measurementId])
   @@map("monthly_measurement_items")
+}
+
+// ---------------------------------------------------------------------------
+// Chamados (D-030): contratos, lancamentos de tempo por chamado e relatorios
+// gerados. Aditivo - nada nos modelos existentes muda.
+// ---------------------------------------------------------------------------
+
+enum BalancePolicy {
+  EXPIRE
+  ACCUMULATE
+}
+
+enum GeneratedReportType {
+  FINANCIAL
+  CLIENT
+}
+
+enum BillingStatus {
+  STANDARD
+  WITH_EXTRA_HOURS
+}
+
+model Contract {
+  id              String        @id @default(cuid())
+  clientId        String        @map("client_id")
+  client          Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  planName        String        @map("plan_name")
+  // Franquia mensal em minutos inteiros.
+  includedMinutes Int           @default(0) @map("included_minutes")
+  monthlyValue    Decimal       @default(0) @map("monthly_value") @db.Decimal(12, 2)
+  // Valor da hora adicional (R$/hora).
+  extraHourValue  Decimal       @default(0) @map("extra_hour_value") @db.Decimal(12, 2)
+  balancePolicy   BalancePolicy @default(EXPIRE) @map("balance_policy")
+  startDate       DateTime      @map("start_date") @db.Date
+  endDate         DateTime?     @map("end_date") @db.Date
+  financeEmail    String?       @map("finance_email")
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@index([clientId])
+  @@index([active])
+  @@map("contracts")
+}
+
+model TimeEntry {
+  id              String   @id @default(cuid())
+  // Chave de idempotencia do espelho: id do lancamento no Zoho Desk.
+  zohoTimeEntryId String   @unique @map("zoho_time_entry_id")
+  ticketId        String   @map("ticket_id")
+  ticket          Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ownerId         String?  @map("owner_id")
+  ownerName       String?  @map("owner_name")
+  executedAt      DateTime @map("executed_at")
+  // Tempo em minutos inteiros (convertido de horas/min/seg no sync).
+  minutes         Int      @default(0)
+  description     String?
+  isBillable      Boolean  @default(true) @map("is_billable")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([ticketId])
+  @@index([executedAt])
+  @@map("time_entries")
+}
+
+model GeneratedReport {
+  id            String              @id @default(cuid())
+  clientId      String              @map("client_id")
+  client        Client              @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  type          GeneratedReportType
+  periodStart   DateTime            @map("period_start")
+  periodEnd     DateTime            @map("period_end")
+  billingStatus BillingStatus?      @map("billing_status")
+  filePath      String?             @map("file_path")
+  fileName      String?             @map("file_name")
+  generatedById String?             @map("generated_by_id")
+  generatedBy   Professional?       @relation("ReportGeneratedBy", fields: [generatedById], references: [id], onDelete: SetNull)
+  generatedAt   DateTime            @default(now()) @map("generated_at")
+  sentAt        DateTime?           @map("sent_at")
+  sentTo        String?             @map("sent_to")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  @@index([clientId, type])
+  @@index([generatedAt])
+  @@map("generated_reports")
 }

@@ -23,6 +23,9 @@ Client 1─N Ticket
 UnmappedTicket  (fila: chamados do Zoho sem Client mapeado)
 Client 1─N MonthlyMeasurement 1─N MonthlyMeasurementItem
 Ticket 1─N MonthlyMeasurementItem (opcional, SetNull)
+Client 1─N Contract
+Ticket 1─N TimeEntry
+Client 1─N GeneratedReport N─1 Professional (generatedBy, opcional)
 ```
 
 Decisão **D-003**: `users` e `professionals` são a **mesma tabela**
@@ -121,7 +124,9 @@ Cliente usado na Medição Mensal (D-029). `document` (CNPJ/NIF) e `zoho_account
 `id, zoho_ticket_id (único), ticket_number (nullable), title, status, status_type
 (nullable), priority (nullable), category (nullable), assignee_name (nullable),
 open_date, close_date (nullable), time_spent_minutes (0), sla_compliant (nullable),
-is_billable (true), zoho_modified_at (nullable), last_synced_at (nullable), client_id,
+is_billable (true), contact_id (nullable), department_id (nullable), account_id (nullable),
+account_name (nullable), assignee_id (nullable), technology_name (nullable),
+zoho_modified_at (nullable), last_synced_at (nullable), client_id,
 timestamps`
 Espelho local (somente leitura) dos chamados do Zoho Desk (D-029). Datas em **UTC**;
 `close_date` é a **data de referência da Medição Mensal** (interpretada em
@@ -129,7 +134,8 @@ Espelho local (somente leitura) dos chamados do Zoho Desk (D-029). Datas em **UT
 `sla_compliant` é **nullable** (o Zoho pode não calcular SLA). `client_id` é FK
 **obrigatória** com `onDelete: Restrict`. `zoho_modified_at` habilita a sincronização
 incremental (Fase 3). Índices: `(client_id, close_date)`, `(client_id, open_date)`,
-`status`.
+`status`, `technology_name`. Os campos `contact_id`, `department_id`, `account_id`,
+`account_name`, `assignee_id` e `technology_name` foram adicionados na D-030 (opcionais).
 
 ### unmapped_tickets
 `id, zoho_ticket_id (único), account_id (nullable), account_name (nullable),
@@ -152,6 +158,30 @@ status (texto), close_date (nullable), time_spent_minutes, sla_compliant (nullab
 is_billable, created_at`
 **Snapshot imutável** dos chamados no fechamento (D-029). `ticket_id` referencia `tickets`
 com `onDelete: SetNull` — o snapshot sobrevive se o chamado sumir. Índice: `measurement_id`.
+
+### contracts
+`id, client_id, plan_name, included_minutes (0), monthly_value (Decimal 12,2), extra_hour_value
+(Decimal 12,2), balance_policy [EXPIRE|ACCUMULATE], start_date, end_date (nullable),
+finance_email (nullable), active (true), timestamps`
+Contrato de serviço do cliente (D-030): franquia mensal em **minutos**, valor mensal e valor
+da hora adicional (R$/hora), política de saldo e vigência. Base da **regra de faturamento** do
+Relatório Financeiro. `client_id` é FK com `onDelete: Restrict`. Índices: `client_id`, `active`.
+
+### time_entries
+`id, zoho_time_entry_id (único), ticket_id, owner_id (nullable), owner_name (nullable),
+executed_at, minutes (0), description (nullable), is_billable (true), timestamps`
+**Lançamentos de tempo** de um chamado (D-030), importados de
+`GET /tickets/{id}/timeEntries` no Zoho Desk. `minutes` é **inteiro** (convertido de
+horas/min/seg). `zoho_time_entry_id` é a chave de idempotência (upsert no sync). `ticket_id`
+referencia `tickets` com `onDelete: Cascade`. Índices: `ticket_id`, `executed_at`.
+
+### generated_reports
+`id, client_id, type [FINANCIAL|CLIENT], period_start, period_end, billing_status
+[STANDARD|WITH_EXTRA_HOURS] (nullable), file_path (nullable), file_name (nullable),
+generated_by_id (nullable), generated_at, sent_at (nullable), sent_to (nullable), timestamps`
+Auditoria dos **relatórios gerados** (D-030): quem gerou e quando (`generated_by_id` →
+`professionals`, `onDelete: SetNull`), e o registro de envio (`sent_at`/`sent_to`).
+Índices: `(client_id, type)`, `generated_at`.
 
 ### app_settings
 `key (PK), value (jsonb), timestamps`
@@ -178,6 +208,9 @@ devolvida pela API.
 | NewsFocus | FEATURE, CERTIFICATION, SECURITY, RELEASE, OTHER |
 | ReleaseCategory | FEATURE, IMPROVEMENT, FIX, SECURITY, INFRA, OTHER |
 | MeasurementStatus | DRAFT, CLOSED |
+| BalancePolicy | EXPIRE, ACCUMULATE |
+| GeneratedReportType | FINANCIAL, CLIENT |
+| BillingStatus | STANDARD, WITH_EXTRA_HOURS |
 
 ## 4. Status de certificação (derivado — não é coluna)
 
@@ -197,6 +230,9 @@ Calculado por `CertificationStatusService` a partir de `expires_at` e de
 - `news_digests`: `created_at`.
 - `releases`: `version` (único), `hidden`, `released_at`.
 - `release_items`: `release_id`.
+- `contracts`: `client_id`, `active`.
+- `time_entries`: `ticket_id`, `executed_at`.
+- `generated_reports`: `(client_id, type)`, `generated_at`.
 
 ## 6. Migrations
 
@@ -213,3 +249,4 @@ Calculado por `CertificationStatusService` a partir de `expires_at` e de
 | `20261009201718_add_tickets_clients` | Tabelas `clients` e `tickets` (espelho dos chamados do Zoho Desk + Medições Mensais; D-029). |
 | `20261013163255_unmapped_tickets` | Tabela `unmapped_tickets` (fila de chamados do Zoho sem cliente mapeado; D-029). |
 | `20261013163918_monthly_measurements` | Tabelas `monthly_measurements`/`monthly_measurement_items` (Medições Mensais; D-029). |
+| `20261013172326_add_contracts_time_entries_reports` | Tabelas `contracts`, `time_entries` e `generated_reports`; colunas novas em `tickets` e enums `BalancePolicy`/`GeneratedReportType`/`BillingStatus` (D-030). |
