@@ -1017,6 +1017,23 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+echo "--- 11l. Lancamentos de tempo: reimportacao (D-032) ---"
+call GET /contracts "$ADMIN"
+if [ "$CODE" = '404' ]; then
+  echo "[SKIP] modulo Chamados desligado (TICKETS_ENABLED=false)"
+else
+  call POST /tickets/sync/time-entries "$ADMIN"
+  if [ "$CODE" = '200' ]; then
+    check "$([ "$(q 'typeof o.entries')" = 'number' ]; echo $?)" \
+      'reimportar lancamentos de tempo (ADMIN)' "http=$CODE entries=$(q 'o.entries')"
+  else
+    check "$([ "$CODE" = '503' ]; echo $?)" 'reimportar lancamentos desligado -> 503' "http=$CODE"
+  fi
+  call POST /tickets/sync/time-entries "$CONSULTANT"
+  check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao reimporta lancamentos -> 403' "http=$CODE"
+fi
+
+# ---------------------------------------------------------------------------
 echo "--- 12. Limpeza: restaura o estado DEMO ---"
 if [ "$RESET_DEMO" = '1' ]; then
   # Rede de seguranca: dump do banco ANTES de apagar (best-effort). Desative
@@ -1063,8 +1080,8 @@ DELETE FROM refresh_tokens;
 DELETE FROM professionals;"
   rm -rf "$BACKEND_DIR/uploads"
   ( cd "$BACKEND_DIR" && "$NPM_BIN" run seed >/dev/null 2>&1 )
-  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '12' ] && [ "$(count 'SELECT count(*) FROM clients')" = '0' ] && [ "$(count 'SELECT count(*) FROM tickets')" = '0' ] && [ "$(count 'SELECT count(*) FROM contracts')" = '0' ] && [ "$(count 'SELECT count(*) FROM time_entries')" = '0' ] && [ "$(count 'SELECT count(*) FROM generated_reports')" = '0' ]; echo $?)"
-  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 12 releases / 0 clientes / 0 chamados / 0 contratos / 0 lancamentos / 0 relatorios"
+  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '13' ] && [ "$(count 'SELECT count(*) FROM clients')" = '0' ] && [ "$(count 'SELECT count(*) FROM tickets')" = '0' ] && [ "$(count 'SELECT count(*) FROM contracts')" = '0' ] && [ "$(count 'SELECT count(*) FROM time_entries')" = '0' ] && [ "$(count 'SELECT count(*) FROM generated_reports')" = '0' ]; echo $?)"
+  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 13 releases / 0 clientes / 0 chamados / 0 contratos / 0 lancamentos / 0 relatorios"
 else
   echo "[SKIP] restauracao do seed (RESET_DEMO=0)"
 fi

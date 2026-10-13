@@ -141,8 +141,9 @@ etc.). O **banco sobrepõe o ambiente**.
   **upsert por `zoho_ticket_id`**; se o `accountId` não casar com nenhum `Client.zoho_account_id`,
   vai para **`unmapped_tickets`** (não se adivinha o cliente) — resolvendo o **nome da conta** em
   `GET /accounts/{id}` (cache por execução) e **removendo a linha** da fila quando o cliente passa
-  a existir (D-031). Após gravar o chamado,
-  `afterTicketWrite` busca `timeEntries`, faz upsert por `zoho_time_entry_id`, remove lançamentos
+  a existir (D-031). Após gravar o chamado, `afterTicketWrite` busca os lançamentos em
+  `GET /tickets/{id}/timeEntry` (**singular** — `timeEntries` responde `404`, D-032), resolve o
+  nome do agente (`GET /agents/{id}`), faz upsert por `zoho_time_entry_id`, remove lançamentos
   que sumiram e **recalcula `time_spent_minutes` = Σ minutos**. Registra o **histórico** (20
   últimas execuções).
 - `tickets/zoho-sync.scheduler.ts` — `setInterval` conforme a **frequência efetiva** (`MANUAL`
@@ -216,7 +217,7 @@ Endpoints completos em [API.md](./API.md). Resumo:
 | Grupo | Rotas |
 |-------|-------|
 | **Clientes** | `GET/POST/PUT/PATCH/DELETE /clients` |
-| **Chamados** | `GET /tickets`, `GET /tickets/:id`, `GET /tickets/unmapped`, `POST /tickets/unmapped/:id/link`, `GET /tickets/unmapped/groups`, `POST /tickets/unmapped/link`, `GET /tickets/sync/status`, `POST /tickets/sync` |
+| **Chamados** | `GET /tickets`, `GET /tickets/:id`, `GET /tickets/unmapped`, `POST /tickets/unmapped/:id/link`, `GET /tickets/unmapped/groups`, `POST /tickets/unmapped/link`, `GET /tickets/sync/status`, `POST /tickets/sync`, `POST /tickets/sync/time-entries` |
 | **Medições (D-029)** | `/measurements` (+ `close/reopen`, `export.csv|pdf`) |
 | **Contratos** | `GET/POST/PUT/PATCH/DELETE /contracts` |
 | **Relatórios** | `GET /ticket-reports/preview`; `POST /ticket-reports`; `GET /ticket-reports[/:id]` |

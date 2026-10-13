@@ -102,6 +102,26 @@ test('mapZohoTimeEntry: converte horas/min/seg em minutos inteiros', () => {
   assert.equal(entry!.executedAt.toISOString(), '2026-10-05T12:00:00.000Z');
 });
 
+test('mapZohoTimeEntry: aceita horas/min/seg como texto (payload real, D-032)', () => {
+  const entry = mapZohoTimeEntry(
+    {
+      id: 'T-626-2',
+      ownerId: 'a1',
+      executedTime: '2026-07-14T14:00:00Z',
+      hoursSpent: '1',
+      minutesSpent: '30',
+      secondsSpent: '0',
+      isBillable: false,
+    },
+    'ticket-626',
+  );
+
+  assert.ok(entry);
+  assert.equal(entry!.minutes, 90); // "1"h + "30"min -> 90 min
+  assert.equal(entry!.ownerName, null);
+  assert.equal(entry!.isBillable, false);
+});
+
 test('mapZohoTimeEntry: null quando falta o id', () => {
   assert.equal(
     mapZohoTimeEntry({ id: undefined as unknown as string }, 't1'),

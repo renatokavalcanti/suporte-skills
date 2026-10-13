@@ -81,8 +81,9 @@ verificações são puladas (útil em ambiente real, onde só o ADMIN existe). A
 | 11i. Tickets e Medições Mensais (D-029) | 20 |
 | 11j. Chamados — contratos e relatórios (D-030) | 25 |
 | 11k. Fila de não mapeados: vínculo em lote e limpeza (D-031) | 9 |
+| 11l. Lançamentos de tempo: reimportação (D-032) | 2 |
 | 12. Limpeza e restauração do seed | 1 |
-| **Total** | **231** |
+| **Total** | **233** |
 
 Suítes das fases anteriores, reexecutadas após as correções: F2 23/23, F3 15/15,
 F4 16/16, F5 13/13, F7 6/6.
@@ -367,6 +368,13 @@ módulo ligado:
 - **Posse**: o **CONSULTANT** recebe **`403`**.
 
 Os artefatos da 11k (chamados, linhas da fila e cliente) são removidos ao fim do próprio bloco.
+
+O **bloco 11l** (2 verificações) cobre a **reimportação dos lançamentos de tempo** (D-032):
+`POST /tickets/sync/time-entries` responde `200` com `{ tickets, entries, errors }` ao ADMIN (ou
+`503` quando o Zoho não está configurado — degradação graciosa, como no `POST /tickets/sync`); o
+**CONSULTANT** recebe **`403`**. A leitura real dos lançamentos (endpoint `/timeEntry`) foi
+validada contra o **Zoho Desk de produção**; o parâmetro `hoursSpent`/`minutesSpent`/`secondsSpent`
+vem como **texto** e é somado em minutos (`ticket #626` → 4 lançamentos = **300 min**).
 
 ## 6. Limitações conhecidas (aceitas no MVP)
 

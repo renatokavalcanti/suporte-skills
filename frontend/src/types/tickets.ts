@@ -55,6 +55,12 @@ export interface BulkLinkResult {
   notFound: number;
 }
 
+export interface RefreshTimeEntriesResult {
+  tickets: number;
+  entries: number;
+  errors: number;
+}
+
 export type MeasurementStatus = 'DRAFT' | 'CLOSED';
 
 export interface MeasurementItem {

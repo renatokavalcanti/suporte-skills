@@ -273,6 +273,7 @@ nem registradas em log). Requer `TICKETS_ENABLED=true`; as rotas abaixo são res
 | Método | Rota | Descrição |
 |--------|------|-----------|
 | POST | `/tickets/sync` | Sincroniza agora (manual). Upsert idempotente por `zohoTicketId`, incremental por `modifiedTime`. Devolve o resumo `{ startedAt, finishedAt, fetched, created, updated, unmapped, errors, status }`. `503` quando o Zoho não está configurado. |
+| POST | `/tickets/sync/time-entries` | (ADMIN) **Reimporta os lançamentos de tempo** de todos os chamados espelhados (D-032). Devolve `{ tickets, entries, errors }`; `503` quando o Zoho não está configurado. |
 | GET | `/tickets/sync/status` | `{ syncEnabled, configured, lastRun }` (última execução: data, status e contagens). Nunca expõe credenciais. |
 | GET | `/tickets/unmapped` | Lista paginada da fila de chamados **sem cliente mapeado** (payload cru preservado). |
 | POST | `/tickets/unmapped/:id/link` | Vincula o chamado da fila a um cliente (`{ clientId }`): cria/atualiza o `Ticket`, remove da fila e audita. |

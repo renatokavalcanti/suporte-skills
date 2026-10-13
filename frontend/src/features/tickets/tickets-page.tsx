@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Inbox, RefreshCw, Search } from 'lucide-react';
+import { Clock, Inbox, RefreshCw, Search } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -92,6 +92,27 @@ export function TicketsPage() {
       }),
   });
 
+  const refreshHoursMutation = useMutation({
+    mutationFn: () => ticketsService.refreshTimeEntries(),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      void queryClient.invalidateQueries({ queryKey: ['measurements'] });
+      toast({
+        title: 'Horas atualizadas',
+        description: `${result.tickets} chamado(s), ${result.entries} lançamento(s)${
+          result.errors ? `, ${result.errors} erro(s)` : ''
+        }.`,
+        variant: 'success',
+      });
+    },
+    onError: (error) =>
+      toast({
+        title: 'Não foi possível atualizar as horas',
+        description: extractApiError(error),
+        variant: 'error',
+      }),
+  });
+
   const clientOptions =
     clientsQuery.data?.data.map((client) => ({
       value: client.id,
@@ -109,6 +130,16 @@ export function TicketsPage() {
               <Button variant="outline" onClick={() => setUnmappedOpen(true)}>
                 <Inbox className="h-4 w-4" />
                 Não mapeados
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => refreshHoursMutation.mutate()}
+                disabled={refreshHoursMutation.isPending}
+              >
+                <Clock
+                  className={`h-4 w-4 ${refreshHoursMutation.isPending ? 'animate-spin' : ''}`}
+                />
+                Atualizar horas
               </Button>
               <Button
                 onClick={() => syncMutation.mutate()}

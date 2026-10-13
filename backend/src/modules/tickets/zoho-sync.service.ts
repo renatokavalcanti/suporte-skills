@@ -99,6 +99,13 @@ interface LinkRowResult {
   created: boolean;
 }
 
+/** Resumo da reimportacao (backfill) dos lancamentos de tempo (D-032). */
+export interface RefreshTimeEntriesResult {
+  tickets: number;
+  entries: number;
+  errors: number;
+}
+
 function text(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
@@ -115,6 +122,8 @@ function text(value: unknown): string | null {
 @Injectable()
 export class ZohoSyncService {
   private readonly logger = new Logger(ZohoSyncService.name);
+  /** Cache de nome de agente (ownerId -> nome) por execucao (D-032). */
+  private readonly agentNameCache = new Map<string, string | null>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -164,6 +173,7 @@ export class ZohoSyncService {
 
     const maxPerRun = this.credentials.maxTicketsPerRun();
     const accountNames = new Map<string, string | null>();
+    this.agentNameCache.clear();
     let from = 0;
 
     try {
@@ -423,7 +433,53 @@ export class ZohoSyncService {
 
     await this.prisma.unmappedTicket.delete({ where: { id: row.id } });
 
+    // Espelha os lancamentos de tempo do chamado recem-vinculado (D-032): o
+    // caminho da fila nao passa pelo sync, entao precisa buscar aqui.
+    await this.afterTicketWrite(ticket.id, mapped.zohoTicketId);
+
     return { ...ticket, created: !existing };
+  }
+
+  /**
+   * Reimporta os lancamentos de tempo de **todos** os chamados ja espelhados
+   * (D-032). Serve de *backfill* apos a correcao do endpoint (`/timeEntry`) e
+   * para chamados vinculados pela fila. Limite por execucao =
+   * `ZOHO_MAX_TICKETS_PER_RUN`.
+   */
+  async refreshTimeEntries(
+    actor: AuthenticatedUser,
+  ): Promise<RefreshTimeEntriesResult> {
+    if (!this.credentials.isConfigured()) {
+      throw new ServiceUnavailableException('Sincronizacao com o Zoho desativada');
+    }
+
+    const tickets = await this.prisma.ticket.findMany({
+      orderBy: { lastSyncedAt: 'desc' },
+      take: this.credentials.maxTicketsPerRun(),
+      select: { id: true, zohoTicketId: true },
+    });
+
+    this.agentNameCache.clear();
+    const result: RefreshTimeEntriesResult = { tickets: 0, entries: 0, errors: 0 };
+
+    for (const ticket of tickets) {
+      const imported = await this.afterTicketWrite(ticket.id, ticket.zohoTicketId);
+      if (imported === null) result.errors += 1;
+      else {
+        result.tickets += 1;
+        result.entries += imported;
+      }
+    }
+
+    await this.audit.record({
+      actorId: actor.id,
+      entity: 'tickets',
+      entityId: 'time_entries',
+      action: 'UPDATE',
+      after: { action: 'refresh_time_entries', ...result },
+    });
+
+    return result;
   }
 
   private async processTicket(
@@ -531,13 +587,14 @@ export class ZohoSyncService {
 
   /**
    * Espelha os lancamentos de tempo do chamado e recalcula `timeSpentMinutes`
-   * como a **soma** dos lancamentos (D-030). Se a busca falhar, mantem o tempo
-   * atual (nao zera nem derruba a sincronizacao do chamado).
+   * como a **soma** dos lancamentos (D-030/D-032). Devolve a quantidade de
+   * lancamentos importados, ou `null` quando a busca falha (mantem o tempo atual
+   * — nao zera nem derruba a sincronizacao do chamado).
    */
   private async afterTicketWrite(
     ticketId: string,
     zohoTicketId: string,
-  ): Promise<void> {
+  ): Promise<number | null> {
     let entries: ZohoTimeEntryPayload[];
     try {
       entries = await this.client.listTimeEntries(zohoTicketId);
@@ -546,7 +603,7 @@ export class ZohoSyncService {
       this.logger.warn(
         `Falha ao buscar lancamentos do chamado ${zohoTicketId}: ${message}`,
       );
-      return;
+      return null;
     }
 
     const seen: string[] = [];
@@ -555,6 +612,9 @@ export class ZohoSyncService {
     for (const raw of entries) {
       const entry = mapZohoTimeEntry(raw, ticketId);
       if (!entry) continue;
+      if (!entry.ownerName && entry.ownerId) {
+        entry.ownerName = await this.resolveAgentName(entry.ownerId);
+      }
       seen.push(entry.zohoTimeEntryId);
       total += entry.minutes;
       await this.prisma.timeEntry.upsert({
@@ -580,6 +640,18 @@ export class ZohoSyncService {
       where: { id: ticketId },
       data: { timeSpentMinutes: total },
     });
+
+    return seen.length;
+  }
+
+  /** Resolve (e memoriza por execucao) o nome do agente no Zoho (D-032). */
+  private async resolveAgentName(agentId: string): Promise<string | null> {
+    if (this.agentNameCache.has(agentId)) {
+      return this.agentNameCache.get(agentId) ?? null;
+    }
+    const name = await this.client.getAgentName(agentId);
+    this.agentNameCache.set(agentId, name);
+    return name;
   }
 
   private async loadState(): Promise<ZohoSyncState> {

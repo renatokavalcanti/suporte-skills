@@ -124,8 +124,9 @@ export class ZohoClientService {
   }
 
   /**
-   * Lista os lancamentos de tempo de um chamado (D-030): usa o **id interno** do
-   * chamado no Zoho, paginando por `from`/`limit`.
+   * Lista os lancamentos de tempo de um chamado (D-030/D-032). O endpoint do
+   * Zoho Desk e' **`/tickets/{id}/timeEntry`** (singular) — a forma plural
+   * (`timeEntries`) responde `404`. Pagina por `from`/`limit`.
    */
   async listTimeEntries(ticketId: string): Promise<ZohoTimeEntryPayload[]> {
     const creds = this.credentials.get();
@@ -142,7 +143,7 @@ export class ZohoClientService {
         limit: String(pageSize),
       });
       const response = await this.request(
-        `${creds.apiBaseUrl}/tickets/${encodeURIComponent(ticketId)}/timeEntries?${query.toString()}`,
+        `${creds.apiBaseUrl}/tickets/${encodeURIComponent(ticketId)}/timeEntry?${query.toString()}`,
         {
           method: 'GET',
           headers: {
@@ -195,6 +196,50 @@ export class ZohoClientService {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(
         `Falha ao resolver o nome da conta ${accountId} no Zoho: ${message}`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Resolve o nome do agente (responsavel pelo lancamento de tempo) no Zoho
+   * (`GET /agents/{id}`), que devolve `firstName`/`lastName` (D-032) — a listagem
+   * de lancamentos traz apenas o `ownerId`. Falha de forma silenciosa.
+   */
+  async getAgentName(agentId: string): Promise<string | null> {
+    const creds = this.credentials.get();
+    if (!creds) return null;
+
+    try {
+      const token = await this.accessToken(creds);
+      const response = await this.request(
+        `${creds.apiBaseUrl}/agents/${encodeURIComponent(agentId)}`,
+        {
+          method: 'GET',
+          headers: {
+            authorization: `Zoho-oauthtoken ${token}`,
+            orgId: creds.orgId,
+          },
+        },
+        creds.fetchTimeoutMs,
+      );
+      const json = (await response.json()) as {
+        firstName?: string;
+        lastName?: string;
+        emailId?: string;
+      };
+      const name = [json.firstName, json.lastName]
+        .map((part) => (typeof part === 'string' ? part.trim() : ''))
+        .filter((part) => part !== '')
+        .join(' ')
+        .trim();
+      if (name !== '') return name;
+      const email = (json.emailId ?? '').trim();
+      return email === '' ? null : email;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Falha ao resolver o nome do agente ${agentId} no Zoho: ${message}`,
       );
       return null;
     }

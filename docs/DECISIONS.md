@@ -624,6 +624,28 @@ conta. **Sem dependência nova.** Versão: `0.9.1`.
 
 ---
 
+## D-032 — Lançamentos de tempo: endpoint correto e reimportação
+**Data:** 13/10/2026
+**Decisão:** corrigir a leitura dos **lançamentos de tempo** do Zoho Desk, espelhá-los também no
+**vínculo pela fila** e oferecer uma ação de **reimportação** para os chamados já espelhados.
+**Contexto:** no uso real, o chamado **#626** tinha **4 lançamentos (5h)** no Zoho, mas o espelho
+mostrava **0 minutos**. Duas causas: (a) o cliente HTTP usava `/tickets/{id}/timeEntries`
+(**plural**), que o Zoho responde **404** — o correto é **`/timeEntry`** (singular); a falha era
+**silenciosa** (`afterTicketWrite` captura o erro e mantém o tempo atual); (b) o caminho de
+**vínculo pela fila** (`linkRow`, D-031) **não** chamava `afterTicketWrite`, então chamados
+vinculados manualmente nunca buscavam os lançamentos.
+**Decisões:**
+1. **Endpoint** `/tickets/{ticketId}/timeEntry` (singular), mantendo a paginação `from`/`limit`.
+2. **Vínculo pela fila** (`linkRow`) passa a chamar `afterTicketWrite` (espelha os lançamentos).
+3. **Reimportação**: `POST /tickets/sync/time-entries` (ADMIN) reimporta os lançamentos de todos
+   os chamados espelhados (limite `ZOHO_MAX_TICKETS_PER_RUN`); botão **"Atualizar horas"** na tela.
+4. **Nome do agente**: `ownerName` resolvido via `GET /agents/{id}` (`firstName`+`lastName`),
+   com cache por execução; falha isolada **não** derruba o sync.
+**Consequências:** aditivo e retrocompatível (sem migration). `timeSpentMinutes` volta a ser a
+**soma real** dos lançamentos; medições e relatórios passam a ter horas. Versão: `0.9.2`.
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.

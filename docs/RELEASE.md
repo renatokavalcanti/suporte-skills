@@ -32,6 +32,26 @@ git fetch --tags origin && git checkout -f main   # .env/data/certs/backups perm
 
 ---
 
+# Release — 0.9.2 (D-032) — lançamentos de tempo
+
+**Escopo:** corrige a leitura dos **lançamentos de tempo** do Zoho Desk (endpoint
+`/tickets/{id}/timeEntry`, **singular**), espelha os lançamentos ao **vincular pela fila** e
+adiciona a ação **"Atualizar horas"** (`POST /tickets/sync/time-entries`) para reimportar os
+chamados já espelhados. **Aditivo** — sem migration.
+
+- **Backend:** endpoint singular em `zoho-client.service.ts`; `linkRow` chama `afterTicketWrite`;
+  `refreshTimeEntries` + rota `POST /tickets/sync/time-entries`; `ownerName` via `GET /agents/{id}`.
+- **Frontend:** botão **"Atualizar horas"** na tela de Tickets (ADMIN).
+- **Testes:** backend **73/73**; aceite bloco **11l** (total **233**).
+
+**Deploy:** `bash scripts/deploy.sh` (ou `bash scripts/deploy.sh v0.9.2`). Sem migration. Depois do
+deploy, rode **"Atualizar horas"** (ou `POST /tickets/sync/time-entries`) para **backfill** dos
+chamados já espelhados.
+
+**Rollback:** `git checkout -f v0.9.1 && docker compose up -d --build`.
+
+---
+
 # Release — 0.9.1 (D-031) — fila de não mapeados
 
 **Escopo:** vínculo em lote na fila `unmapped_tickets` (por conta ou por seleção), **auto-limpeza**

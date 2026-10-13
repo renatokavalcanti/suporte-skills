@@ -106,6 +106,11 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > (resolvido no Zoho Desk sob demanda). Aditivo — sem migration; rotas novas
 > `GET /tickets/unmapped/groups` e `POST /tickets/unmapped/link`. Bloco 11k da suíte. Versão: `0.9.1`.
 
+> **Correção pós-MVP (D-032) — lançamentos de tempo:** o cliente Zoho usava `/tickets/{id}/timeEntries`
+> (**plural** → **404**); o correto é **`/timeEntry`** (**singular**). Também: o **vínculo pela fila**
+> passa a espelhar os lançamentos e há **reimportação** (`POST /tickets/sync/time-entries`) para os
+> chamados já espelhados. Nome do agente resolvido em `GET /agents/{id}`. Bloco 11l; versão: `0.9.2`.
+
 ## Critérios de aceite da Fase 1 (histórico)
 
 1. `docker compose up` sobe `web` + `api` + `db` do zero.

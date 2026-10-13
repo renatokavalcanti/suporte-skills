@@ -32,9 +32,11 @@ interface UnmappedRow {
 
 interface Calls {
   ticketUpsert: any[];
+  ticketUpdate: any[];
   unmappedUpsert: any[];
   unmappedDeleteMany: any[];
   unmappedDelete: any[];
+  timeEntryUpsert: any[];
   appSettingUpsert: any[];
 }
 
@@ -43,6 +45,9 @@ interface HarnessOptions {
   clientById?: (id: string) => { id: string } | null;
   ticketExists?: (zohoTicketId: string) => boolean;
   accountName?: (accountId: string) => string | null;
+  tickets?: Array<{ id: string; zohoTicketId: string }>;
+  timeEntries?: unknown[];
+  agentName?: (agentId: string) => string | null;
 }
 
 function harness(
@@ -52,9 +57,11 @@ function harness(
 ): { service: ZohoSyncService; calls: Calls } {
   const calls: Calls = {
     ticketUpsert: [],
+    ticketUpdate: [],
     unmappedUpsert: [],
     unmappedDeleteMany: [],
     unmappedDelete: [],
+    timeEntryUpsert: [],
     appSettingUpsert: [],
   };
   const prisma = {
@@ -79,6 +86,7 @@ function harness(
     ticket: {
       findUnique: async (a: any) =>
         options.ticketExists?.(a.where.zohoTicketId) ? { id: 't1' } : null,
+      findMany: async () => options.tickets ?? [],
       upsert: async (a: any) => {
         calls.ticketUpsert.push(a);
         return {
@@ -87,10 +95,16 @@ function harness(
           clientId: a.create?.clientId ?? a.update?.clientId ?? 'c1',
         };
       },
-      update: async () => ({ id: 't1' }),
+      update: async (a: any) => {
+        calls.ticketUpdate.push(a);
+        return { id: 't1' };
+      },
     },
     timeEntry: {
-      upsert: async () => ({}),
+      upsert: async (a: any) => {
+        calls.timeEntryUpsert.push(a);
+        return {};
+      },
       deleteMany: async () => ({ count: 0 }),
     },
     unmappedTicket: {
@@ -124,9 +138,10 @@ function harness(
 
   const zoho = {
     listTickets: async () => batch,
-    listTimeEntries: async () => [],
+    listTimeEntries: async () => options.timeEntries ?? [],
     getAccountName: async (accountId: string) =>
       options.accountName?.(accountId) ?? null,
+    getAgentName: async (agentId: string) => options.agentName?.(agentId) ?? null,
   } as unknown as ZohoClientService;
   const credentials = {
     isConfigured: () => true,
@@ -277,4 +292,49 @@ test('listUnmappedGroups: agrupa por conta e ordena por volume (D-031)', async (
     { accountId: 'acc-1', accountName: 'ACME', count: 2 },
     { accountId: 'acc-2', accountName: 'Beta', count: 1 },
   ]);
+});
+
+test('linkRow: busca os lançamentos ao vincular pela fila (D-032)', async () => {
+  const { service, calls } = harness([], () => null, {
+    linkRows: [{ id: 'u1', accountId: 'acc-1', raw: { id: 'Z-1' } }],
+    ticketExists: () => false,
+    timeEntries: [
+      { id: 'te1', hoursSpent: '2', minutesSpent: '0', secondsSpent: '0' },
+    ],
+  });
+
+  await service.linkUnmappedBulk({ clientId: 'client-1', accountId: 'acc-1' }, actor);
+
+  assert.equal(calls.timeEntryUpsert.length, 1);
+  assert.equal(calls.ticketUpdate.at(-1)?.data.timeSpentMinutes, 120);
+});
+
+test('refreshTimeEntries: reimporta e soma os minutos (D-032)', async () => {
+  const { service, calls } = harness([], () => null, {
+    tickets: [{ id: 't1', zohoTicketId: 'Z-626' }],
+    timeEntries: [
+      { id: 'te1', ownerId: 'a1', executedTime: '2026-06-30T13:00:00Z', hoursSpent: '1', minutesSpent: '0', secondsSpent: '0', description: 'FW' },
+      { id: 'te2', ownerId: 'a1', executedTime: '2026-07-14T14:00:00Z', hoursSpent: '1', minutesSpent: '30', secondsSpent: '0' },
+    ],
+    agentName: (id) => (id === 'a1' ? 'José Roberto' : null),
+  });
+
+  const result = await service.refreshTimeEntries(actor);
+
+  assert.deepEqual(result, { tickets: 1, entries: 2, errors: 0 });
+  assert.equal(calls.timeEntryUpsert.length, 2);
+  assert.equal(calls.timeEntryUpsert[0].create.ownerName, 'José Roberto');
+  assert.equal(calls.ticketUpdate.at(-1)?.data.timeSpentMinutes, 150);
+});
+
+test('refreshTimeEntries: 503 quando o Zoho não está configurado (D-032)', async () => {
+  const service = new ZohoSyncService(
+    {} as unknown as PrismaService,
+    noopAudit,
+    { isConfigured: () => false } as unknown as ZohoCredentialsService,
+    {} as unknown as ZohoClientService,
+    {} as unknown as ZohoSettingsService,
+  );
+
+  await assert.rejects(() => service.refreshTimeEntries(actor), ServiceUnavailableException);
 });

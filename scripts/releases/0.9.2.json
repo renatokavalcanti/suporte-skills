@@ -1,0 +1,13 @@
+{
+  "version": "0.9.2",
+  "title": "Lançamentos de tempo: correção do endpoint e reimportação",
+  "summary": "Corrige a leitura dos lançamentos de tempo do Zoho Desk (endpoint /tickets/{id}/timeEntry, no singular), busca os lançamentos ao vincular um chamado pela fila e adiciona a ação \"Atualizar horas\" para reimportar os lançamentos dos chamados já espelhados (D-032).",
+  "releasedAt": "2026-10-13T20:00:00.000Z",
+  "current": true,
+  "items": [
+    { "category": "FIX", "description": "Leitura dos lançamentos de tempo do Zoho Desk no endpoint correto (/tickets/{id}/timeEntry); a forma anterior responde 404 e os lançamentos não apareciam (D-032)", "position": 0 },
+    { "category": "FIX", "description": "Ao vincular um chamado pela fila de não mapeados, os lançamentos de tempo passam a ser espelhados", "position": 1 },
+    { "category": "FEATURE", "description": "Ação \"Atualizar horas\" (ADMIN) / POST /tickets/sync/time-entries para reimportar os lançamentos dos chamados já espelhados", "position": 2 },
+    { "category": "IMPROVEMENT", "description": "Nome do agente (responsável pelo lançamento) resolvido no Zoho Desk (GET /agents/{id})", "position": 3 }
+  ]
+}

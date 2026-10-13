@@ -2,6 +2,7 @@ import { api } from './api';
 import type { Paginated } from '@/types/entities';
 import type {
   BulkLinkResult,
+  RefreshTimeEntriesResult,
   Ticket,
   TicketSyncStatus,
   TicketSyncSummary,
@@ -37,6 +38,12 @@ export const ticketsService = {
   },
   async syncStatus(): Promise<TicketSyncStatus> {
     const { data } = await api.get<TicketSyncStatus>('/tickets/sync/status');
+    return data;
+  },
+  async refreshTimeEntries(): Promise<RefreshTimeEntriesResult> {
+    const { data } = await api.post<RefreshTimeEntriesResult>(
+      '/tickets/sync/time-entries',
+    );
     return data;
   },
   async unmapped(params: {

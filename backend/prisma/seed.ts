@@ -526,12 +526,26 @@ async function main(): Promise<void> {
       title: 'Fila de não mapeados: vínculo em lote, limpeza automática e nome da conta',
       summary: 'A fila de chamados sem cliente mapeado ganha vínculo em lote (por conta do Zoho ou por seleção), limpeza automática ao mapear e exibição do nome da conta — ajuste aditivo, sem migration (D-031).',
       releasedAt: new Date('2026-10-13T18:00:00.000Z'),
-      current: true,
+      current: false,
       items: [
         { category: 'FEATURE', description: 'Vínculo em lote na fila de não mapeados: todos os chamados de uma conta do Zoho ou os selecionados (D-031)' },
         { category: 'FEATURE', description: 'Limpeza automática da fila quando o cliente passa a existir ou o chamado é vinculado' },
         { category: 'FEATURE', description: 'Nome da conta na fila (resolvido no Zoho Desk sob demanda), em vez de exibir apenas o id' },
         { category: 'IMPROVEMENT', description: 'Novos endpoints aditivos GET /tickets/unmapped/groups e POST /tickets/unmapped/link' },
+      ],
+    },
+    {
+      id: 'rel-0-9-2',
+      version: '0.9.2',
+      title: 'Lançamentos de tempo: correção do endpoint e reimportação',
+      summary: 'Corrige a leitura dos lançamentos de tempo do Zoho Desk (endpoint correto), busca os lançamentos ao vincular um chamado pela fila e adiciona a ação "Atualizar horas" para reimportar os lançamentos dos chamados já espelhados (D-032).',
+      releasedAt: new Date('2026-10-13T20:00:00.000Z'),
+      current: true,
+      items: [
+        { category: 'FIX', description: 'Leitura dos lançamentos de tempo no endpoint correto (/tickets/{id}/timeEntry); a forma anterior respondia 404 e os lançamentos não apareciam (D-032)' },
+        { category: 'FIX', description: 'Ao vincular um chamado pela fila de não mapeados, os lançamentos de tempo passam a ser espelhados' },
+        { category: 'FEATURE', description: 'Ação "Atualizar horas" (ADMIN) / POST /tickets/sync/time-entries para reimportar os lançamentos dos chamados já espelhados' },
+        { category: 'IMPROVEMENT', description: 'Nome do agente (responsável pelo lançamento) resolvido no Zoho Desk (GET /agents/{id})' },
       ],
     },
   ];

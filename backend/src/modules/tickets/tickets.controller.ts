@@ -63,6 +63,13 @@ export class TicketsController {
     return this.sync.syncAll(user.id);
   }
 
+  @Post('sync/time-entries')
+  @Roles(Role.ADMIN)
+  @HttpCode(200)
+  refreshTimeEntries(@CurrentUser() user: AuthenticatedUser) {
+    return this.sync.refreshTimeEntries(user);
+  }
+
   @Post('unmapped/:id/link')
   @Roles(Role.ADMIN)
   linkUnmapped(
