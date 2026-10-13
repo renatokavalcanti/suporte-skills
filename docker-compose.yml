@@ -81,6 +81,9 @@ services:
   web:
     build:
       context: ./frontend
+      args:
+        # Modulo Tickets (D-029): ligar a SPA so' no release (VITE_TICKETS_ENABLED=true).
+        VITE_TICKETS_ENABLED: ${VITE_TICKETS_ENABLED:-false}
     container_name: suporte-skills-web
     restart: unless-stopped
     depends_on:

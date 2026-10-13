@@ -8,6 +8,12 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+
+# Modulo Tickets (D-029): a SPA so' mostra Clientes/Tickets/Medicoes se compilada
+# com a flag ligada. Passe --build-arg VITE_TICKETS_ENABLED=true no release.
+ARG VITE_TICKETS_ENABLED=false
+ENV VITE_TICKETS_ENABLED=$VITE_TICKETS_ENABLED
+
 RUN npm run build
 
 # ---------------------------------------------------------------------------

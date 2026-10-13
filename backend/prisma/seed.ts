@@ -480,12 +480,27 @@ async function main(): Promise<void> {
       title: 'Roadmap em Kanban/Timeline e painel de consultores',
       summary: 'O roadmap do consultor ganha as visões Kanban e Timeline; a área de Relatórios ganha cards por consultor com os itens resumidos em uma janela flutuante.',
       releasedAt: new Date('2026-10-02T20:00:00.000Z'),
-      current: true,
+      current: false,
       items: [
         { category: 'FEATURE', description: 'Visões Kanban (com arrastar para mudar o status) e Timeline no roadmap do consultor (D-028)' },
         { category: 'FEATURE', description: 'Painel "Consultores" em Relatórios: um card por consultor ativo, com contadores rápidos' },
         { category: 'FEATURE', description: 'Ao clicar no card, janela flutuante com os itens do roadmap do consultor resumidos' },
         { category: 'IMPROVEMENT', description: 'Novo endpoint GET /reports/consultants (uma chamada para todos os consultores e seus itens)' },
+      ],
+    },
+    {
+      id: 'rel-0-8-0',
+      version: '0.8.0',
+      title: 'Módulo Tickets e Medições Mensais',
+      summary: 'Espelhamento dos chamados do Zoho Desk, cadastro de clientes e geração de Medições Mensais por cliente/mês, com comprovação em CSV/PDF. Módulo opt-in (TICKETS_ENABLED) e sincronização opt-in (ZOHO_SYNC_ENABLED).',
+      releasedAt: new Date('2026-10-13T00:00:00.000Z'),
+      current: true,
+      items: [
+        { category: 'FEATURE', description: 'Espelhamento (somente leitura, opt-in) dos chamados do Zoho Desk para o banco local (D-029)' },
+        { category: 'FEATURE', description: 'Cadastro de clientes (com conta do Zoho) e fila de chamados sem cliente mapeado, com vínculo manual' },
+        { category: 'FEATURE', description: 'Medições Mensais por cliente/mês: chamados faturados por close_date no fuso de negócio, com snapshot imutável no fechamento e reabertura só por ADMIN (justificada)' },
+        { category: 'FEATURE', description: 'Exportação da medição fechada em CSV (UTF-8 BOM, separador ;) e PDF com código de verificação e data/usuário de fechamento' },
+        { category: 'IMPROVEMENT', description: 'Módulo desligado por padrão (TICKETS_ENABLED) e sincronização com o Zoho separadamente opt-in (ZOHO_SYNC_ENABLED)' },
       ],
     },
   ];

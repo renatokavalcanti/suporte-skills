@@ -212,7 +212,7 @@ para execução local). Principais:
 
 ## Status
 
-**Versão atual: `0.7.2`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
+**Versão atual: `0.8.0`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
 relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módulos pós-MVP:
 
 | Decisão | Entrega |
@@ -230,9 +230,10 @@ relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módul
 | D-029 | **Módulo Tickets**: espelho do Zoho Desk, clientes e Medições Mensais (CSV/PDF) — opt-in |
 
 Typecheck e build limpos em backend e frontend; imagem Docker publicada na VM
-(10.0.0.200) com HTTPS. A suíte de aceite cobre os blocos 11f (D-024), 11g (D-025) e 11h
-(D-026) e o estado DEMO de referência (ver [`docs/QA.md`](./docs/QA.md)); o deploy em
-ambiente com dados reais é validado pelo `smoke.sh` (não-destrutivo).
+(10.0.0.200) com HTTPS. A suíte de aceite cobre os blocos 11f (D-024), 11g (D-025), 11h
+(D-026) e 11i (D-029) e o estado DEMO de referência (ver [`docs/QA.md`](./docs/QA.md)); o deploy
+em ambiente com dados reais é validado pelo `smoke.sh` (não-destrutivo). O **release do módulo
+Tickets** segue o runbook em [`docs/RELEASE.md`](./docs/RELEASE.md).
 
 A ingestão automática do Tec News é **opt-in** (`NEWS_SYNC_ENABLED=true`): sem ela, o
 módulo funciona com a curadoria manual e o botão "Sincronizar". Os cinco fabricantes do
