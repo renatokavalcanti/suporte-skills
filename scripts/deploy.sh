@@ -79,9 +79,11 @@ fi
 # --- 6) Release do changelog (best-effort) ---------------------------------
 VERSION=$(sed -n "s/.*APP_VERSION = '\([0-9][0-9.]*\)'.*/\1/p" frontend/src/config/version.ts)
 RJ="scripts/releases/${VERSION}.json"
+ADMIN_EMAIL="${DEPLOY_ADMIN_EMAIL:-${SEED_ADMIN_EMAIL:-}}"
+ADMIN_PASS="${DEPLOY_ADMIN_PASSWORD:-${SEED_ADMIN_PASSWORD:-}}"
 if [ -n "$VERSION" ] && [ -f "$RJ" ]; then
   TOKEN=$(curl -sk -X POST https://localhost/api/v1/auth/login -H 'Content-Type: application/json' \
-    -d "{\"email\":\"${SEED_ADMIN_EMAIL}\",\"password\":\"${SEED_ADMIN_PASSWORD}\"}" \
+    -d "{\"email\":\"${ADMIN_EMAIL}\",\"password\":\"${ADMIN_PASS}\"}" \
     | sed -n 's/.*"accessToken":"\([^"]*\)".*/\1/p')
   if [ -n "$TOKEN" ]; then
     if curl -sk "https://localhost/api/v1/releases?current=true" -H "Authorization: Bearer $TOKEN" | grep -q "\"$VERSION\""; then
@@ -92,7 +94,8 @@ if [ -n "$VERSION" ] && [ -f "$RJ" ]; then
       echo "== release $VERSION criada no changelog (http=$C)"
     fi
   else
-    echo "== [aviso] nao loguei para criar a release $VERSION (confira SEED_ADMIN_* no .env)"
+    echo "== [aviso] nao loguei para criar a release $VERSION"
+    echo "   defina DEPLOY_ADMIN_EMAIL/DEPLOY_ADMIN_PASSWORD no .env (ou crie a release pela UI/API)."
   fi
 fi
 
