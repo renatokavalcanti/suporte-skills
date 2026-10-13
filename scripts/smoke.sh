@@ -186,6 +186,35 @@ else
     call GET /measurements "$CONSULTANT"
     check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa medicoes -> 403' "http=$CODE"
   fi
+
+  # --- Chamados (D-030): leituras NAO destrutivas ---
+  call GET /contracts "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.meta.total')" = 'number' ]; echo $?)" \
+    'contratos (ADMIN)' "http=$CODE total=$(q 'o.meta.total')"
+  call GET /settings/zoho "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.redirectUri')" = 'string' ]; echo $?)" \
+    'config do Zoho (leitura)' "http=$CODE dc=$(q 'o.dataCenter')"
+  call GET /settings/email "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.transport')" = 'string' ]; echo $?)" \
+    'config de e-mail (leitura)' "http=$CODE transport=$(q 'o.transport')"
+  call GET /settings/branding "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.companyName')" = 'string' ]; echo $?)" \
+    'identidade visual (leitura)' "http=$CODE"
+  call GET '/clients?pageSize=1' "$ADMIN"
+  SMOKE_CLIENT=$(q 'o.data[0] && o.data[0].id')
+  if [ -n "$SMOKE_CLIENT" ] && [ "$SMOKE_CLIENT" != 'null' ] && [ "$SMOKE_CLIENT" != '__UNDEF__' ]; then
+    call GET "/ticket-reports/preview?clientId=$SMOKE_CLIENT&year=$(date +%Y)&month=1" "$ADMIN"
+    check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.metrics.closedCount')" = 'number' ]; echo $?)" \
+      'previa de relatorio de chamados' "http=$CODE fechados=$(q 'o.metrics.closedCount')"
+  else
+    echo "[SKIP] previa de relatorio (sem clientes)"
+  fi
+  if [ -n "$CONSULTANT" ]; then
+    call GET /contracts "$CONSULTANT"
+    check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa contratos -> 403' "http=$CODE"
+    call GET /settings/zoho "$CONSULTANT"
+    check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa config do Zoho -> 403' "http=$CODE"
+  fi
 fi
 
 call GET '/professionals/x/certifications/y/attachment' ''

@@ -877,6 +877,97 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+echo "--- 11j. Chamados: contratos, relatórios e financeiro (D-030) ---"
+call GET /contracts "$ADMIN"
+if [ "$CODE" = '404' ]; then
+  echo "[SKIP] modulo Chamados desligado (TICKETS_ENABLED=false)"
+else
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.meta.total')" = 'number' ]; echo $?)" \
+    'contratos (ADMIN)' "http=$CODE total=$(q 'o.meta.total')"
+  call GET /settings/zoho "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.redirectUri')" = 'string' ]; echo $?)" \
+    'config do Zoho (leitura)' "http=$CODE dc=$(q 'o.dataCenter')"
+  call GET /settings/email "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.transport')" = 'string' ]; echo $?)" \
+    'config de e-mail (leitura)' "http=$CODE transport=$(q 'o.transport')"
+  call GET /settings/branding "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.companyName')" = 'string' ]; echo $?)" \
+    'identidade visual (leitura)' "http=$CODE"
+
+  call GET /contracts "$CONSULTANT"
+  check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa contratos -> 403' "http=$CODE"
+  call GET /settings/zoho "$CONSULTANT"
+  check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa config do Zoho -> 403' "http=$CODE"
+  call GET /settings/email "$CONSULTANT"
+  check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa config de e-mail -> 403' "http=$CODE"
+
+  # Cliente + contrato + chamados/lancamentos de QA (D-030).
+  call POST /clients "$ADMIN" "{\"name\":\"QA Relatorio $TS\",\"zohoAccountId\":\"qa-rep-$TS\"}"
+  QA_RCLIENT=$(q 'o.id')
+  check "$([ "$CODE" = '201' ] && [ -n "$QA_RCLIENT" ]; echo $?)" 'criar cliente (relatorio) -> 201' "http=$CODE"
+
+  call POST /contracts "$ADMIN" "{\"clientId\":\"$QA_RCLIENT\",\"planName\":\"QA Bronze $TS\",\"includedMinutes\":60,\"monthlyValue\":1000,\"extraHourValue\":200,\"balancePolicy\":\"ACCUMULATE\",\"startDate\":\"2026-01-01\",\"financeEmail\":\"financeiro@qa.local\"}"
+  QA_CONTRACT=$(q 'o.id')
+  check "$([ "$CODE" = '201' ] && [ "$(q 'o.balancePolicy')" = 'ACCUMULATE' ]; echo $?)" 'criar contrato -> 201' "http=$CODE"
+
+  call POST /contracts "$ADMIN" "{\"clientId\":\"nao-existe\",\"planName\":\"X\",\"includedMinutes\":1,\"monthlyValue\":1,\"extraHourValue\":1,\"balancePolicy\":\"EXPIRE\",\"startDate\":\"2026-01-01\"}"
+  check "$([ "$CODE" = '404' ]; echo $?)" 'contrato com cliente inexistente -> 404' "http=$CODE"
+  call POST /contracts "$ADMIN" "{\"clientId\":\"$QA_RCLIENT\",\"planName\":\"X\",\"includedMinutes\":1,\"monthlyValue\":1,\"extraHourValue\":1,\"balancePolicy\":\"FOO\",\"startDate\":\"2026-01-01\"}"
+  check "$([ "$CODE" = '400' ]; echo $?)" 'contrato com politica invalida -> 400' "http=$CODE"
+
+  "$PSQL_BIN" -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -q -c "
+    INSERT INTO tickets (id, zoho_ticket_id, title, status, open_date, close_date, time_spent_minutes, is_billable, technology_name, client_id, created_at, updated_at) VALUES
+      ('qa-rp-$TS-1','QA-RP-$TS-1','Ajuste de rede','Closed','2026-10-10T10:00:00Z','2026-10-15T12:00:00Z',90,true,'VMware','$QA_RCLIENT', now(), now()),
+      ('qa-rp-$TS-2','QA-RP-$TS-2','Sem tecnologia','Closed','2026-10-18T10:00:00Z','2026-10-20T12:00:00Z',0,true,NULL,'$QA_RCLIENT', now(), now());" 2>/dev/null
+  "$PSQL_BIN" -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -q -c "
+    INSERT INTO time_entries (id, zoho_time_entry_id, ticket_id, owner_name, executed_at, minutes, is_billable, created_at, updated_at) VALUES
+      ('qa-te-$TS-1','QA-TE-$TS-1','qa-rp-$TS-1','Ana','2026-10-15T10:30:00Z',60,true, now(), now()),
+      ('qa-te-$TS-2','QA-TE-$TS-2','qa-rp-$TS-1','Bruno','2026-10-15T11:00:00Z',30,true, now(), now());" 2>/dev/null
+  RP_TE=$(count "SELECT count(*) FROM time_entries WHERE zoho_time_entry_id LIKE 'QA-TE-$TS-%'")
+  check "$([ "$RP_TE" = '2' ]; echo $?)" 'lancamentos de tempo de QA inseridos' "linhas=$RP_TE"
+
+  # Previa: metricas B2 + faturamento B3 + alertas.
+  call GET "/ticket-reports/preview?clientId=$QA_RCLIENT&year=2026&month=10" "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'o.metrics.closedCount')" = '2' ] && [ "$(q 'o.metrics.totalMinutes')" = '90' ]; echo $?)" \
+    'previa: fechados e horas (B2)' "http=$CODE fechados=$(q 'o.metrics.closedCount') minutos=$(q 'o.metrics.totalMinutes')"
+  check "$([ "$(q 'o.billing.status')" = 'WITH_EXTRA_HOURS' ] && [ "$(q 'o.billing.extraMinutes')" = '30' ]; echo $?)" \
+    'previa: faturamento B3 com horas adicionais' "status=$(q 'o.billing.status') extra=$(q 'o.billing.extraMinutes')"
+  check "$([ "$(q 'o.alerts.length')" -ge 2 ]; echo $?)" 'previa: alertas (sem tecnologia / sem horas)' "alertas=$(q 'o.alerts.length')"
+
+  # Previa e PDF do Relatorio do Cliente (sem valores de contrato).
+  call GET "/ticket-reports/client/preview?clientId=$QA_RCLIENT&year=2026&month=10" "$ADMIN"
+  CP_HTML=$(q 'o.html')
+  check "$([ "$CODE" = '200' ] && [ -n "$CP_HTML" ]; echo $?)" 'prev. do relatorio do cliente (HTML)' "http=$CODE"
+  "$CURL_BIN" -s -H "Authorization: Bearer $ADMIN" "$API/ticket-reports/client/pdf?clientId=$QA_RCLIENT&year=2026&month=10" -o "$WORK_DIR/client.pdf"
+  check "$([ "$(head -c 5 "$WORK_DIR/client.pdf")" = '%PDF-' ]; echo $?)" 'relatorio do cliente: PDF valido' "magic=$(head -c 5 "$WORK_DIR/client.pdf")"
+
+  # Relatorio Financeiro: previa + .eml (com anexo) + envio exige confirmacao.
+  call GET "/ticket-reports/financial/preview?clientId=$QA_RCLIENT&year=2026&month=10" "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'o.subject.includes("Libera")')" = 'true' ]; echo $?)" \
+    'financeiro: assunto no padrao' "http=$CODE"
+  "$CURL_BIN" -s -D "$WORK_DIR/fin-head.txt" -H "Authorization: Bearer $ADMIN" "$API/ticket-reports/financial/eml?clientId=$QA_RCLIENT&year=2026&month=10" -o "$WORK_DIR/fin.eml"
+  grep -qi 'rfc822' "$WORK_DIR/fin-head.txt"
+  check $? 'financeiro: .eml (message/rfc822)' "$(grep -i 'content-type' "$WORK_DIR/fin-head.txt" | tr -d '\r')"
+  grep -qa 'application/pdf' "$WORK_DIR/fin.eml"
+  check $? 'financeiro: .eml com anexo PDF' "anexos=$(grep -ca 'application/pdf' "$WORK_DIR/fin.eml")"
+  call POST /ticket-reports/financial/send "$ADMIN" "{\"clientId\":\"$QA_RCLIENT\",\"type\":\"FINANCIAL\",\"year\":2026,\"month\":10,\"recipients\":\"financeiro@qa.local\"}"
+  check "$([ "$CODE" = '400' ]; echo $?)" 'financeiro: envio sem confirmacao -> 400' "http=$CODE"
+
+  # Config do Zoho: salvar (data center) + log de sincronizacao (leitura).
+  call PUT /settings/zoho "$ADMIN" '{"dataCenter":"eu","technologyField":"Tecnologia"}'
+  check "$([ "$CODE" = '200' ] && [ "$(q 'o.dataCenter')" = 'eu' ]; echo $?)" 'config do Zoho: salvar data center' "http=$CODE dc=$(q 'o.dataCenter')"
+  call GET /settings/zoho/sync-log "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'Array.isArray(o)')" = 'true' ]; echo $?)" 'config do Zoho: log de sincronizacao' "http=$CODE"
+
+  # Identidade visual: salvar cores.
+  call PUT /settings/branding "$ADMIN" '{"companyName":"Suporte Informatica QA","primaryColor":"#0b5cad"}'
+  check "$([ "$CODE" = '200' ] && [ "$(q 'o.primaryColor')" = '#0b5cad' ]; echo $?)" 'identidade visual: salvar' "http=$CODE cor=$(q 'o.primaryColor')"
+
+  call DELETE "/contracts/$QA_CONTRACT" "$ADMIN"
+  check "$([ "$CODE" = '204' ]; echo $?)" 'desativar contrato (soft) -> 204' "http=$CODE"
+fi
+
+# ---------------------------------------------------------------------------
 echo "--- 12. Limpeza: restaura o estado DEMO ---"
 if [ "$RESET_DEMO" = '1' ]; then
   # Rede de seguranca: dump do banco ANTES de apagar (best-effort). Desative
@@ -899,6 +990,9 @@ if [ "$RESET_DEMO" = '1' ]; then
     fi
   fi
   "$PSQL_BIN" -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -q -c "
+DELETE FROM generated_reports;
+DELETE FROM time_entries;
+DELETE FROM contracts;
 DELETE FROM monthly_measurement_items;
 DELETE FROM monthly_measurements;
 DELETE FROM tickets;
@@ -920,8 +1014,8 @@ DELETE FROM refresh_tokens;
 DELETE FROM professionals;"
   rm -rf "$BACKEND_DIR/uploads"
   ( cd "$BACKEND_DIR" && "$NPM_BIN" run seed >/dev/null 2>&1 )
-  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '11' ] && [ "$(count 'SELECT count(*) FROM clients')" = '0' ] && [ "$(count 'SELECT count(*) FROM tickets')" = '0' ]; echo $?)"
-  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 11 releases / 0 clientes / 0 chamados"
+  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '11' ] && [ "$(count 'SELECT count(*) FROM clients')" = '0' ] && [ "$(count 'SELECT count(*) FROM tickets')" = '0' ] && [ "$(count 'SELECT count(*) FROM contracts')" = '0' ] && [ "$(count 'SELECT count(*) FROM time_entries')" = '0' ] && [ "$(count 'SELECT count(*) FROM generated_reports')" = '0' ]; echo $?)"
+  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 11 releases / 0 clientes / 0 chamados / 0 contratos / 0 lancamentos / 0 relatorios"
 else
   echo "[SKIP] restauracao do seed (RESET_DEMO=0)"
 fi

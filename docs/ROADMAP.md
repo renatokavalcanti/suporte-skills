@@ -18,7 +18,7 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 | 9 | Tec News | Novidades dos fabricantes: fontes RSS/Atom, ingestão agendada, curadoria manual, filtros, destaques, leitura/salvo por usuário | ✅ Concluída (pós-MVP) |
 | 10 | Releases | Changelog do sistema: versões com itens por categoria, versão atual, gestão pela administração | ✅ Concluída (pós-MVP) |
 | 11 | Tickets | Espelho (somente leitura) dos chamados do Zoho Desk, clientes e **Medições Mensais** (consolidação por cliente/mês) com comprovação em CSV/PDF | ✅ Concluída (pós-MVP) |
-| 12 | Chamados | **Configuração da integração Zoho Desk** pela interface (ADMIN) + **Relatórios de Chamados** (Financeiro e Cliente) sobre a base do módulo Tickets | 🚧 Em andamento (pós-MVP) |
+| 12 | Chamados | **Configuração da integração Zoho Desk** pela interface (ADMIN) + **Relatórios de Chamados** (Financeiro e Cliente) sobre a base do módulo Tickets | ✅ Concluída (pós-MVP) |
 
 ## Critérios de aceite da Fase 8
 

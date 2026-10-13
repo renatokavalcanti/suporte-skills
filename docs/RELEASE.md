@@ -128,3 +128,39 @@ banco se realmente necessário.
 - Decisão: `docs/DECISIONS.md` (D-029). Banco: `docs/DATABASE.md`. API: `docs/API.md`.
 - QA (bloco 11i): `docs/QA.md`. Scripts: `scripts/smoke.sh`, `scripts/acceptance.sh`,
   `scripts/backup-db.sh`. Rollbacks: `database/rollbacks/`.
+
+---
+
+# Release — Módulo Chamados (v0.9.0, D-030)
+
+Release da **integração Zoho configurável** + **Relatórios de Chamados**, sobre a base do módulo
+Tickets (D-029). Módulo **desligado por padrão**; passos na VM/Zoho real exigem autorização.
+
+## Pré-requisitos
+- Release `0.9.0` marcada (`backend/prisma/seed.ts` current + `frontend/src/config/version.ts`).
+- Migração `20261013172326_add_contracts_time_entries_reports` (aditiva: só `CREATE`).
+
+## Deploy
+1. Backup pré-deploy: `bash scripts/backup-db.sh`.
+2. `docker compose exec api npx prisma migrate deploy` (aditiva — não altera dados existentes).
+3. `docker compose build && docker compose up -d` com `TICKETS_ENABLED=true` e
+   `VITE_TICKETS_ENABLED=true` (build arg do SPA, como no release anterior).
+4. `bash scripts/smoke.sh` verde — agora inclui Contratos, Config do Zoho/e-mail/identidade e a prévia.
+
+## Configuração (ADMIN, pela interface)
+- **Configurações > Integração Zoho Desk**: data center, Client ID/Secret e orgId → **Conectar com
+  Zoho** (OAuth) → **Testar conexão** → **Sincronizar agora**.
+- **Configurações > Envio de e-mail**: SMTP ou Microsoft Graph + "Enviar teste".
+- **Configurações > Identidade Visual**: nome, cores e logo (do Relatório do Cliente).
+- **Contratos**: franquia/valores/política de saldo por cliente.
+
+## Rollback
+1. **Flag off:** `TICKETS_ENABLED=false` + rebuild com `VITE_TICKETS_ENABLED=false` (404 + menu some).
+2. **Código:** `git checkout v0.8.0 && docker compose up -d --build`.
+3. **Banco:** preferir restaurar o dump pré-deploy; ou `database/rollbacks/chamados_fase1_down.sql`
+   (dropa `generated_reports`/`time_entries`/`contracts` + colunas novas de `tickets`).
+4. **Validar:** `bash scripts/smoke.sh` verde.
+
+## Referências (Chamados)
+- Decisão: `docs/DECISIONS.md` (D-030). Banco: `docs/DATABASE.md`. API: `docs/API.md`.
+- QA (bloco 11j): `docs/QA.md`.

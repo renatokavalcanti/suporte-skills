@@ -8,7 +8,7 @@ segurança, e uma suíte de regressão automatizada de ponta a ponta.
 
 | Frente | Como foi verificado |
 |--------|---------------------|
-| API e regras de negócio | Suíte `scripts/acceptance.sh` — **177 verificações**, 100% aprovadas |
+| API e regras de negócio | Suíte `scripts/acceptance.sh` — **222 verificações**, 100% aprovadas |
 | Permissões (RBAC) | Matriz ADMIN/MANAGER/CONSULTANT em dashboard, cadastros, roadmap, relatórios, importação e dados de terceiros |
 | Segurança | Headers (Helmet), CORS, força bruta no login, reuso de refresh token, injeção em CSV, validação de entrada, exposição de erro |
 | Regras de negócio | Status dinâmico, cobertura, vencimentos, auditoria, renovação, duplicidade |
@@ -17,7 +17,7 @@ segurança, e uma suíte de regressão automatizada de ponta a ponta.
 
 ## 2. Suíte de regressão
 
-A suíte vive no repositório: **`scripts/acceptance.sh`** (177 verificações). Ela exige a
+A suíte vive no repositório: **`scripts/acceptance.sh`** (222 verificações). Ela exige a
 API e o frontend no ar e o **seed DEMO aplicado**; ao final limpa os dados de teste e
 reaplica o seed (`RESET_DEMO=0` desativa essa restauração).
 
@@ -79,8 +79,9 @@ verificações são puladas (útil em ambiente real, onde só o ADMIN existe). A
 | 11g. Anexo do comprovante (D-025) | 10 |
 | 11h. Roadmap próprio do consultor + anexo (D-026) | 14 |
 | 11i. Tickets e Medições Mensais (D-029) | 20 |
+| 11j. Chamados — contratos e relatórios (D-030) | 25 |
 | 12. Limpeza e restauração do seed | 1 |
-| **Total** | **197** |
+| **Total** | **222** |
 
 Suítes das fases anteriores, reexecutadas após as correções: F2 23/23, F3 15/15,
 F4 16/16, F5 13/13, F7 6/6.
@@ -322,6 +323,36 @@ módulo ligado, o bloco 11i (20 verificações) valida:
 > determinístico). Foi exercitado **manualmente** contra um **mock** do Zoho Desk (token OAuth
 > + `GET /tickets`), cobrindo upsert idempotente por `zohoTicketId`, a fila de **não-mapeados** e
 > o vínculo manual a um cliente (a fila deixa de reenfileirar um chamado já vinculado).
+
+## 5l. Módulo Chamados — integração Zoho configurável e Relatórios de Chamados (D-030)
+
+Sobre a base da D-029, o **bloco 11j** (25 verificações) cobre a integração Zoho configurável e
+os Relatórios de Chamados. Quando o módulo está desligado (`TICKETS_ENABLED=false`), o bloco
+inteiro vira `[SKIP]` (a 1ª chamada a `/contracts` retorna `404`). Com o módulo ligado:
+
+- **Configurações (leitura/posse)**: `/settings/zoho`, `/settings/email` e `/settings/branding`
+  respondem `200` ao ADMIN e **`403` ao CONSULTANT**; `/contracts` idem.
+- **Contratos**: cria (`201`, com política `ACCUMULATE`); cliente inexistente → `404`; política
+  inválida → `400`; desativação soft → `204`.
+- **Métricas (B2) e faturamento (B3)**: a suíte insere (via banco, pois o espelho é leitura) 2
+  chamados + 2 **lançamentos de tempo** e gera a prévia de out/2026 →
+  **2 fechados / 90 minutos**; com franquia de **60 min**, os **30 min adicionais** levam a
+  `WITH_EXTRA_HOURS` (regra B3). Os **alertas** incluem "sem tecnologia" e "sem horas".
+- **Relatório do Cliente**: prévia (HTML) responde `200`; o PDF começa com `%PDF-` (A4 com
+  cabeçalho/tabela repetidos e rodapé paginado) e **não** contém valores de contrato.
+- **Relatório Financeiro**: a prévia traz o assunto no padrão
+  (`[Liberação de Faturamento] …`); o `.eml` responde `message/rfc822` com **anexo PDF**; o
+  **envio exige confirmação** — sem `confirm: true` retorna **`400`**.
+- **Config Zoho (escrita)**: salvar o data center (`eu`) reflete na leitura; o **log de
+  sincronização** responde `200`.
+- **Identidade visual (escrita)**: salvar cores reflete na leitura.
+
+> O **envio real** de e-mail (SMTP/Graph) e o **espelhamento ao vivo** do Zoho **não** rodam na
+> suíte (dependeriam de serviços externos; seriam não determinísticos). Foram exercitados
+> **manualmente** contra **mocks** (SMTP em `:2525`, Graph em HTTP e o Zoho Desk simulado),
+> cobrindo `message/rfc822` com anexo, `sendMail` do Graph e o `testConnection` com erro
+> detalhado. A limpeza da suíte passou a incluir `contracts`, `time_entries` e
+> `generated_reports` — o estado DEMO volta com **0 contratos / 0 lançamentos / 0 relatórios**.
 
 ## 6. Limitações conhecidas (aceitas no MVP)
 
