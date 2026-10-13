@@ -1,6 +1,8 @@
 export interface AppConfiguration {
   env: string;
   port: number;
+  /** URL publica da API (base da Redirect URI do OAuth do Zoho). */
+  publicUrl: string;
   corsOrigin: string[];
   databaseUrl: string;
   auth: {
@@ -51,14 +53,14 @@ export interface AppConfiguration {
     syncIntervalMinutes: number;
     fetchTimeoutMs: number;
     maxTicketsPerRun: number;
-    apiBaseUrl: string;
-    accountsBaseUrl: string;
+    /** Override de dominio (vazio = derivado do data center da tela de config). */
+    apiBaseUrlOverride: string;
+    accountsBaseUrlOverride: string;
+    /** Credenciais de fallback (a tela de Configuracoes sobrepoe). */
     clientId: string;
     clientSecret: string;
     refreshToken: string;
     orgId: string;
-    /** true quando ha credenciais e a flag esta ligada. */
-    configured: boolean;
   };
   seed: {
     enabled: boolean;
@@ -84,6 +86,7 @@ export default (): AppConfiguration => {
   return {
     env: env.NODE_ENV ?? 'development',
     port: toInt(env.API_PORT, 4000),
+    publicUrl: (env.PUBLIC_API_URL ?? 'http://localhost:4000').replace(/\/+$/, ''),
     // Lista vazia (ex.: CORS_ORIGIN="") cai no padrao em vez de bloquear tudo.
     corsOrigin: corsOrigin.length > 0 ? corsOrigin : [DEFAULT_CORS_ORIGIN],
     databaseUrl: env.DATABASE_URL ?? '',
@@ -143,28 +146,19 @@ export default (): AppConfiguration => {
       const clientSecret = (env.ZOHO_CLIENT_SECRET ?? '').trim();
       const refreshToken = (env.ZOHO_REFRESH_TOKEN ?? '').trim();
       const orgId = (env.ZOHO_ORG_ID ?? '').trim();
-      const syncEnabled = env.ZOHO_SYNC_ENABLED === 'true';
       return {
-        syncEnabled,
+        syncEnabled: env.ZOHO_SYNC_ENABLED === 'true',
         syncIntervalMinutes: toInt(env.ZOHO_SYNC_INTERVAL_MINUTES, 360),
         fetchTimeoutMs: toInt(env.ZOHO_FETCH_TIMEOUT_MS, 15000),
         maxTicketsPerRun: toInt(env.ZOHO_MAX_TICKETS_PER_RUN, 200),
-        apiBaseUrl: (env.ZOHO_API_BASE_URL ?? 'https://desk.zoho.com/api/v1').replace(
-          /\/+$/,
-          '',
-        ),
-        accountsBaseUrl: (
-          env.ZOHO_ACCOUNTS_BASE_URL ?? 'https://accounts.zoho.com'
-        ).replace(/\/+$/, ''),
+        apiBaseUrlOverride: (env.ZOHO_API_BASE_URL ?? '').trim().replace(/\/+$/, ''),
+        accountsBaseUrlOverride: (env.ZOHO_ACCOUNTS_BASE_URL ?? '')
+          .trim()
+          .replace(/\/+$/, ''),
         clientId,
         clientSecret,
         refreshToken,
         orgId,
-        configured:
-          syncEnabled &&
-          [clientId, clientSecret, refreshToken, orgId].every(
-            (value) => value !== '',
-          ),
       };
     })(),
     seed: {

@@ -197,6 +197,27 @@ Todas as rotas são restritas a **ADMIN** (a chave de IA é um segredo e nunca �
 > foi salvo cai em `AI_*`/`NEWS_DIGEST_*`. A chave é cifrada em repouso
 > (`SETTINGS_ENCRYPTION_KEY`, com fallback para o segredo de acesso do JWT).
 
+### Configuração da integração Zoho Desk (D-030)
+
+Restrito a **ADMIN** e exige `TICKETS_ENABLED=true` (senão `404`). Guarda a configuração da
+integração: data center, credenciais, escopos, campo de tecnologia, origem do cliente
+(Account/Contact), status "fechado" e frequência de sincronização. Client Secret e Refresh
+Token são **cifrados em repouso** (`SETTINGS_ENCRYPTION_KEY`, com fallback para o segredo do
+JWT) e **nunca** devolvidos (a resposta traz `clientSecretSet`/`refreshTokenSet`). Resolução
+**banco sobrepõe ambiente** (`ZOHO_*`).
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/settings/zoho` | Configuração efetiva (sem segredos): `dataCenter`, `clientId`, `orgId`, `clientSecretSet`/`refreshTokenSet`, `redirectUri` (derivada), `apiBaseUrl`/`accountsBaseUrl` (derivados do data center), `scopes`, `technologyField`, `clientSource`, `closedStatuses`, `syncFrequency`, `syncEnabled`, `syncIntervalMinutes` e `configured`. |
+| PUT | `/settings/zoho` | Atualiza campos (parciais). `clientSecret`/`refreshToken` gravam cifrado; `clearClientSecret`/`clearRefreshToken` removem. `dataCenter` ∈ `com|eu|in|au|cn|jp`; `syncFrequency` ∈ `MANUAL|HOURLY|SIX_HOURS|DAILY`. |
+| POST | `/settings/zoho/test` | Testa a conexão (`GET /tickets?limit=1`); campos opcionais (`dataCenter`/`clientId`/`clientSecret`/`refreshToken`/`orgId`) sobrepõem a config efetiva. `200` em sucesso; `400` com o motivo detalhado (credencial, escopo, orgId ou domínio). |
+| POST | `/settings/zoho/sync` | Sincroniza agora (equivalente a `POST /tickets/sync`). |
+| GET | `/settings/zoho/sync-log` | Histórico das últimas 20 sincronizações (`at, status, fetched, created, updated, unmapped, errors`). |
+| POST | `/settings/zoho/disconnect` | Apaga as credenciais salvas (volta a depender do ambiente, se houver). |
+
+> O fluxo OAuth "Conectar com Zoho" (Authorization Code) entra na Fase 3 (callback em
+> `redirectUri`). Frequência `MANUAL` desliga o agendador; as demais ligam o sync periódico.
+
 ### Tickets — clientes e chamados (D-029)
 
 Módulo do **espelho dos chamados do Zoho Desk** e das **Medições Mensais**. Fica **desligado
@@ -221,9 +242,9 @@ espelhamento do Zoho entra na Fase 3.
 
 #### Espelhamento do Zoho Desk (Fase 3)
 
-Integração **opt-in** e **somente leitura** no Zoho (`ZOHO_SYNC_ENABLED`, credenciais só por
-variável de ambiente — nunca devolvidas pela API nem registradas em log). Requer
-`TICKETS_ENABLED=true`; as rotas abaixo são restritas a **ADMIN**.
+Integração **opt-in** e **somente leitura** no Zoho (`ZOHO_SYNC_ENABLED`; credenciais por
+variável de ambiente **ou** pela tela de Configurações, cifradas — nunca devolvidas pela API
+nem registradas em log). Requer `TICKETS_ENABLED=true`; as rotas abaixo são restritas a **ADMIN**.
 
 | Método | Rota | Descrição |
 |--------|------|-----------|

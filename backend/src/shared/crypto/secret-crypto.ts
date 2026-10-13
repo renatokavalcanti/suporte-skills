@@ -1,11 +1,11 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
 
 /**
- * Cifra valores sensiveis salvos via interface (ex.: chave da API de IA) com
- * AES-256-GCM. A chave e' derivada por scrypt de um segredo de ambiente; o
- * texto cifrado e' opaco e nunca volta pela API. Formato: v1:iv:tag:dados
- * (base64). `decryptSecret` devolve null quando o segredo mudou ou o dado foi
- * corrompido - o chamador trata como "sem chave".
+ * Cifra valores sensiveis salvos via interface (chave da API de IA, Client
+ * Secret/Refresh Token do Zoho...) com AES-256-GCM. A chave e' derivada por
+ * scrypt de um segredo de ambiente; o texto cifrado e' opaco e nunca volta pela
+ * API. Formato: v1:iv:tag:dados (base64). `decryptSecret` devolve null quando o
+ * segredo mudou ou o dado foi corrompido - o chamador trata como "sem chave".
  */
 const PREFIX = 'v1';
 const SALT = 'suporte-skills/settings/v1';

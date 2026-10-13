@@ -8,7 +8,8 @@ import { AiClient } from '../../shared/ai/ai-client.service';
 import { AuthenticatedUser } from '../../shared/common/authenticated-user.interface';
 import { TestAiSettingsDto } from './dto/test-ai-settings.dto';
 import { UpdateAiSettingsDto } from './dto/update-ai-settings.dto';
-import { decryptSecret, encryptSecret } from './secret-crypto';
+import { resolveEncryptionSecret } from '../../shared/crypto/encryption-secret';
+import { decryptSecret, encryptSecret } from '../../shared/crypto/secret-crypto';
 
 const AI_SETTING_KEY = 'ai';
 
@@ -85,10 +86,7 @@ export class SettingsService {
   }
 
   private encryptionSecret(): string {
-    const configured =
-      this.config.get<AppConfiguration['settings']>('settings')?.encryptionKey;
-    if (configured) return configured;
-    return this.config.get<AppConfiguration['auth']>('auth')?.accessSecret ?? '';
+    return resolveEncryptionSecret(this.config);
   }
 
   private async loadStored(): Promise<StoredAiSettings> {

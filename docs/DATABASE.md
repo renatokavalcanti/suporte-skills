@@ -185,9 +185,11 @@ Auditoria dos **relatórios gerados** (D-030): quem gerou e quando (`generated_b
 
 ### app_settings
 `key (PK), value (jsonb), timestamps`
-Configurações editáveis pela interface (D-023). Hoje guarda `key = 'ai'` com as preferências
-de IA do Tec News; a chave da API é gravada **cifrada** (`apiKeyEnc`, AES-256-GCM) e nunca é
-devolvida pela API.
+Configurações editáveis pela interface (D-023/D-030). Guarda `key = 'ai'` (preferências de IA
+do Tec News), `key = 'zoho'` (integração com o Zoho Desk: data center, credenciais, escopos,
+frequência) e `key = 'zoho_sync'` (estado/última execução + histórico do espelhamento). Os
+segredos (`apiKeyEnc`, `clientSecretEnc`, `refreshTokenEnc`) são gravados **cifrados**
+(AES-256-GCM) e nunca devolvidos pela API.
 
 ## 3. Enums
 

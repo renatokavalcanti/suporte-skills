@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { AppConfiguration } from '../../../config/configuration';
+import { ZohoSettingsService } from './zoho-settings.service';
 
 export interface ZohoCredentials {
   clientId: string;
@@ -12,55 +11,39 @@ export interface ZohoCredentials {
   fetchTimeoutMs: number;
 }
 
-const DEFAULT: AppConfiguration['zoho'] = {
-  syncEnabled: false,
-  syncIntervalMinutes: 360,
-  fetchTimeoutMs: 15000,
-  maxTicketsPerRun: 200,
-  apiBaseUrl: 'https://desk.zoho.com/api/v1',
-  accountsBaseUrl: 'https://accounts.zoho.com',
-  clientId: '',
-  clientSecret: '',
-  refreshToken: '',
-  orgId: '',
-  configured: false,
-};
-
 /**
- * Resolve as credenciais do Zoho Desk (D-029). Ficam **somente** em variaveis de
- * ambiente; nunca sao devolvidas pela API nem registradas em log.
+ * Resolve as credenciais do Zoho Desk em runtime (D-030). Delega para a
+ * configuracao efetiva (tela de Configuracoes, cifrada, sobrepondo o ambiente)
+ * mantendo a mesma interface sincrona usada pelo cliente HTTP e pelo sync. As
+ * credenciais **nunca** sao devolvidas pela API nem registradas em log.
  */
 @Injectable()
 export class ZohoCredentialsService {
-  constructor(private readonly config: ConfigService) {}
-
-  private settings(): AppConfiguration['zoho'] {
-    return this.config.get<AppConfiguration['zoho']>('zoho') ?? DEFAULT;
-  }
+  constructor(private readonly settings: ZohoSettingsService) {}
 
   isSyncEnabled(): boolean {
-    return this.settings().syncEnabled;
+    return this.settings.getResolved().syncEnabled;
   }
 
   isConfigured(): boolean {
-    return this.settings().configured;
+    return this.settings.getResolved().configured;
   }
 
   get(): ZohoCredentials | null {
-    const s = this.settings();
-    if (!s.configured) return null;
+    const resolved = this.settings.getResolved();
+    if (!resolved.configured) return null;
     return {
-      clientId: s.clientId,
-      clientSecret: s.clientSecret,
-      refreshToken: s.refreshToken,
-      orgId: s.orgId,
-      apiBaseUrl: s.apiBaseUrl,
-      accountsBaseUrl: s.accountsBaseUrl,
-      fetchTimeoutMs: s.fetchTimeoutMs,
+      clientId: resolved.clientId,
+      clientSecret: resolved.clientSecret,
+      refreshToken: resolved.refreshToken,
+      orgId: resolved.orgId,
+      apiBaseUrl: resolved.apiBaseUrl,
+      accountsBaseUrl: resolved.accountsBaseUrl,
+      fetchTimeoutMs: resolved.fetchTimeoutMs,
     };
   }
 
   maxTicketsPerRun(): number {
-    return Math.max(1, this.settings().maxTicketsPerRun);
+    return this.settings.getResolved().maxTicketsPerRun;
   }
 }

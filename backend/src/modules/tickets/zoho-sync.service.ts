@@ -32,6 +32,16 @@ export interface ZohoSyncSummary {
   status: 'OK' | 'ERROR';
 }
 
+export interface ZohoSyncLogEntry {
+  at: string;
+  status: 'OK' | 'ERROR';
+  fetched: number;
+  created: number;
+  updated: number;
+  unmapped: number;
+  errors: number;
+}
+
 interface ZohoSyncState {
   lastRunAt?: string;
   status?: string;
@@ -41,6 +51,8 @@ interface ZohoSyncState {
   unmapped?: number;
   errors?: number;
   lastModifiedAt?: string | null;
+  /** Ultimas execucoes (mais recente primeiro), visiveis em Configuracoes. */
+  history?: ZohoSyncLogEntry[];
 }
 
 interface ProcessResult {
@@ -92,6 +104,10 @@ export class ZohoSyncService {
       configured: this.credentials.isConfigured(),
       lastRun: await this.loadState(),
     };
+  }
+
+  async logging(): Promise<ZohoSyncLogEntry[]> {
+    return (await this.loadState()).history ?? [];
   }
 
   /** Sincroniza todos os chamados modificados desde a ultima execucao. */
@@ -161,6 +177,17 @@ export class ZohoSyncService {
     summary.finishedAt = new Date().toISOString();
     const newWatermark = lastModified ? lastModified.toISOString() : watermark;
 
+    const logEntry: ZohoSyncLogEntry = {
+      at: summary.finishedAt,
+      status: summary.status,
+      fetched: summary.fetched,
+      created: summary.created,
+      updated: summary.updated,
+      unmapped: summary.unmapped,
+      errors: summary.errors.length,
+    };
+    const history = [logEntry, ...(previous.history ?? [])].slice(0, 20);
+
     await this.saveState({
       lastRunAt: summary.finishedAt,
       status: summary.status,
@@ -170,6 +197,7 @@ export class ZohoSyncService {
       unmapped: summary.unmapped,
       errors: summary.errors.length,
       lastModifiedAt: newWatermark,
+      history,
     });
 
     await this.audit.record({
