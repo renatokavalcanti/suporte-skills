@@ -56,6 +56,25 @@ services:
       SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:-}
       UPLOADS_DIR: /app/uploads
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-10}
+      # Modulo Tickets/Chamados (D-029/D-030) - opt-in.
+      TICKETS_ENABLED: ${TICKETS_ENABLED:-false}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-https://localhost}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-https://localhost}
+      # Espelhamento do Zoho Desk (somente leitura; opt-in). Credenciais sao
+      # fallback - a tela de Configuracoes (cifrada) tem prioridade.
+      ZOHO_SYNC_ENABLED: ${ZOHO_SYNC_ENABLED:-false}
+      ZOHO_SYNC_INTERVAL_MINUTES: ${ZOHO_SYNC_INTERVAL_MINUTES:-360}
+      ZOHO_FETCH_TIMEOUT_MS: ${ZOHO_FETCH_TIMEOUT_MS:-15000}
+      ZOHO_MAX_TICKETS_PER_RUN: ${ZOHO_MAX_TICKETS_PER_RUN:-200}
+      ZOHO_API_BASE_URL: ${ZOHO_API_BASE_URL:-}
+      ZOHO_ACCOUNTS_BASE_URL: ${ZOHO_ACCOUNTS_BASE_URL:-}
+      ZOHO_CLIENT_ID: ${ZOHO_CLIENT_ID:-}
+      ZOHO_CLIENT_SECRET: ${ZOHO_CLIENT_SECRET:-}
+      ZOHO_REFRESH_TOKEN: ${ZOHO_REFRESH_TOKEN:-}
+      ZOHO_ORG_ID: ${ZOHO_ORG_ID:-}
+      # Envio de e-mail (D-030): config na tela; overrides do Graph so' p/ teste.
+      EMAIL_GRAPH_LOGIN_BASE_URL: ${EMAIL_GRAPH_LOGIN_BASE_URL:-https://login.microsoftonline.com}
+      EMAIL_GRAPH_BASE_URL: ${EMAIL_GRAPH_BASE_URL:-https://graph.microsoft.com/v1.0}
     command: sh -c "npx prisma migrate deploy && node dist/main.js"
     ports:
       - '${API_PORT:-4000}:4000'
