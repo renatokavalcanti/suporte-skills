@@ -42,4 +42,28 @@ export const measurementsService = {
     });
     return data;
   },
+  async exportCsv(id: string): Promise<{ blob: Blob; filename: string }> {
+    const res = await api.get<Blob>(`/measurements/${id}/export.csv`, {
+      responseType: 'blob',
+    });
+    return {
+      blob: res.data,
+      filename: filenameFrom(res.headers['content-disposition']) ?? `medicao-${id}.csv`,
+    };
+  },
+  async exportPdf(id: string): Promise<{ blob: Blob; filename: string }> {
+    const res = await api.get<Blob>(`/measurements/${id}/export.pdf`, {
+      responseType: 'blob',
+    });
+    return {
+      blob: res.data,
+      filename: filenameFrom(res.headers['content-disposition']) ?? `medicao-${id}.pdf`,
+    };
+  },
 };
+
+function filenameFrom(header: unknown): string | null {
+  if (typeof header !== 'string') return null;
+  const match = /filename="?([^"]+)"?/.exec(header);
+  return match ? match[1] : null;
+}

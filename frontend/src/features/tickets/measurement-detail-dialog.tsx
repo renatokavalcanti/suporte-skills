@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Lock, Unlock } from 'lucide-react';
+import { CheckCircle2, Download, Lock, Unlock } from 'lucide-react';
 import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +34,7 @@ export function MeasurementDetailDialog({
   const { toast } = useToast();
   const { canWrite, isAdmin } = usePermissions();
   const [justification, setJustification] = useState('');
+  const [downloading, setDownloading] = useState<'csv' | 'pdf' | null>(null);
 
   useEffect(() => {
     setJustification('');
@@ -80,6 +81,33 @@ export function MeasurementDetailDialog({
 
   const pending = closeMutation.isPending || reopenMutation.isPending;
   const isClosed = data?.status === 'CLOSED';
+
+  const download = async (kind: 'csv' | 'pdf') => {
+    if (!id) return;
+    try {
+      setDownloading(kind);
+      const { blob, filename } =
+        kind === 'csv'
+          ? await measurementsService.exportCsv(id)
+          : await measurementsService.exportPdf(id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast({
+        title: 'Não foi possível exportar',
+        description: extractApiError(error),
+        variant: 'error',
+      });
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   return (
     <Dialog
@@ -148,6 +176,38 @@ export function MeasurementDetailDialog({
               </span>
             )}
           </div>
+
+          {isClosed && canWrite && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">Exportar:</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={downloading !== null}
+                onClick={() => void download('csv')}
+              >
+                {downloading === 'csv' ? (
+                  <Spinner className="h-3.5 w-3.5" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+                CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={downloading !== null}
+                onClick={() => void download('pdf')}
+              >
+                {downloading === 'pdf' ? (
+                  <Spinner className="h-3.5 w-3.5" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+                PDF
+              </Button>
+            </div>
+          )}
 
           {isClosed && isAdmin && (
             <div className="space-y-1.5">
