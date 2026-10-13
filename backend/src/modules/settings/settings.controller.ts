@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -10,18 +11,27 @@ import { Role } from '@prisma/client';
 import { AuthenticatedUser } from '../../shared/common/authenticated-user.interface';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import { Roles } from '../../shared/decorators/roles.decorator';
+import { MailMessage } from '../../shared/reporting/email';
 import { TestAiSettingsDto } from './dto/test-ai-settings.dto';
+import { TestEmailSettingsDto } from './dto/test-email-settings.dto';
 import { UpdateAiSettingsDto } from './dto/update-ai-settings.dto';
+import { UpdateEmailSettingsDto } from './dto/update-email-settings.dto';
+import { EmailSettingsService } from './email-settings.service';
+import { MailerService } from './mailer.service';
 import { SettingsService } from './settings.service';
 
 /**
- * Configuracoes do sistema editaveis pela interface. Restrito a ADMIN (a
- * chave da API e' um segredo; nunca e' devolvida pela API).
+ * Configuracoes do sistema editaveis pela interface. Restrito a ADMIN (segredos
+ * nunca sao devolvidos pela API).
  */
 @Controller('settings')
 @Roles(Role.ADMIN)
 export class SettingsController {
-  constructor(private readonly service: SettingsService) {}
+  constructor(
+    private readonly service: SettingsService,
+    private readonly emailSettings: EmailSettingsService,
+    private readonly mailer: MailerService,
+  ) {}
 
   @Get('ai')
   getAi() {
@@ -40,5 +50,37 @@ export class SettingsController {
   @HttpCode(200)
   testAi(@Body() dto: TestAiSettingsDto) {
     return this.service.test(dto);
+  }
+
+  @Get('email')
+  getEmail() {
+    return this.emailSettings.getView();
+  }
+
+  @Put('email')
+  updateEmail(
+    @Body() dto: UpdateEmailSettingsDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.emailSettings.update(dto, user);
+  }
+
+  @Post('email/test')
+  @HttpCode(200)
+  async testEmail(@Body() dto: TestEmailSettingsDto) {
+    const settings = this.emailSettings.getResolved();
+    const to = dto.to?.trim() || settings.fromAddress;
+    if (!to) {
+      throw new BadRequestException('Informe o destinatario do e-mail de teste');
+    }
+    const message: MailMessage = {
+      from: { name: settings.fromName, address: settings.fromAddress },
+      to: [to],
+      subject: 'Teste de envio — Suporte Skills',
+      text: 'Este e um e-mail de teste da configuracao de envio.',
+      html: '<p>Este e um e-mail de teste da configuracao de envio.</p>',
+    };
+    await this.mailer.send(message, settings);
+    return { ok: true, message: `E-mail de teste enviado para ${to}` };
   }
 }

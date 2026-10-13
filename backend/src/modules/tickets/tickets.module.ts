@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { SettingsModule } from '../settings/settings.module';
 import { ContractsController } from './contracts/contracts.controller';
 import { ContractsService } from './contracts/contracts.service';
 import { MeasurementsController } from './measurements.controller';
@@ -17,6 +18,7 @@ import { ZohoSyncScheduler } from './zoho-sync.scheduler';
 import { ZohoSyncService } from './zoho-sync.service';
 
 @Module({
+  imports: [SettingsModule],
   controllers: [
     TicketsController,
     MeasurementsController,

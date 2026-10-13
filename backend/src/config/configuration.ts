@@ -40,6 +40,11 @@ export interface AppConfiguration {
      *  Vazio: cai no segredo de acesso do JWT. */
     encryptionKey: string;
   };
+  email: {
+    /** Overrides para o transporte Graph (padrao: endpoints Microsoft). */
+    graphBaseUrl: string;
+    graphLoginBaseUrl: string;
+  };
   uploads: {
     /** Diretorio persistente fora do web root onde ficam os anexos (D-025). */
     dir: string;
@@ -139,6 +144,14 @@ export default (): AppConfiguration => {
     },
     settings: {
       encryptionKey: (env.SETTINGS_ENCRYPTION_KEY ?? '').trim(),
+    },
+    email: {
+      graphBaseUrl: (
+        env.EMAIL_GRAPH_BASE_URL ?? 'https://graph.microsoft.com/v1.0'
+      ).replace(/\/+$/, ''),
+      graphLoginBaseUrl: (
+        env.EMAIL_GRAPH_LOGIN_BASE_URL ?? 'https://login.microsoftonline.com'
+      ).replace(/\/+$/, ''),
     },
     uploads: {
       dir: (env.UPLOADS_DIR ?? 'uploads').trim() || 'uploads',

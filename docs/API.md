@@ -197,6 +197,18 @@ Todas as rotas são restritas a **ADMIN** (a chave de IA é um segredo e nunca �
 > foi salvo cai em `AI_*`/`NEWS_DIGEST_*`. A chave é cifrada em repouso
 > (`SETTINGS_ENCRYPTION_KEY`, com fallback para o segredo de acesso do JWT).
 
+### Configuração de envio de e-mail (D-030)
+
+Restrito a **ADMIN**. Guarda o transporte SMTP/Graph usado pelos Relatórios de Chamados. As
+credenciais (senha SMTP, client secret do Graph) são **cifradas em repouso** e nunca devolvidas
+(a resposta traz `smtpPasswordSet`/`graphClientSecretSet`).
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/settings/email` | Configuração efetiva (sem segredos): `enabled`, `transport` (`SMTP|GRAPH`), remetente, SMTP (`host`/`port`/`secure`/`user`) e Graph (`tenantId`/`clientId`). |
+| PUT | `/settings/email` | Atualiza campos (parciais). `smtpPassword`/`graphClientSecret` gravam cifrado; `clearSmtpPassword`/`clearGraphClientSecret` removem. |
+| POST | `/settings/email/test` | Envia um e-mail de teste (`to` opcional; ausente usa o remetente). `200` em sucesso; `503`/`400` com o motivo. |
+
 ### Configuração da integração Zoho Desk (D-030)
 
 Restrito a **ADMIN** e exige `TICKETS_ENABLED=true` (senão `404`). Guarda a configuração da
@@ -297,6 +309,10 @@ Métricas (B2) por cliente/período + prévia, geração auditada e lista. Reque
 | POST | `/ticket-reports` | Gera e registra o relatório em `generated_reports`: `clientId`, `type` ∈ `FINANCIAL|CLIENT`, período. Devolve `{ report, preview }`. |
 | GET | `/ticket-reports` | Lista paginada dos relatórios gerados. Filtros: `clientId`, `type`, `from`/`to` (período), `sort`, `order`. |
 | GET | `/ticket-reports/:id` | Detalhe do relatório gerado (inclui quem gerou). |
+| GET | `/ticket-reports/financial/preview` | Prévia do **Relatório Financeiro** (e-mail): `{ subject, to, text, html, attachmentFileName }`. `400` se o cliente não tiver contrato. |
+| GET | `/ticket-reports/financial/attachment.pdf` | PDF detalhado (chamados e horas) do Relatório Financeiro — `application/pdf`. |
+| GET | `/ticket-reports/financial/eml` | Arquivo `.eml` (HTML+texto + PDF anexado) para download — `message/rfc822`. |
+| POST | `/ticket-reports/financial/send` | Envia o e-mail (SMTP/Graph). Exige `confirm: true`. Registra em `generated_reports` (`sentAt`/`sentTo`). `400` sem confirmação/destinatário; `503` se o envio não estiver configurado. |
 
 > Horas = soma dos **lançamentos** no período (`executedTime`). Fechados = `closeDate` no
 > período; abertos ao fim = `closeDate` nulo com abertura antes do fim do período. O

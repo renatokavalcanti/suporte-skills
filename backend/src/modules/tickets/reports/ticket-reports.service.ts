@@ -2,9 +2,10 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@prisma/client';
+import { BillingStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import { AuditService } from '../../../shared/audit/audit.service';
 import { AuthenticatedUser } from '../../../shared/common/authenticated-user.interface';
@@ -19,10 +20,23 @@ import {
   paginationArgs,
 } from '../../../shared/common/pagination';
 import { buildOrderBy } from '../../../shared/common/sorting';
+import {
+  MailMessage,
+  buildMimeMessage,
+  formatCurrencyBRL,
+  formatDateBR,
+} from '../../../shared/reporting/email';
+import { PdfRow, buildPdf } from '../../../shared/reporting/pdf';
+import { EmailSettingsService } from '../../settings/email-settings.service';
+import { MailerService } from '../../settings/mailer.service';
 import { BillingResult, computeBilling, computeCarriedMinutes } from '../billing';
+import { FinancialReportData, buildFinancialEmail } from '../financial-report';
 import { GenerateTicketReportDto } from './dto/generate-ticket-report.dto';
 import { PreviewTicketReportDto } from './dto/preview-ticket-report.dto';
 import { QueryTicketReportsDto } from './dto/query-ticket-reports.dto';
+import { SendFinancialReportDto } from './dto/send-financial-report.dto';
+
+const COMPANY = { name: 'Suporte Informática' };
 
 export interface ResolvedPeriod {
   start: Date;
@@ -92,6 +106,10 @@ export function minutesToLabel(minutes: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+function truncate(value: string, max: number): string {
+  return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
+}
+
 /**
  * Relatorios de Chamados (D-030). Calcula as metricas da secao B2 (fechados por
  * `closeDate`, abertos ao fim do periodo, horas por lancamento/`executedTime`,
@@ -105,6 +123,8 @@ export class TicketReportsService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly audit: AuditService,
+    private readonly emailSettings: EmailSettingsService,
+    private readonly mailer: MailerService,
   ) {}
 
   private timezone(): string {
@@ -329,6 +349,269 @@ export class TicketReportsService {
     });
     if (!report) throw new NotFoundException('Relatorio nao encontrado');
     return report;
+  }
+
+  /** Previa do e-mail do Relatorio Financeiro (HTML + texto). */
+  async financialPreview(dto: PreviewTicketReportDto) {
+    const { data, to } = await this.financialData(dto);
+    const email = buildFinancialEmail(data, COMPANY);
+    return {
+      subject: email.subject,
+      to,
+      text: email.text,
+      html: email.html,
+      attachmentFileName: `${this.financialBaseName(data)}.pdf`,
+    };
+  }
+
+  /** PDF detalhado (lista de chamados e horas) do Relatorio Financeiro. */
+  async financialPdf(dto: PreviewTicketReportDto) {
+    const { data } = await this.financialData(dto);
+    return {
+      fileName: `${this.financialBaseName(data)}.pdf`,
+      buffer: buildPdf(this.financialPdfRows(data)),
+    };
+  }
+
+  /** Arquivo `.eml` (RFC 822) com HTML+texto e o PDF anexado. */
+  async financialEml(dto: PreviewTicketReportDto) {
+    const { data, to } = await this.financialData(dto);
+    const email = buildFinancialEmail(data, COMPANY);
+    const base = this.financialBaseName(data);
+    const settings = this.emailSettings.getResolved();
+    const message: MailMessage = {
+      from: {
+        name: settings.fromName,
+        address: settings.fromAddress || 'no-reply@suporte.local',
+      },
+      to: to ? [to] : [],
+      subject: email.subject,
+      text: email.text,
+      html: email.html,
+      attachments: [
+        {
+          filename: `${base}.pdf`,
+          contentType: 'application/pdf',
+          content: buildPdf(this.financialPdfRows(data)),
+        },
+      ],
+    };
+    return { fileName: `${base}.eml`, buffer: buildMimeMessage(message) };
+  }
+
+  /**
+   * Envia o Relatorio Financeiro (exige confirmacao explicita), registrando o
+   * relatorio enviado em `generated_reports` (auditoria).
+   */
+  async sendFinancial(dto: SendFinancialReportDto, actor: AuthenticatedUser) {
+    if (dto.confirm !== true) {
+      throw new BadRequestException(
+        'O envio exige confirmacao explicita (confirm: true)',
+      );
+    }
+    const settings = this.emailSettings.getResolved();
+    if (!settings.configured) {
+      throw new ServiceUnavailableException('Envio de e-mail nao configurado');
+    }
+
+    const { data, to } = await this.financialData(dto);
+    const recipients = (dto.recipients?.trim() || to)
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (recipients.length === 0) {
+      throw new BadRequestException(
+        'Informe o destinatario (e-mail financeiro do contrato)',
+      );
+    }
+
+    const email = buildFinancialEmail(data, COMPANY);
+    const base = this.financialBaseName(data);
+    const message: MailMessage = {
+      from: { name: settings.fromName, address: settings.fromAddress },
+      to: recipients,
+      subject: email.subject,
+      text: email.text,
+      html: email.html,
+      attachments: [
+        {
+          filename: `${base}.pdf`,
+          contentType: 'application/pdf',
+          content: buildPdf(this.financialPdfRows(data)),
+        },
+      ],
+    };
+
+    await this.mailer.send(message, settings);
+
+    const period = this.resolvePeriod(dto);
+    const report = await this.prisma.generatedReport.create({
+      data: {
+        clientId: dto.clientId,
+        type: 'FINANCIAL',
+        periodStart: period.start,
+        periodEnd: this.inclusiveEndDay(period),
+        billingStatus:
+          data.statusLabel === 'PADRÃO'
+            ? BillingStatus.STANDARD
+            : BillingStatus.WITH_EXTRA_HOURS,
+        generatedById: actor.id,
+        sentAt: new Date(),
+        sentTo: recipients.join(', '),
+      },
+      select: REPORT_SELECT,
+    });
+
+    await this.audit.record({
+      actorId: actor.id,
+      entity: 'generated_reports',
+      entityId: report.id,
+      action: 'CREATE',
+      after: {
+        type: 'FINANCIAL',
+        clientId: report.clientId,
+        billingStatus: report.billingStatus,
+        sentTo: report.sentTo,
+      },
+    });
+
+    return {
+      ok: true,
+      reportId: report.id,
+      subject: email.subject,
+      sentTo: recipients,
+    };
+  }
+
+  /** Monta os dados do Relatorio Financeiro (cliente + contrato + preview). */
+  private async financialData(
+    dto: PreviewTicketReportDto,
+  ): Promise<{ data: FinancialReportData; to: string }> {
+    const preview = await this.preview(dto);
+    if (!preview.client) {
+      throw new BadRequestException('Informe o cliente do relatorio');
+    }
+    const period = this.resolvePeriod(dto);
+    const contract = await this.prisma.contract.findFirst({
+      where: {
+        clientId: dto.clientId,
+        active: true,
+        startDate: { lte: period.end },
+        OR: [{ endDate: null }, { endDate: { gte: period.start } }],
+      },
+      orderBy: { startDate: 'desc' },
+    });
+    if (!contract || !preview.billing) {
+      throw new BadRequestException(
+        'Cliente sem contrato ativo para o periodo',
+      );
+    }
+    const billing = preview.billing;
+    const tz = this.timezone();
+
+    const closed = await this.prisma.ticket.findMany({
+      where: {
+        clientId: dto.clientId,
+        closeDate: { gte: period.start, lt: period.end },
+      },
+      orderBy: { closeDate: 'asc' },
+      select: {
+        ticketNumber: true,
+        openDate: true,
+        closeDate: true,
+        title: true,
+        technologyName: true,
+        timeSpentMinutes: true,
+      },
+    });
+
+    const data: FinancialReportData = {
+      clientName: preview.client.name,
+      planName: contract.planName,
+      periodLabel: this.periodLabel(period),
+      statusLabel:
+        billing.status === BillingStatus.WITH_EXTRA_HOURS
+          ? 'COM HORAS ADICIONAIS'
+          : 'PADRÃO',
+      includedLabel: minutesToLabel(billing.includedMinutes),
+      consumedLabel: minutesToLabel(billing.consumedMinutes),
+      extraLabel: minutesToLabel(billing.extraMinutes),
+      extraHourValueLabel: formatCurrencyBRL(Number(contract.extraHourValue)),
+      closedCount: preview.metrics.closedCount,
+      openedCount: preview.metrics.openAtEndCount,
+      monthlyValueLabel: formatCurrencyBRL(billing.monthlyValue),
+      extraAmountLabel: formatCurrencyBRL(billing.extraAmount),
+      totalValueLabel: formatCurrencyBRL(billing.totalValue),
+      tickets: closed.map((ticket) => ({
+        number: ticket.ticketNumber,
+        openDate: formatDateBR(ticket.openDate, tz),
+        closeDate: ticket.closeDate ? formatDateBR(ticket.closeDate, tz) : '',
+        subject: ticket.title,
+        technology: ticket.technologyName ?? '-',
+        hoursLabel: minutesToLabel(ticket.timeSpentMinutes),
+      })),
+    };
+
+    return { data, to: contract.financeEmail?.trim() ?? '' };
+  }
+
+  private periodLabel(period: ResolvedPeriod): string {
+    return new Intl.DateTimeFormat('pt-BR', {
+      timeZone: this.timezone(),
+      month: '2-digit',
+      year: 'numeric',
+    }).format(period.start);
+  }
+
+  private financialBaseName(data: FinancialReportData): string {
+    const slug = data.clientName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    return `Faturamento_${slug || 'cliente'}_${data.periodLabel.replace('/', '-')}`;
+  }
+
+  private financialPdfRows(data: FinancialReportData): PdfRow[] {
+    const rows: PdfRow[] = [
+      [{ x: 40, text: 'Relatorio de Faturamento', bold: true, size: 14 }],
+      [{ x: 40, text: `${data.clientName} - ${data.periodLabel}`, size: 11 }],
+      [{ x: 40, text: `Contrato/Plano: ${data.planName ?? '-'}` }],
+      [
+        {
+          x: 40,
+          text: `Horas franqueadas: ${data.includedLabel}   Consumidas: ${data.consumedLabel}   Adicionais: ${data.extraLabel}`,
+        },
+      ],
+      [
+        {
+          x: 40,
+          text: `Status: ${data.statusLabel} - ${data.totalValueLabel}`,
+          bold: true,
+        },
+      ],
+      [{ x: 40, text: ' ' }],
+      [
+        { x: 40, text: 'N.', bold: true },
+        { x: 90, text: 'Abertura', bold: true },
+        { x: 165, text: 'Fechamento', bold: true },
+        { x: 240, text: 'Assunto', bold: true },
+        { x: 420, text: 'Tecnologia', bold: true },
+        { x: 530, text: 'Horas', bold: true },
+      ],
+    ];
+
+    for (const ticket of data.tickets) {
+      rows.push([
+        { x: 40, text: ticket.number ?? '-' },
+        { x: 90, text: ticket.openDate },
+        { x: 165, text: ticket.closeDate },
+        { x: 240, text: truncate(ticket.subject, 34) },
+        { x: 420, text: truncate(ticket.technology, 20) },
+        { x: 530, text: ticket.hoursLabel },
+      ]);
+    }
+    return rows;
   }
 
   private async billingFor(
