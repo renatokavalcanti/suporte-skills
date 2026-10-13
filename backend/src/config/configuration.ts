@@ -45,6 +45,21 @@ export interface AppConfiguration {
     /** Modulo Tickets (D-029): desligado por padrao ate a fase de release. */
     enabled: boolean;
   };
+  zoho: {
+    /** Sincronizacao com o Zoho Desk (opt-in; somente leitura no Zoho). */
+    syncEnabled: boolean;
+    syncIntervalMinutes: number;
+    fetchTimeoutMs: number;
+    maxTicketsPerRun: number;
+    apiBaseUrl: string;
+    accountsBaseUrl: string;
+    clientId: string;
+    clientSecret: string;
+    refreshToken: string;
+    orgId: string;
+    /** true quando ha credenciais e a flag esta ligada. */
+    configured: boolean;
+  };
   seed: {
     enabled: boolean;
   };
@@ -123,6 +138,35 @@ export default (): AppConfiguration => {
       // Modulo Tickets (D-029): desligado por padrao (TICKETS_ENABLED=false).
       enabled: env.TICKETS_ENABLED === 'true',
     },
+    zoho: (() => {
+      const clientId = (env.ZOHO_CLIENT_ID ?? '').trim();
+      const clientSecret = (env.ZOHO_CLIENT_SECRET ?? '').trim();
+      const refreshToken = (env.ZOHO_REFRESH_TOKEN ?? '').trim();
+      const orgId = (env.ZOHO_ORG_ID ?? '').trim();
+      const syncEnabled = env.ZOHO_SYNC_ENABLED === 'true';
+      return {
+        syncEnabled,
+        syncIntervalMinutes: toInt(env.ZOHO_SYNC_INTERVAL_MINUTES, 360),
+        fetchTimeoutMs: toInt(env.ZOHO_FETCH_TIMEOUT_MS, 15000),
+        maxTicketsPerRun: toInt(env.ZOHO_MAX_TICKETS_PER_RUN, 200),
+        apiBaseUrl: (env.ZOHO_API_BASE_URL ?? 'https://desk.zoho.com/api/v1').replace(
+          /\/+$/,
+          '',
+        ),
+        accountsBaseUrl: (
+          env.ZOHO_ACCOUNTS_BASE_URL ?? 'https://accounts.zoho.com'
+        ).replace(/\/+$/, ''),
+        clientId,
+        clientSecret,
+        refreshToken,
+        orgId,
+        configured:
+          syncEnabled &&
+          [clientId, clientSecret, refreshToken, orgId].every(
+            (value) => value !== '',
+          ),
+      };
+    })(),
     seed: {
       enabled: env.SEED_DEMO === 'true',
     },

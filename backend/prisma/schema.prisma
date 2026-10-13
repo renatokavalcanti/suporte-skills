@@ -580,3 +580,20 @@ model Ticket {
   @@index([status])
   @@map("tickets")
 }
+
+// Fila de chamados do Zoho que ainda nao puderam ser vinculados a um Client
+// (D-029). Guarda o payload cru para nao perder dados nem "adivinhar" o
+// cliente; o vinculo e' feito manualmente depois.
+model UnmappedTicket {
+  id           String   @id @default(cuid())
+  zohoTicketId String   @unique @map("zoho_ticket_id")
+  accountId    String?  @map("account_id")
+  accountName  String?  @map("account_name")
+  subject      String?
+  raw          Json
+  firstSeenAt  DateTime @default(now()) @map("first_seen_at")
+  lastSeenAt   DateTime @default(now()) @map("last_seen_at")
+
+  @@index([accountId])
+  @@map("unmapped_tickets")
+}

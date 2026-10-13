@@ -76,6 +76,45 @@ export function validateEnv(
     }
   }
 
+  // Integracao com o Zoho Desk: so' valida quando explicitamente ligada.
+  if (String(config['ZOHO_SYNC_ENABLED'] ?? '') === 'true') {
+    const required = [
+      'ZOHO_CLIENT_ID',
+      'ZOHO_CLIENT_SECRET',
+      'ZOHO_REFRESH_TOKEN',
+      'ZOHO_ORG_ID',
+    ];
+    for (const key of required) {
+      if (String(config[key] ?? '').trim() === '') {
+        errors.push(`ZOHO_SYNC_ENABLED=true exige a variavel ${key}`);
+      }
+    }
+    const apiBaseUrl = String(
+      config['ZOHO_API_BASE_URL'] ?? 'https://desk.zoho.com/api/v1',
+    );
+    if (!/^https?:\/\//i.test(apiBaseUrl)) {
+      errors.push('ZOHO_API_BASE_URL deve comecar com http(s)://');
+    }
+    const accountsBaseUrl = String(
+      config['ZOHO_ACCOUNTS_BASE_URL'] ?? 'https://accounts.zoho.com',
+    );
+    if (!/^https?:\/\//i.test(accountsBaseUrl)) {
+      errors.push('ZOHO_ACCOUNTS_BASE_URL deve comecar com http(s)://');
+    }
+    const zohoInterval = Number(config['ZOHO_SYNC_INTERVAL_MINUTES'] ?? 360);
+    if (Number.isNaN(zohoInterval) || zohoInterval < 5) {
+      errors.push('ZOHO_SYNC_INTERVAL_MINUTES deve ser um numero inteiro >= 5');
+    }
+    const zohoTimeout = Number(config['ZOHO_FETCH_TIMEOUT_MS'] ?? 15000);
+    if (Number.isNaN(zohoTimeout) || zohoTimeout < 1000) {
+      errors.push('ZOHO_FETCH_TIMEOUT_MS deve ser um numero inteiro >= 1000');
+    }
+    const zohoMax = Number(config['ZOHO_MAX_TICKETS_PER_RUN'] ?? 200);
+    if (Number.isNaN(zohoMax) || zohoMax < 1) {
+      errors.push('ZOHO_MAX_TICKETS_PER_RUN deve ser um numero inteiro >= 1');
+    }
+  }
+
   const nodeEnv = String(config['NODE_ENV'] ?? 'development');
   const accessSecret = String(config['JWT_ACCESS_SECRET'] ?? '');
   const refreshSecret = String(config['JWT_REFRESH_SECRET'] ?? '');

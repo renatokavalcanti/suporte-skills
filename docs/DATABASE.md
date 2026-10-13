@@ -20,6 +20,7 @@ NewsSource 1─N NewsItem
 NewsItem 1─N NewsReadState N─1 Professional   (N:N)
 Release 1─N ReleaseItem
 Client 1─N Ticket
+UnmappedTicket  (fila: chamados do Zoho sem Client mapeado)
 ```
 
 Decisão **D-003**: `users` e `professionals` são a **mesma tabela**
@@ -128,6 +129,13 @@ Espelho local (somente leitura) dos chamados do Zoho Desk (D-029). Datas em **UT
 incremental (Fase 3). Índices: `(client_id, close_date)`, `(client_id, open_date)`,
 `status`.
 
+### unmapped_tickets
+`id, zoho_ticket_id (único), account_id (nullable), account_name (nullable),
+subject (nullable), raw (jsonb), first_seen_at, last_seen_at`
+Fila de chamados do Zoho que **ainda não foram vinculados a um `Client`** (D-029): guarda o
+payload cru para não perder dados nem "adivinhar" o cliente — o vínculo é feito manualmente
+(`POST /tickets/unmapped/:id/link`). Índice: `account_id`.
+
 ### app_settings
 `key (PK), value (jsonb), timestamps`
 Configurações editáveis pela interface (D-023). Hoje guarda `key = 'ai'` com as preferências
@@ -186,3 +194,4 @@ Calculado por `CertificationStatusService` a partir de `expires_at` e de
 | `20261002150000_certification_attachment` | Colunas de anexo (`attachment_*`) em `professional_certifications` (PDF do comprovante; D-025). |
 | `20261002180000_roadmap_attachment` | Colunas de anexo (`attachment_*`) em `roadmap_items` (PDF do comprovante do item; D-026). |
 | `20261009201718_add_tickets_clients` | Tabelas `clients` e `tickets` (espelho dos chamados do Zoho Desk + Medições Mensais; D-029). |
+| `20261013163255_unmapped_tickets` | Tabela `unmapped_tickets` (fila de chamados do Zoho sem cliente mapeado; D-029). |

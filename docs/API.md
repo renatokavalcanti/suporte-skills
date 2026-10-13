@@ -219,6 +219,23 @@ espelhamento do Zoho entra na Fase 3.
 > `status` é **texto livre** (rótulo do Zoho). `close_date` é a data de referência da medição
 > mensal. Toda escrita de cliente é auditada em `audit_logs` (`entity: "clients"`).
 
+#### Espelhamento do Zoho Desk (Fase 3)
+
+Integração **opt-in** e **somente leitura** no Zoho (`ZOHO_SYNC_ENABLED`, credenciais só por
+variável de ambiente — nunca devolvidas pela API nem registradas em log). Requer
+`TICKETS_ENABLED=true`; as rotas abaixo são restritas a **ADMIN**.
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| POST | `/tickets/sync` | Sincroniza agora (manual). Upsert idempotente por `zohoTicketId`, incremental por `modifiedTime`. Devolve o resumo `{ startedAt, finishedAt, fetched, created, updated, unmapped, errors, status }`. `503` quando o Zoho não está configurado. |
+| GET | `/tickets/sync/status` | `{ syncEnabled, configured, lastRun }` (última execução: data, status e contagens). Nunca expõe credenciais. |
+| GET | `/tickets/unmapped` | Lista paginada da fila de chamados **sem cliente mapeado** (payload cru preservado). |
+| POST | `/tickets/unmapped/:id/link` | Vincula o chamado da fila a um cliente (`{ clientId }`): cria/atualiza o `Ticket`, remove da fila e audita. |
+
+> Chamados cujo `accountId` não corresponde a nenhum `Client.zohoAccountId` vão para a fila de
+> **não mapeados** (não se adivinha o cliente). O log de execução é auditado
+> (`entity: "zoho_sync"`) e a última execução fica em `app_settings` (key `zoho_sync`).
+
 ### Exemplos
 
 ```bash
