@@ -15,7 +15,9 @@ import { MailMessage } from '../../shared/reporting/email';
 import { TestAiSettingsDto } from './dto/test-ai-settings.dto';
 import { TestEmailSettingsDto } from './dto/test-email-settings.dto';
 import { UpdateAiSettingsDto } from './dto/update-ai-settings.dto';
+import { UpdateBrandingSettingsDto } from './dto/update-branding-settings.dto';
 import { UpdateEmailSettingsDto } from './dto/update-email-settings.dto';
+import { BrandingSettingsService } from './branding-settings.service';
 import { EmailSettingsService } from './email-settings.service';
 import { MailerService } from './mailer.service';
 import { SettingsService } from './settings.service';
@@ -31,6 +33,7 @@ export class SettingsController {
     private readonly service: SettingsService,
     private readonly emailSettings: EmailSettingsService,
     private readonly mailer: MailerService,
+    private readonly branding: BrandingSettingsService,
   ) {}
 
   @Get('ai')
@@ -82,5 +85,18 @@ export class SettingsController {
     };
     await this.mailer.send(message, settings);
     return { ok: true, message: `E-mail de teste enviado para ${to}` };
+  }
+
+  @Get('branding')
+  getBranding() {
+    return this.branding.getView();
+  }
+
+  @Put('branding')
+  updateBranding(
+    @Body() dto: UpdateBrandingSettingsDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.branding.update(dto, user);
   }
 }

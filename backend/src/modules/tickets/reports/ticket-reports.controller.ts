@@ -17,6 +17,7 @@ import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { TicketsEnabledGuard } from '../../../shared/guards/tickets-enabled.guard';
 import { GenerateTicketReportDto } from './dto/generate-ticket-report.dto';
+import { ClientReportDto } from './dto/client-report.dto';
 import { PreviewTicketReportDto } from './dto/preview-ticket-report.dto';
 import { QueryTicketReportsDto } from './dto/query-ticket-reports.dto';
 import { SendFinancialReportDto } from './dto/send-financial-report.dto';
@@ -84,6 +85,22 @@ export class TicketReportsController {
   @Get()
   list(@Query() query: QueryTicketReportsDto) {
     return this.service.list(query);
+  }
+
+  @Get('client/preview')
+  clientPreview(@Query() query: ClientReportDto) {
+    return this.service.clientPreview(query);
+  }
+
+  @Get('client/pdf')
+  async clientPdf(
+    @Query() query: ClientReportDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { fileName, buffer } = await this.service.clientPdf(query);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    return new StreamableFile(buffer);
   }
 
   @Get(':id')

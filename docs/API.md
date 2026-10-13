@@ -209,6 +209,15 @@ credenciais (senha SMTP, client secret do Graph) são **cifradas em repouso** e 
 | PUT | `/settings/email` | Atualiza campos (parciais). `smtpPassword`/`graphClientSecret` gravam cifrado; `clearSmtpPassword`/`clearGraphClientSecret` removem. |
 | POST | `/settings/email/test` | Envia um e-mail de teste (`to` opcional; ausente usa o remetente). `200` em sucesso; `503`/`400` com o motivo. |
 
+### Identidade Visual (D-030)
+
+Restrito a **ADMIN**. Nome, cores, logo e contatos usados nos Relatórios de Chamados.
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/settings/branding` | `{ companyName, primaryColor, secondaryColor, logoDataUrl, contactLine, website }`. |
+| PUT | `/settings/branding` | Atualiza (parcial). `logoDataUrl` grava a logo (data URL); `clearLogo` remove. Cores em `#RRGGBB`. |
+
 ### Configuração da integração Zoho Desk (D-030)
 
 Restrito a **ADMIN** e exige `TICKETS_ENABLED=true` (senão `404`). Guarda a configuração da
@@ -313,6 +322,8 @@ Métricas (B2) por cliente/período + prévia, geração auditada e lista. Reque
 | GET | `/ticket-reports/financial/attachment.pdf` | PDF detalhado (chamados e horas) do Relatório Financeiro — `application/pdf`. |
 | GET | `/ticket-reports/financial/eml` | Arquivo `.eml` (HTML+texto + PDF anexado) para download — `message/rfc822`. |
 | POST | `/ticket-reports/financial/send` | Envia o e-mail (SMTP/Graph). Exige `confirm: true`. Registra em `generated_reports` (`sentAt`/`sentTo`). `400` sem confirmação/destinatário; `503` se o envio não estiver configurado. |
+| GET | `/ticket-reports/client/preview` | Prévia (HTML) do **Relatório do Cliente** (**sem valores**): identidade visual, KPIs, barra de consumo da franquia, gráficos (SVG), campos editáveis (`highlights`/`recommendations` via query), tabela detalhada e rodapé. |
+| GET | `/ticket-reports/client/pdf` | PDF A4 do Relatório do Cliente (cabeçalho e cabeçalho de tabela **repetidos**, rodapé `Página X de Y`, gráfico de tecnologias) — `application/pdf`. |
 
 > Horas = soma dos **lançamentos** no período (`executedTime`). Fechados = `closeDate` no
 > período; abertos ao fim = `closeDate` nulo com abertura antes do fim do período. O

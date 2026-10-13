@@ -28,9 +28,16 @@ import {
 } from '../../../shared/reporting/email';
 import { PdfRow, buildPdf } from '../../../shared/reporting/pdf';
 import { EmailSettingsService } from '../../settings/email-settings.service';
+import { BrandingSettingsService } from '../../settings/branding-settings.service';
 import { MailerService } from '../../settings/mailer.service';
 import { BillingResult, computeBilling, computeCarriedMinutes } from '../billing';
+import {
+  ClientReportData,
+  ClientReportEvolutionPoint,
+  buildClientReportHtml,
+} from '../client-report';
 import { FinancialReportData, buildFinancialEmail } from '../financial-report';
+import { ClientReportDto } from './dto/client-report.dto';
 import { GenerateTicketReportDto } from './dto/generate-ticket-report.dto';
 import { PreviewTicketReportDto } from './dto/preview-ticket-report.dto';
 import { QueryTicketReportsDto } from './dto/query-ticket-reports.dto';
@@ -125,6 +132,7 @@ export class TicketReportsService {
     private readonly audit: AuditService,
     private readonly emailSettings: EmailSettingsService,
     private readonly mailer: MailerService,
+    private readonly branding: BrandingSettingsService,
   ) {}
 
   private timezone(): string {
@@ -612,6 +620,282 @@ export class TicketReportsService {
       ]);
     }
     return rows;
+  }
+
+  /** Previa (HTML) do Relatorio do Cliente (sem valores de contrato). */
+  async clientPreview(dto: ClientReportDto) {
+    const { data, warnings } = await this.clientData(dto);
+    const html = buildClientReportHtml(data, this.branding.getResolved());
+    return { html, periodLabel: data.periodLabel, warnings };
+  }
+
+  /** PDF (A4, cabecalho/tabela repetidos) do Relatorio do Cliente. */
+  async clientPdf(dto: ClientReportDto) {
+    const { data } = await this.clientData(dto);
+    const brand = this.branding.getResolved();
+    return {
+      fileName: `${this.clientBaseName(data)}.pdf`,
+      buffer: this.clientPdfBuffer(data, brand),
+    };
+  }
+
+  private clientPdfBuffer(
+    data: ClientReportData,
+    brand: { companyName: string; contactLine: string; website: string },
+  ): Buffer {
+    const header: PdfRow[] = [
+      [{ x: 40, text: brand.companyName, bold: true, size: 12 }],
+      [{ x: 40, text: 'Relatorio de Atendimento', bold: true, size: 15 }],
+      [{ x: 40, text: `${data.clientName} - ${data.periodLabel}`, size: 10 }],
+      [{ x: 40, text: ' ', size: 8 }],
+    ];
+    const tableHeader: PdfRow[] = [
+      [
+        { x: 40, text: 'N.', bold: true },
+        { x: 90, text: 'Abertura', bold: true },
+        { x: 165, text: 'Fechamento', bold: true },
+        { x: 240, text: 'Assunto', bold: true },
+        { x: 400, text: 'Tecnologia', bold: true },
+        { x: 495, text: 'Status', bold: true },
+        { x: 545, text: 'Horas', bold: true },
+      ],
+    ];
+    const footer: PdfRow[] = [
+      [
+        { x: 40, text: brand.contactLine || brand.companyName, size: 8 },
+        { x: 440, text: 'Pagina {{page}} de {{total}}', bold: true, size: 9 },
+      ],
+    ];
+
+    const body: PdfRow[] = [
+      [
+        {
+          x: 40,
+          text: `Chamados fechados: ${data.kpis.closedCount}   Abertos: ${data.kpis.openCount}`,
+        },
+      ],
+      [
+        {
+          x: 40,
+          text:
+            `Horas utilizadas / contratadas: ${data.kpis.usedLabel} / ${data.kpis.contractedLabel}` +
+            `   Tempo medio de solucao: ${data.kpis.averageResolutionLabel ?? '-'}`,
+        },
+      ],
+      [
+        {
+          x: 40,
+          text:
+            `Franquia utilizada: ${data.franchise.percent.toFixed(0)}%` +
+            (data.franchise.exceeded
+              ? `   Horas adicionais: ${data.franchise.extraLabel}`
+              : ''),
+        },
+      ],
+      [{ x: 40, text: ' ', size: 8 }],
+    ];
+
+    for (const ticket of data.tickets) {
+      body.push([
+        { x: 40, text: ticket.number ?? '-' },
+        { x: 90, text: ticket.openDate },
+        { x: 165, text: ticket.closeDate },
+        { x: 240, text: truncate(ticket.subject, 30) },
+        { x: 400, text: truncate(ticket.technology, 18) },
+        { x: 495, text: truncate(ticket.status, 10) },
+        { x: 545, text: ticket.hoursLabel },
+      ]);
+    }
+
+    const charts =
+      data.technologies.length > 0
+        ? [
+            {
+              x: 40,
+              y: 60,
+              width: 500,
+              height: 110,
+              title: 'Tecnologias atendidas (chamados)',
+              bars: data.technologies.map((tech) => ({
+                label: tech.name,
+                value: tech.tickets,
+              })),
+            },
+          ]
+        : [];
+
+    return buildPdf(body, { header, tableHeader, footer, charts });
+  }
+
+  private async clientData(
+    dto: ClientReportDto,
+  ): Promise<{ data: ClientReportData; warnings: string[] }> {
+    const preview = await this.preview(dto);
+    if (!preview.client) {
+      throw new BadRequestException('Informe o cliente do relatorio');
+    }
+    const period = this.resolvePeriod(dto);
+    const tz = this.timezone();
+
+    const contract = await this.prisma.contract.findFirst({
+      where: {
+        clientId: dto.clientId,
+        active: true,
+        startDate: { lte: period.end },
+        OR: [{ endDate: null }, { endDate: { gte: period.start } }],
+      },
+      orderBy: { startDate: 'desc' },
+      select: { includedMinutes: true },
+    });
+
+    const usedMinutes = preview.metrics.totalMinutes;
+    const contractedMinutes = contract?.includedMinutes ?? 0;
+    const percent =
+      contractedMinutes > 0
+        ? Math.min(100, (usedMinutes / contractedMinutes) * 100)
+        : usedMinutes > 0
+          ? 100
+          : 0;
+    const exceeded = usedMinutes > contractedMinutes;
+
+    const closed = await this.prisma.ticket.findMany({
+      where: {
+        clientId: dto.clientId,
+        closeDate: { gte: period.start, lt: period.end },
+      },
+      orderBy: { closeDate: 'asc' },
+      select: {
+        ticketNumber: true,
+        openDate: true,
+        closeDate: true,
+        title: true,
+        technologyName: true,
+        status: true,
+        timeSpentMinutes: true,
+      },
+    });
+
+    const evolution = await this.evolution(dto.clientId!, period, tz);
+
+    const warnings: string[] = [];
+    if (!contract) {
+      warnings.push('Cliente sem contrato cadastrado (franquia nao definida)');
+    }
+    const noTech = closed.filter((ticket) => ticket.technologyName === null).length;
+    if (noTech > 0) {
+      warnings.push(`${noTech} chamado(s) sem tecnologia definida`);
+    }
+    const noHours = closed.filter((ticket) => ticket.timeSpentMinutes === 0).length;
+    if (noHours > 0) {
+      warnings.push(`${noHours} chamado(s) fechado(s) sem horas lancadas`);
+    }
+
+    const data: ClientReportData = {
+      clientName: preview.client.name,
+      periodLabel: this.periodLabel(period),
+      generatedAtLabel: new Intl.DateTimeFormat('pt-BR', {
+        timeZone: tz,
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date()),
+      kpis: {
+        closedCount: preview.metrics.closedCount,
+        openCount: preview.metrics.openAtEndCount,
+        usedLabel: minutesToLabel(usedMinutes),
+        contractedLabel: minutesToLabel(contractedMinutes),
+        averageResolutionLabel: preview.metrics.averageResolutionLabel,
+      },
+      franchise: {
+        percent,
+        exceeded,
+        extraLabel: minutesToLabel(Math.max(0, usedMinutes - contractedMinutes)),
+      },
+      technologies: preview.metrics.technologies,
+      evolution,
+      tickets: closed.map((ticket) => ({
+        number: ticket.ticketNumber,
+        openDate: formatDateBR(ticket.openDate, tz),
+        closeDate: ticket.closeDate ? formatDateBR(ticket.closeDate, tz) : '',
+        subject: ticket.title,
+        technology: ticket.technologyName ?? '-',
+        status: ticket.status,
+        hoursLabel: minutesToLabel(ticket.timeSpentMinutes),
+      })),
+      highlights: dto.highlights?.trim() ?? '',
+      recommendations: dto.recommendations?.trim() ?? '',
+    };
+
+    return { data, warnings };
+  }
+
+  /** Ultimos 6 meses (terminando no mes do periodo): abertos x fechados. */
+  private async evolution(
+    clientId: string,
+    period: ResolvedPeriod,
+    tz: string,
+  ): Promise<ClientReportEvolutionPoint[]> {
+    const base = this.yearMonthOf(period.start, tz);
+    const firstIndex = base.year * 12 + (base.month - 1) - 5;
+    const firstYear = Math.floor(firstIndex / 12);
+    const firstMonth = (firstIndex % 12) + 1;
+    const firstRange = zonedMonthRange(firstYear, firstMonth, tz);
+
+    const tickets = await this.prisma.ticket.findMany({
+      where: {
+        clientId,
+        OR: [
+          { openDate: { gte: firstRange.start, lt: period.end } },
+          { closeDate: { gte: firstRange.start, lt: period.end } },
+        ],
+      },
+      select: { openDate: true, closeDate: true },
+    });
+
+    const points: ClientReportEvolutionPoint[] = [];
+    for (let offset = 0; offset < 6; offset += 1) {
+      const index = firstIndex + offset;
+      const year = Math.floor(index / 12);
+      const month = (index % 12) + 1;
+      const range = zonedMonthRange(year, month, tz);
+      const opened = tickets.filter(
+        (ticket) => ticket.openDate >= range.start && ticket.openDate < range.end,
+      ).length;
+      const closed = tickets.filter(
+        (ticket) =>
+          ticket.closeDate !== null &&
+          ticket.closeDate >= range.start &&
+          ticket.closeDate < range.end,
+      ).length;
+      points.push({
+        label: `${String(month).padStart(2, '0')}/${year}`,
+        opened,
+        closed,
+      });
+    }
+    return points;
+  }
+
+  private yearMonthOf(date: Date, tz: string): { year: number; month: number } {
+    const formatted = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+    const [year, month] = formatted.split('-').map(Number);
+    return { year, month };
+  }
+
+  private clientBaseName(data: ClientReportData): string {
+    const slug = data.clientName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    return `Relatorio_${slug || 'cliente'}_${data.periodLabel.replace('/', '-')}`;
   }
 
   private async billingFor(
