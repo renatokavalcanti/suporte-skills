@@ -158,6 +158,7 @@ suporte-skills/
 | **Releases** | Changelog do sistema: versões com mudanças por categoria (novidade, melhoria, correção, segurança, infra) e destaque da versão atual |
 | **Relatórios** | Painel de **Consultores** (card por consultor + janela com os itens do roadmap), certificações, vencimentos, roadmap e por fabricante — em tela e **exportação CSV** (UTF-8 BOM, separador `;`) |
 | **Importação CSV** | Prévia validada linha a linha, confirmação e relatório de erros para profissionais e certificações |
+| **Tickets / Medições Mensais** | **Espelhamento** (somente leitura, opt-in) dos chamados do **Zoho Desk**, cadastro de **clientes** e **Medições Mensais** por cliente/mês — consolidação dos chamados faturados com **comprovação em CSV e PDF** (inclui código de verificação). Módulo desligado por padrão (`TICKETS_ENABLED=false`) |
 | **Acessos** | ADMIN/MANAGER com acesso total (inclui catálogo e vínculos de certificação); CONSULTANT restrito à área "Meu roadmap", onde registra os próprios objetivos e anexa comprovantes |
 | **Senha provisória** | ADMIN cria o acesso com senha provisória; no 1º login o usuário é obrigado a definir uma nova senha (tela dedicada), com bloqueio das demais rotas e revogação das sessões |
 | **Alertas e auditoria** | Alertas de vencimento/roadmap/cobertura e log de alterações (`audit_logs`) |
@@ -192,6 +193,11 @@ para execução local). Principais:
 | `SETTINGS_ENCRYPTION_KEY` | Segredo para cifrar valores sensíveis salvos pela interface (opcional; usa o `JWT_ACCESS_SECRET` se vazio) |
 | `UPLOADS_DIR` | Pasta persistente dos anexos (padrão `uploads`; no Docker: `/app/uploads` = bind mount `./data/uploads`) |
 | `MAX_UPLOAD_MB` | Limite de tamanho por anexo em MB (1–50, padrão 10) |
+| `TICKETS_ENABLED` | Liga o módulo **Tickets/Medições Mensais** (padrão `false`; desligado, as rotas do módulo respondem `404`) |
+| `ZOHO_SYNC_ENABLED` | Liga o **espelhamento** dos chamados do Zoho Desk (padrão `false`; só leitura no Zoho; exige as credenciais) |
+| `ZOHO_CLIENT_ID` / `ZOHO_CLIENT_SECRET` / `ZOHO_REFRESH_TOKEN` / `ZOHO_ORG_ID` | Credenciais OAuth do Zoho Desk (só no servidor; nunca devolvidas pela API nem registradas em log) |
+| `ZOHO_SYNC_INTERVAL_MINUTES` / `ZOHO_FETCH_TIMEOUT_MS` / `ZOHO_MAX_TICKETS_PER_RUN` | Cadência (360), timeout (15 s) e teto por execução (200) da sincronização |
+| `ZOHO_API_BASE_URL` / `ZOHO_ACCOUNTS_BASE_URL` | Bases do Zoho Desk / contas (padrões oficiais; ajustáveis para teste) |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | Credenciais do ADMIN no seed |
 
 ## Documentação
@@ -221,6 +227,7 @@ relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módul
 | D-026 | **Roadmap próprio do consultor** (autoatendimento + anexo no item) |
 | D-027 | **Visão do consultor**: "Meu roadmap" em destaque, catálogo oculto |
 | D-028 | **Roadmap em Kanban/Timeline** + painel de consultores em Relatórios |
+| D-029 | **Módulo Tickets**: espelho do Zoho Desk, clientes e Medições Mensais (CSV/PDF) — opt-in |
 
 Typecheck e build limpos em backend e frontend; imagem Docker publicada na VM
 (10.0.0.200) com HTTPS. A suíte de aceite cobre os blocos 11f (D-024), 11g (D-025) e 11h
@@ -238,6 +245,8 @@ variáveis de ambiente (`AI_*`, `NEWS_DIGEST_*`) — a interface tem precedênci
 guardada **cifrada** e nunca é devolvida pela API. Sem IA, o painel de destaques fica oculto
 e a lista continua ordenável por relevância.
 
+O **módulo Tickets** (D-029) fica **desligado por padrão** (`TICKETS_ENABLED=false`): sem ele, as rotas de clientes/chamados/medições respondem `404` e o menu não aparece (a SPA é controlada por `VITE_TICKETS_ENABLED`). O **espelhamento** do Zoho Desk é separadamente opt-in (`ZOHO_SYNC_ENABLED=true` + credenciais) e o módulo funciona sem ele (CRUD de clientes + medições). Chamados sem cliente mapeado vão para uma **fila** e podem ser vinculados manualmente; medições **fechadas são imutáveis** (reabertura só por ADMIN, com justificativa auditada).
+
 Fora do MVP (arquitetura preparada): Skills com níveis, Treinamentos/Cursos, Projetos,
-Parcerias e requisitos, Gap Analysis, Capacity Planning, integração Zoho e
-scraping/monitoramento avançado de fabricantes (o Tec News cobre a via RSS/Atom).
+Parcerias e requisitos, Gap Analysis, Capacity Planning e scraping/monitoramento avançado de
+fabricantes (o Tec News cobre a via RSS/Atom).

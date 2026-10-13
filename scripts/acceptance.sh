@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# Suite de aceite do Suporte Skills (Fase 8 + Tec News + Releases + Resumo IA + Config + Anexo + Roadmap) — 177 verificacoes
+# Suite de aceite do Suporte Skills (Fase 8 + Tec News + Releases + Resumo IA + Config + Anexo + Roadmap + Tickets) — 197 verificacoes
 #
 # Uso:
 #   bash scripts/acceptance.sh
@@ -132,7 +132,11 @@ if [ "$RESET_DEMO" = '1' ] && [ "${ALLOW_DATA_LOSS:-0}" != '1' ]; then
       (SELECT count(*) FROM technologies WHERE id NOT LIKE 'tec-%') +
       (SELECT count(*) FROM certifications WHERE id NOT LIKE 'cer-%') +
       (SELECT count(*) FROM professional_certifications WHERE id NOT LIKE 'pc-%') +
-      (SELECT count(*) FROM roadmap_items WHERE id NOT LIKE 'rm-%')
+      (SELECT count(*) FROM roadmap_items WHERE id NOT LIKE 'rm-%') +
+      (SELECT count(*) FROM clients) +
+      (SELECT count(*) FROM tickets) +
+      (SELECT count(*) FROM monthly_measurements) +
+      (SELECT count(*) FROM unmapped_tickets)
   " 2>/dev/null | tr -d '[:space:]')"
   if [ -n "$NON_DEMO" ] && [ "$NON_DEMO" != '0' ]; then
     echo
@@ -792,6 +796,87 @@ HAS_RM=$(q "o.find(r=>r.id==='$QA_RM')")
 check "$([ "$HAS_RM" = '__UNDEF__' ]; echo $?)" 'item removido sai do roadmap' "item=$HAS_RM"
 
 # ---------------------------------------------------------------------------
+echo "--- 11i. Tickets e Medições Mensais (D-029) ---"
+call GET /clients "$ADMIN"
+if [ "$CODE" = '404' ]; then
+  echo "[SKIP] modulo Tickets desligado (TICKETS_ENABLED=false)"
+else
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.meta.total')" = 'number' ]; echo $?)" \
+    'clientes (ADMIN)' "http=$CODE total=$(q 'o.meta.total')"
+  call GET /tickets "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.meta.total')" = 'number' ]; echo $?)" \
+    'chamados espelhados (ADMIN, somente leitura)' "http=$CODE total=$(q 'o.meta.total')"
+  call GET '/tickets?from=2026-10-01&to=2026-10-31' "$ADMIN"
+  check "$([ "$CODE" = '200' ]; echo $?)" 'chamados com filtro de periodo' "http=$CODE"
+  call GET /measurements "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.meta.total')" = 'number' ]; echo $?)" \
+    'medicoes (ADMIN)' "http=$CODE total=$(q 'o.meta.total')"
+
+  call GET /clients "$CONSULTANT"
+  check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa clientes -> 403' "http=$CODE"
+  call GET /measurements "$CONSULTANT"
+  check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa medicoes -> 403' "http=$CODE"
+
+  # Cliente de QA + chamados inseridos no banco (o espelho do Zoho e' leitura).
+  call POST /clients "$ADMIN" "{\"name\":\"QA Cliente $TS\",\"document\":\"99.999.999/0001-99\",\"zohoAccountId\":\"qa-acc-$TS\"}"
+  QA_CLIENT=$(q 'o.id')
+  check "$([ "$CODE" = '201' ] && [ -n "$QA_CLIENT" ]; echo $?)" 'criar cliente -> 201' "http=$CODE"
+
+  "$PSQL_BIN" -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -q -c "
+    INSERT INTO tickets (id, zoho_ticket_id, title, status, open_date, close_date, time_spent_minutes, sla_compliant, is_billable, client_id, created_at, updated_at) VALUES
+      ('qa-tk-$TS-1','QA-TK-$TS-1','Outubro dia 15','Closed','2026-10-15T10:00:00Z','2026-10-15T12:00:00Z',30,true,true,'$QA_CLIENT', now(), now()),
+      ('qa-tk-$TS-2','QA-TK-$TS-2','Virada 23h BRT (out)','Closed','2026-10-31T10:00:00Z','2026-11-01T02:00:00Z',20,false,true,'$QA_CLIENT', now(), now()),
+      ('qa-tk-$TS-3','QA-TK-$TS-3','Novembro 00h BRT','Closed','2026-11-01T00:00:00Z','2026-11-01T03:00:00Z',10,true,true,'$QA_CLIENT', now(), now()),
+      ('qa-tk-$TS-4','QA-TK-$TS-4','Nao faturavel (out)','Closed','2026-10-20T10:00:00Z','2026-10-20T12:00:00Z',99,true,false,'$QA_CLIENT', now(), now());" 2>/dev/null
+  TK_COUNT=$(count "SELECT count(*) FROM tickets WHERE client_id='$QA_CLIENT'")
+  check "$([ "$TK_COUNT" = '4' ]; echo $?)" 'chamados de QA inseridos para a medicao' "linhas=$TK_COUNT"
+
+  # Calculo do mes: close_date no fuso (virada de mes) + apenas faturaveis.
+  call POST /measurements "$ADMIN" "{\"clientId\":\"$QA_CLIENT\",\"year\":2026,\"month\":10}"
+  QA_MEAS=$(q 'o.id')
+  check "$([ "$CODE" = '201' ] && [ "$(q 'o.ticketCount')" = '2' ] && [ "$(q 'o.timeSpentMinutes')" = '50' ]; echo $?)" \
+    'medicao do mes: virada de mes no fuso + so faturaveis' "chamados=$(q 'o.ticketCount') minutos=$(q 'o.timeSpentMinutes')"
+
+  # Imutabilidade da medicao fechada.
+  call POST "/measurements/$QA_MEAS/close" "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'o.status')" = 'CLOSED' ]; echo $?)" 'fechar medicao -> CLOSED' "http=$CODE status=$(q 'o.status')"
+  call POST /measurements "$ADMIN" "{\"clientId\":\"$QA_CLIENT\",\"year\":2026,\"month\":10}"
+  check "$([ "$CODE" = '409' ]; echo $?)" 'medicao fechada nao e recalculada -> 409' "http=$CODE"
+  call POST "/measurements/$QA_MEAS/close" "$ADMIN"
+  check "$([ "$CODE" = '409' ]; echo $?)" 'fechar duas vezes -> 409' "http=$CODE"
+
+  # Exportacao (so' medicao fechada).
+  "$CURL_BIN" -s -D "$WORK_DIR/meas-head.txt" -H "Authorization: Bearer $ADMIN" "$API/measurements/$QA_MEAS/export.csv" -o "$WORK_DIR/meas.csv"
+  grep -qi 'text/csv' "$WORK_DIR/meas-head.txt"
+  check $? 'medicao: CSV com content-type correto' "$(grep -i 'content-type' "$WORK_DIR/meas-head.txt" | tr -d '\r')"
+  MBOM=$("$NODE_BIN" -e "const b=require('fs').readFileSync('$WORK_DIR/meas.csv');console.log(b[0]===0xEF&&b[1]===0xBB&&b[2]===0xBF?'sim':'nao')")
+  check "$([ "$MBOM" = 'sim' ]; echo $?)" 'medicao: CSV com BOM UTF-8' "bom=$MBOM"
+  "$CURL_BIN" -s -H "Authorization: Bearer $ADMIN" "$API/measurements/$QA_MEAS/export.pdf" -o "$WORK_DIR/meas.pdf"
+  MPDF=$(head -c 5 "$WORK_DIR/meas.pdf" 2>/dev/null)
+  check "$([ "$MPDF" = '%PDF-' ]; echo $?)" 'medicao: PDF valido (magic bytes)' "magic=$MPDF"
+
+  # Reabertura apenas pelo ADMIN.
+  call POST "/measurements/$QA_MEAS/reopen" "$MANAGER" '{"justification":"tentativa manager"}'
+  check "$([ "$CODE" = '403' ]; echo $?)" 'MANAGER nao reabre medicao -> 403' "http=$CODE"
+  call POST "/measurements/$QA_MEAS/reopen" "$ADMIN" '{"justification":"ajuste de faturamento QA"}'
+  check "$([ "$CODE" = '200' ] && [ "$(q 'o.status')" = 'DRAFT' ]; echo $?)" 'ADMIN reabre a medicao -> DRAFT' "http=$CODE status=$(q 'o.status')"
+  DRAFT_CODE=$("$CURL_BIN" -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $ADMIN" "$API/measurements/$QA_MEAS/export.csv")
+  check "$([ "$DRAFT_CODE" = '400' ]; echo $?)" 'rascunho nao e exportavel -> 400' "http=$DRAFT_CODE"
+  call DELETE "/clients/$QA_CLIENT" "$ADMIN"
+  check "$([ "$CODE" = '204' ]; echo $?)" 'desativar cliente (soft) -> 204' "http=$CODE"
+
+  # Sincronizacao do Zoho (opt-in): idempotente quando ligada; 503 quando desligada.
+  call POST /tickets/sync "$ADMIN"
+  if [ "$CODE" = '200' ]; then
+    call POST /tickets/sync "$ADMIN"
+    check "$([ "$CODE" = '200' ] && [ "$(q 'o.created')" = '0' ]; echo $?)" \
+      'sync do Zoho idempotente (2a execucao cria 0)' "2a criados=$(q 'o.created')"
+  else
+    check "$([ "$CODE" = '503' ]; echo $?)" 'sync do Zoho desligado -> 503 (degradacao graciosa)' "http=$CODE"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 echo "--- 12. Limpeza: restaura o estado DEMO ---"
 if [ "$RESET_DEMO" = '1' ]; then
   # Rede de seguranca: dump do banco ANTES de apagar (best-effort). Desative
@@ -814,6 +899,11 @@ if [ "$RESET_DEMO" = '1' ]; then
     fi
   fi
   "$PSQL_BIN" -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -q -c "
+DELETE FROM monthly_measurement_items;
+DELETE FROM monthly_measurements;
+DELETE FROM tickets;
+DELETE FROM unmapped_tickets;
+DELETE FROM clients;
 DELETE FROM audit_logs;
 DELETE FROM app_settings;
 DELETE FROM releases;
@@ -830,8 +920,8 @@ DELETE FROM refresh_tokens;
 DELETE FROM professionals;"
   rm -rf "$BACKEND_DIR/uploads"
   ( cd "$BACKEND_DIR" && "$NPM_BIN" run seed >/dev/null 2>&1 )
-  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '11' ]; echo $?)"
-  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 11 releases"
+  STATE="$([ "$(count 'SELECT count(*) FROM professionals')" = '6' ] && [ "$(count 'SELECT count(*) FROM professional_certifications')" = '11' ] && [ "$(count 'SELECT count(*) FROM audit_logs')" = '0' ] && [ "$(count 'SELECT count(*) FROM news_items')" = '6' ] && [ "$(count 'SELECT count(*) FROM news_sources')" = '5' ] && [ "$(count 'SELECT count(*) FROM news_digests')" = '0' ] && [ "$(count 'SELECT count(*) FROM app_settings')" = '0' ] && [ "$(count 'SELECT count(*) FROM releases')" = '11' ] && [ "$(count 'SELECT count(*) FROM clients')" = '0' ] && [ "$(count 'SELECT count(*) FROM tickets')" = '0' ]; echo $?)"
+  check "$STATE" 'estado DEMO restaurado apos os testes' "6 profissionais / 11 vinculos / auditoria limpa / 6 noticias / 5 fontes / 0 resumos / 0 configs / 11 releases / 0 clientes / 0 chamados"
 else
   echo "[SKIP] restauracao do seed (RESET_DEMO=0)"
 fi

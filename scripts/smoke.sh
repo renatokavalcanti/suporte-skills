@@ -162,6 +162,32 @@ if [ -n "$CONSULTANT" ]; then
   check "$([ "$CODE" = '200' ]; echo $?)" 'CONSULTANT le o proprio roadmap (D-026)' "http=$CODE"
 fi
 
+# --- Modulo Tickets (D-029): leituras NAO destrutivas; so' se estiver ligado ---
+call GET /clients "$ADMIN"
+if [ "$CODE" = '404' ]; then
+  echo "[SKIP] modulo Tickets desligado (TICKETS_ENABLED=false)"
+else
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.meta.total')" = 'number' ]; echo $?)" \
+    'clientes (ADMIN)' "http=$CODE total=$(q 'o.meta.total')"
+  call GET /tickets "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.meta.total')" = 'number' ]; echo $?)" \
+    'chamados espelhados (ADMIN)' "http=$CODE total=$(q 'o.meta.total')"
+  call GET '/tickets?from=2026-01-01&to=2026-12-31' "$ADMIN"
+  check "$([ "$CODE" = '200' ]; echo $?)" 'chamados com filtro de periodo' "http=$CODE"
+  call GET /measurements "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.meta.total')" = 'number' ]; echo $?)" \
+    'medicoes mensais (ADMIN)' "http=$CODE total=$(q 'o.meta.total')"
+  call GET /tickets/sync/status "$ADMIN"
+  check "$([ "$CODE" = '200' ] && [ "$(q 'typeof o.configured')" = 'boolean' ]; echo $?)" \
+    'status da sincronizacao do Zoho (leitura)' "http=$CODE configured=$(q 'o.configured')"
+  if [ -n "$CONSULTANT" ]; then
+    call GET /clients "$CONSULTANT"
+    check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa clientes -> 403' "http=$CODE"
+    call GET /measurements "$CONSULTANT"
+    check "$([ "$CODE" = '403' ]; echo $?)" 'CONSULTANT nao acessa medicoes -> 403' "http=$CODE"
+  fi
+fi
+
 call GET '/professionals/x/certifications/y/attachment' ''
 check "$([ "$CODE" = '401' ]; echo $?)" 'anexo exige autenticacao (D-025)' "http=$CODE"
 

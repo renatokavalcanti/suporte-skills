@@ -47,7 +47,10 @@ Parâmetros aceitos: `API_URL`, `WEB_URL`, `NODE_BIN`, `CURL_BIN`, `PSQL_BIN`, `
 `bash scripts/smoke.sh` valida que a aplicação está no ar e funcional **sem criar, alterar
 ou remover dados**: frontend, `/health`, login, `/auth/me`, dashboard, Tec News (lista +
 resumo), configurações de IA (sem expor a chave), o roadmap da gestão e a proteção das rotas
-de anexo (com leitura do próprio roadmap quando o CONSULTANT é informado). É o teste
+de anexo (com leitura do próprio roadmap quando o CONSULTANT é informado). Quando o módulo
+Tickets está ligado, valida leituras não-destrutivas de clientes/chamados/medições, o status
+da sincronização do Zoho e o RBAC do CONSULTANT (pulado em `404` quando o módulo está
+desligado). É o teste
 indicado **após um deploy** em ambiente com dados reais. O **ADMIN é obrigatório**
 (`SMOKE_ADMIN_EMAIL/PASSWORD`); MANAGER e CONSULTANT são **opcionais** (`SMOKE_MANAGER_*`,
 `SMOKE_CONSULTANT_*`) — quando informados, o RBAC deles é exercitado; quando não, as
@@ -75,8 +78,9 @@ verificações são puladas (útil em ambiente real, onde só o ADMIN existe). A
 | 11f. Senha provisória (D-024) | 13 |
 | 11g. Anexo do comprovante (D-025) | 10 |
 | 11h. Roadmap próprio do consultor + anexo (D-026) | 14 |
+| 11i. Tickets e Medições Mensais (D-029) | 20 |
 | 12. Limpeza e restauração do seed | 1 |
-| **Total** | **177** |
+| **Total** | **197** |
 
 Suítes das fases anteriores, reexecutadas após as correções: F2 23/23, F3 15/15,
 F4 16/16, F5 13/13, F7 6/6.
@@ -284,6 +288,40 @@ ganha o seletor **Lista / Kanban / Timeline** — no Kanban, arrastar o cartão 
 pelo endpoint do próprio profissional. Em **Relatórios**, a aba **Consultores** mostra um
 card por consultor ativo (abertos, atrasados, total) e o clique abre a janela flutuante com
 os itens resumidos. O endpoint devolve tudo numa chamada, sem N requisições.
+
+## 5k. Módulo Tickets — espelho do Zoho Desk e Medições Mensais (D-029)
+
+O módulo fica **desligado por padrão** (`TICKETS_ENABLED=false`): quando desligado, **todas**
+as rotas (`/clients`, `/tickets`, `/measurements` e as de sincronização) respondem `404` e o
+frontend não mostra o menu (controlado por `VITE_TICKETS_ENABLED`). A suíte **detecta** isso —
+a primeira chamada a `/clients` que retorna `404` faz o bloco inteiro virar `[SKIP]`. Com o
+módulo ligado, o bloco 11i (20 verificações) valida:
+
+- **RBAC**: clientes/chamados/medições respondem `200` para ADMIN; o CONSULTANT recebe `403`.
+- **Cálculo do mês (fuso e virada) + faturamento**: como o espelho é **somente leitura** (não
+  há `POST /tickets`), a suíte insere quatro chamados de QA diretamente no banco e gera a
+  medição de **out/2026**: entram apenas os **faturaveis** com `close_date` no mês — o chamado
+  encerrado em `2026-11-01T02:00:00Z` (= 31/10 23h em `America/Sao_Paulo`) cai em **outubro**,
+  o de `2026-11-01T03:00:00Z` (= 01/11 00h) cai em **novembro**, e o não-faturável é excluído →
+  **2 chamados / 50 minutos**.
+- **Imutabilidade**: fechar → `CLOSED`; gerar de novo (`409`) e fechar de novo (`409`) são
+  bloqueados.
+- **Exportação**: `export.csv` responde `text/csv` com **BOM UTF-8** e `export.pdf` começa com
+  `%PDF-`; um rascunho **não** é exportável (`400`).
+- **Reabertura**: `403` para MANAGER; ADMIN reabre com justificativa (volta a `DRAFT`).
+- **Sincronização**: com `ZOHO_SYNC_ENABLED=true` (exige credenciais), dois disparos seguidos
+  confirmam a **idempotência** (a 2ª execução cria 0); desligada, `POST /tickets/sync` responde
+  **`503`** — **degradação graciosa** (clientes/medições seguem funcionando).
+
+> A guarda de dados e a limpeza da suíte passaram a incluir as tabelas do módulo
+> (`clients`/`tickets`/`monthly_measurements`/`unmapped_tickets`): a presença de qualquer
+> registro **aborta** a execução (proteção de dados reais) e, ao final, tudo é removido — o
+> estado DEMO volta com **0 clientes / 0 chamados**.
+
+> O espelhamento ao vivo **não** roda na suíte (dependeria do Zoho real; seria não
+> determinístico). Foi exercitado **manualmente** contra um **mock** do Zoho Desk (token OAuth
+> + `GET /tickets`), cobrindo upsert idempotente por `zohoTicketId`, a fila de **não-mapeados** e
+> o vínculo manual a um cliente (a fila deixa de reenfileirar um chamado já vinculado).
 
 ## 6. Limitações conhecidas (aceitas no MVP)
 

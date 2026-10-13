@@ -17,6 +17,7 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 | 8 | QA | Testes funcionais/API/permissões/regras, formulários, responsividade, segurança, UX | ✅ Concluída |
 | 9 | Tec News | Novidades dos fabricantes: fontes RSS/Atom, ingestão agendada, curadoria manual, filtros, destaques, leitura/salvo por usuário | ✅ Concluída (pós-MVP) |
 | 10 | Releases | Changelog do sistema: versões com itens por categoria, versão atual, gestão pela administração | ✅ Concluída (pós-MVP) |
+| 11 | Tickets | Espelho (somente leitura) dos chamados do Zoho Desk, clientes e **Medições Mensais** (consolidação por cliente/mês) com comprovação em CSV/PDF | ✅ Concluída (pós-MVP) |
 
 ## Critérios de aceite da Fase 8
 
@@ -81,6 +82,14 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > Certificações deixam de aparecer para ele (menu e abas do perfil), ficando com a gestão.
 > Sem mudança de API/migration. Versão `0.7.1`.
 
+> **Módulo pós-MVP (D-029) — Tickets / Medições Mensais:** espelhamento (somente leitura,
+> opt-in) dos chamados do **Zoho Desk** para o banco local, cadastro de clientes e geração de
+> **Medições Mensais** por cliente/mês (consolidação dos chamados faturados por `close_date`
+> no fuso de negócio), com snapshot imutável no fechamento e **comprovação em CSV/PDF**.
+> Módulo desligado por padrão (`TICKETS_ENABLED`); sync opt-in (`ZOHO_SYNC_ENABLED`).
+> Migrations `20261009201718_add_tickets_clients`, `20261013163255_unmapped_tickets` e
+> `20261013163918_monthly_measurements`. Suíte ampliada com o bloco 11i (Tickets/Medições).
+
 ## Critérios de aceite da Fase 1 (histórico)
 
 1. `docker compose up` sobe `web` + `api` + `db` do zero.
@@ -98,9 +107,9 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 ## Futuro (fora do MVP)
 
 Skills (níveis 0–5), Treinamentos, Projetos, Parcerias e requisitos, Gap Analysis,
-Capacity Planning, IA (sugestões/gaps/relatórios), integração Zoho (CRM/Desk/
-Analytics) e scraping/monitoramento avançado de fabricantes (a via RSS/Atom do Tec News
-já cobre o cenário inicial).
+Capacity Planning, IA (sugestões/gaps/relatórios) e scraping/monitoramento avançado de
+fabricantes (a via RSS/Atom do Tec News já cobre o cenário inicial). A integração com o
+**Zoho Desk** foi entregue no módulo Tickets (D-029); restam CRM/Analytics do Zoho.
 
 Para evoluções identificadas na QA (auditoria de autenticação, logout de todos os
 dispositivos, expurgo de refresh tokens, paginação do histórico), ver `docs/QA.md`.
