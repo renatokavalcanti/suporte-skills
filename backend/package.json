@@ -9,6 +9,7 @@
     "start": "node dist/main.js",
     "dev": "ts-node src/main.ts",
     "typecheck": "tsc --noEmit",
+    "test": "node --test --require ts-node/register \"src/**/*.spec.ts\"",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",

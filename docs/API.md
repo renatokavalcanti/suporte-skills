@@ -197,6 +197,28 @@ Todas as rotas são restritas a **ADMIN** (a chave de IA é um segredo e nunca �
 > foi salvo cai em `AI_*`/`NEWS_DIGEST_*`. A chave é cifrada em repouso
 > (`SETTINGS_ENCRYPTION_KEY`, com fallback para o segredo de acesso do JWT).
 
+### Tickets — clientes e chamados (D-029)
+
+Módulo do **espelho dos chamados do Zoho Desk** e das **Medições Mensais**. Fica **desligado
+por padrão** (`TICKETS_ENABLED=false`): enquanto desligado, **todas** as rotas abaixo respondem
+`404` (o módulo não se anuncia). Quando ligado, o acesso é restrito a **ADMIN/MANAGER** — o
+CONSULTANT recebe `403`. Nesta fase o módulo é **somente leitura/CRUD interno**; o
+espelhamento do Zoho entra na Fase 3.
+
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| GET | `/clients` | ADMIN/MANAGER | Lista paginada de clientes (`{ data, meta }`). Filtros: `search`, `active`, `sort`, `order`. Cada item traz `_count.tickets`. |
+| GET | `/clients/:id` | ADMIN/MANAGER | Detalhe do cliente. `404` se não existir. |
+| POST | `/clients` | ADMIN/MANAGER | Cria (`name` obrigatório; `document`, `zohoAccountId`, `active?`). `document`/`zohoAccountId` duplicado → `409`. |
+| PUT | `/clients/:id` | ADMIN/MANAGER | Atualiza (campos parciais). |
+| PATCH | `/clients/:id/status` | ADMIN/MANAGER | Ativa/desativa (`{ active }`). |
+| DELETE | `/clients/:id` | ADMIN/MANAGER | Desativação (soft delete, `204`). |
+| GET | `/tickets` | ADMIN/MANAGER | Lista paginada de chamados espelhados. Filtros: `clientId`, `status`, `search` (título/número), `from`/`to` (**período por `close_date`**, ISO `YYYY-MM-DD`, inclusivo), `billable`, `sort`, `order`. Cada item traz `client { id, name }`. |
+| GET | `/tickets/:id` | ADMIN/MANAGER | Detalhe do chamado. `404` se não existir. |
+
+> `status` é **texto livre** (rótulo do Zoho). `close_date` é a data de referência da medição
+> mensal. Toda escrita de cliente é auditada em `audit_logs` (`entity: "clients"`).
+
 ### Exemplos
 
 ```bash

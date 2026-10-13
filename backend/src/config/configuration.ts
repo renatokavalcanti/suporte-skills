@@ -41,6 +41,10 @@ export interface AppConfiguration {
     dir: string;
     maxFileBytes: number;
   };
+  tickets: {
+    /** Modulo Tickets (D-029): desligado por padrao ate a fase de release. */
+    enabled: boolean;
+  };
   seed: {
     enabled: boolean;
   };
@@ -114,6 +118,10 @@ export default (): AppConfiguration => {
     uploads: {
       dir: (env.UPLOADS_DIR ?? 'uploads').trim() || 'uploads',
       maxFileBytes: toInt(env.MAX_UPLOAD_MB, 10) * 1024 * 1024,
+    },
+    tickets: {
+      // Modulo Tickets (D-029): desligado por padrao (TICKETS_ENABLED=false).
+      enabled: env.TICKETS_ENABLED === 'true',
     },
     seed: {
       enabled: env.SEED_DEMO === 'true',

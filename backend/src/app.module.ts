@@ -9,6 +9,7 @@ import { DomainModule } from './shared/domain/domain.module';
 import { StorageModule } from './shared/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CertificationsModule } from './modules/certifications/certifications.module';
+import { ClientsModule } from './modules/clients/clients.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
 import { ImportsModule } from './modules/imports/imports.module';
@@ -19,6 +20,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { RoadmapModule } from './modules/roadmap/roadmap.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { TechnologiesModule } from './modules/technologies/technologies.module';
+import { TicketsModule } from './modules/tickets/tickets.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
 import { JwtAuthGuard } from './shared/guards/jwt-auth.guard';
@@ -43,6 +45,8 @@ import { RolesGuard } from './shared/guards/roles.guard';
     VendorsModule,
     TechnologiesModule,
     CertificationsModule,
+    ClientsModule,
+    TicketsModule,
     RoadmapModule,
     DashboardModule,
     ReportsModule,
