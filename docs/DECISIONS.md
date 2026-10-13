@@ -516,6 +516,84 @@ de código. Versão prevista: `0.8.0`.
 
 ---
 
+## D-030 — Integração Zoho Desk configurável pela interface + Relatórios de Chamados
+**Data:** 13/10/2026
+**Decisão:** habilitar a **configuração da integração com o Zoho Desk pela interface**
+(ADMIN) — data center, Client ID/Secret, orgId, escopos, campo de "Tecnologia", origem do
+cliente (Account/Contact), status considerados "fechado", frequência de sincronização e o
+fluxo **OAuth 2.0 (Authorization Code)** — **sobre a base do módulo Tickets (D-029)**, e
+entregar os **Relatórios de Chamados**: um **Relatório Financeiro** (faturamento) e um
+**Relatório do Cliente** (atendimento, **sem valores de contrato**). Entrega incremental em
+fases (0–10), versão prevista `0.9.0`.
+**Contexto:** a D-029 espelha os chamados e gera Medições Mensais, mas (a) as credenciais vêm
+**só** de variável de ambiente e não há tela de configuração/teste; (b) o tempo é **agregado**
+por chamado, sem os **lançamentos por agente** (`/timeEntries`); (c) não existem **contrato/
+franquia** nem relatórios de atendimento. O Gerente de Serviços precisa configurar/conectar o
+Zoho pela própria aplicação e produzir, por cliente/mês, tanto a comprovação de faturamento
+(Financeiro) quanto um relatório de atendimento profissional (Cliente).
+**Decisões confirmadas:**
+1. **Credenciais**: passam a ser **editáveis pela interface e cifradas em repouso**
+   (AES-256-GCM, mesma infra da D-023), com **fallback para env** (banco sobrepõe ambiente).
+   Client Secret e Refresh Token **nunca** são devolvidos (só `clientSecretSet`/
+   `refreshTokenSet`). Isto **evolui** a postura "só env" da D-029 — que **segue válida** para
+   o espelho/medição quando não há nada salvo na tela.
+2. **Relatório Financeiro** = **evolução da Medição Mensal (D-029)**, **não** um módulo
+   paralelo: a medição ganha **contrato** (franquia/valores/política de saldo), a **regra de
+   faturamento** e o **e-mail** (HTML+texto, `.eml`, PDF).
+3. **Papéis**: **não** se cria papel `FINANCEIRO`. **ADMIN** edita Configurações e
+   **ADMIN/MANAGER** geram os relatórios (o **CONSULTANT** não acessa o módulo).
+4. **Gráficos** (B5): desenhados **sem dependência nova** — vetoriais no PDF (gerador próprio
+   da D-029) e em **SVG** no HTML.
+5. **Tempo**: passa a haver **lançamentos** (`time_entries`) importados de
+   `GET /tickets/{id}/timeEntries`; `Ticket.timeSpentMinutes` **permanece** como **soma** dos
+   lançamentos (compatível com a medição existente).
+**Modelo de dados (aditivo):**
+- `Contract`: cliente, nome do plano, `includedMinutes`, `monthlyValue`, `extraHourValue`,
+  `balancePolicy` (`EXPIRE | ACCUMULATE`), vigência (`startDate`/`endDate`) e `financeEmail`.
+- `TimeEntry`: `ticketId`, `zohoTimeEntryId` (único), `ownerId`, `executedAt`, `minutes`
+  (inteiro, convertido de horas/min/seg), `description`, `isBillable`.
+- `GeneratedReport`: cliente, período, `type` (`FINANCIAL | CLIENT`), status de faturamento,
+  arquivo/anexo, `generatedAt`/`generatedBy`, `sentAt`/`sentTo`.
+- `Ticket`: campos **opcionais** novos `contactId`, `departmentId`, `accountId`, `accountName`,
+  `assigneeId` e `technologyName` (normalizado).
+- `AppSetting`: chaves novas `zoho` (credenciais cifradas + preferências), `branding`
+  (identidade visual) e `email` (SMTP/Graph).
+**Configuração Zoho (A):**
+- Data center define os domínios: `api = https://desk.zoho.{dc}/api/v1`
+  (`au` → `desk.zoho.com.au`, `jp` → `desk.zoho.jp`) e `oauth =
+  https://accounts.zoho.{dc}/oauth/v2/token`; a **Redirect URI** é **derivada** (somente leitura).
+- **Testar conexão**: `GET /tickets?limit=1`, com erro **detalhado** (orgId/escopo/domínio/
+  credencial).
+- **Conectar com Zoho** (Authorization Code) grava o **refresh token cifrado**; **Desconectar**
+  apaga as credenciais; **Sincronizar agora** dispara o sync.
+- **Rate limit**: paginação `from`/`limit`, **backoff exponencial** em `429`/`5xx`,
+  **refresh automático** do access token e **1 retry** em `401`.
+- **Log de sincronização** (data/hora, quantidade, erros) visível em Configurações;
+  **incremental por `modifiedTime`**; **upsert pelo id interno** do chamado no Zoho.
+**Relatórios (B):** métricas B2 (fechados por `closedTime` no período; abertos = status
+não-fechado na **data final** **+** criados no período; horas por lançamento por `executedTime`;
+horas e chamados por tecnologia; tempo médio de solução = `closedTime − createdTime`) e regra
+B3 (`adicionais = max(0, horas − franquia)`; `PADRÃO`/`COM HORAS ADICIONAIS`;
+`total = mensal + adicionais × valor_hora`; saldo considerado conforme a política do contrato).
+**Financeiro (B4):** assunto e formatos exatos, tabela, bloco de status, **anexo PDF** e ações
+**Copiar / Baixar `.eml` / Enviar** (o envio exige **confirmação explícita**). **Cliente (B5):**
+HTML **e** PDF com **identidade visual**, KPIs, barra de franquia, gráficos, campos editáveis
+("principais atuações" e recomendações), tabela detalhada e rodapé, em **A4 com cabeçalho
+repetido** e **sem valores** do contrato. **Interface (B6):** lista com filtros, reabrir,
+baixar e reenviar; prévia na tela; **alertas** (fechado sem horas, sem tecnologia, cliente sem
+contrato) com link para corrigir.
+**Regras não-funcionais:** fuso **`America/Recife`** nos cálculos (`BUSINESS_TIMEZONE`);
+**auditoria** de quem gerou/enviou; **testes unitários** das regras B2/B3 (abaixo/igual/acima
+da franquia, sem horas, chamado que cruza o período); camada Zoho **isolada** (trocável por
+outro ITSM no futuro).
+**Consequências:** módulo **aditivo e retrocompatível** — nenhum modelo/rota existente muda e
+nenhum dado é removido; migrations aditivas com `down.sql`. Novos segredos **cifrados em
+repouso** (JSON em `app_settings`, mesma cifra da D-023). **Sem dependência nova** (fetch
+nativo, PDF/SVG próprios). As flags `TICKETS_ENABLED`/`ZOHO_SYNC_ENABLED` continuam valendo e a
+tela de Configuração só é editável por **ADMIN**. Versão prevista: `0.9.0`.
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.

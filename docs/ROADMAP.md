@@ -18,6 +18,7 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 | 9 | Tec News | Novidades dos fabricantes: fontes RSS/Atom, ingestão agendada, curadoria manual, filtros, destaques, leitura/salvo por usuário | ✅ Concluída (pós-MVP) |
 | 10 | Releases | Changelog do sistema: versões com itens por categoria, versão atual, gestão pela administração | ✅ Concluída (pós-MVP) |
 | 11 | Tickets | Espelho (somente leitura) dos chamados do Zoho Desk, clientes e **Medições Mensais** (consolidação por cliente/mês) com comprovação em CSV/PDF | ✅ Concluída (pós-MVP) |
+| 12 | Chamados | **Configuração da integração Zoho Desk** pela interface (ADMIN) + **Relatórios de Chamados** (Financeiro e Cliente) sobre a base do módulo Tickets | 🚧 Em andamento (pós-MVP) |
 
 ## Critérios de aceite da Fase 8
 
@@ -89,6 +90,16 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > Módulo desligado por padrão (`TICKETS_ENABLED`); sync opt-in (`ZOHO_SYNC_ENABLED`).
 > Migrations `20261009201718_add_tickets_clients`, `20261013163255_unmapped_tickets` e
 > `20261013163918_monthly_measurements`. Suíte ampliada com o bloco 11i (Tickets/Medições).
+
+> **Módulo pós-MVP (D-030) — Chamados: Configuração Zoho + Relatórios:** configuração da
+> integração com o **Zoho Desk** pela interface (ADMIN): data center, credenciais **cifradas em
+> repouso** (com fallback para env), escopos, campo de tecnologia, status "fechado", frequência
+> e o fluxo **OAuth 2.0** ("Conectar/Testar/Sincronizar/Desconectar"). Sobre a base da D-029,
+> evolui a **Medição Mensal** para o **Relatório Financeiro** (contrato/franquia + regra de
+> faturamento + e-mail `.eml`/PDF) e adiciona o **Relatório do Cliente** (PDF/HTML com
+> identidade visual, KPIs e gráficos, sem valores). Entrega em fases (ADR → banco → settings
+> Zoho → OAuth → `time_entries` → contratos/regras → relatórios backend → Financeiro → Cliente
+> → frontend → QA). Versão prevista: `0.9.0`.
 
 ## Critérios de aceite da Fase 1 (histórico)
 
