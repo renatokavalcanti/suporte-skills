@@ -236,6 +236,25 @@ variável de ambiente — nunca devolvidas pela API nem registradas em log). Req
 > **não mapeados** (não se adivinha o cliente). O log de execução é auditado
 > (`entity: "zoho_sync"`) e a última execução fica em `app_settings` (key `zoho_sync`).
 
+#### Medições Mensais (Fase 4)
+
+Consolida, por **cliente/mês**, os chamados faturados (`isBillable=true`, `close_date` no mês
+interpretado em `BUSINESS_TIMEZONE`). A medição **FECHADA é imutável** (snapshot do
+fechamento); reabertura é exclusiva de **ADMIN**, com justificativa auditada. Requer
+`TICKETS_ENABLED=true`; acesso de ADMIN/MANAGER.
+
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| GET | `/measurements` | ADMIN/MANAGER | Lista paginada. Filtros: `clientId`, `year`, `month`, `status`. Cada item traz totais, `slaPercentage` e `client`. |
+| GET | `/measurements/:id` | ADMIN/MANAGER | Detalhe com `items` (snapshot dos chamados). `404` se não existir. |
+| POST | `/measurements` | ADMIN/MANAGER | Gera/recalcula o **rascunho** (`{ clientId, year, month }`): recalcula os totais e substitui o snapshot. `409` se a medição já estiver fechada. |
+| POST | `/measurements/:id/close` | ADMIN/MANAGER | Fecha (`closedById`/`closedAt`). `409` se já estiver fechada. Uma medição fechada não é recalculada. |
+| POST | `/measurements/:id/reopen` | ADMIN | Reabre (`{ justification }`, obrigatória). `400` se não estiver fechada; a justificativa fica na auditoria. |
+
+> Totais: `ticketCount`, `timeSpentMinutes`, `slaEvaluatedCount` (chamados com SLA avaliado) e
+> `slaCompliantCount`; `slaPercentage = slaCompliantCount / slaEvaluatedCount` (null quando não
+> há SLA avaliado).
+
 ### Exemplos
 
 ```bash

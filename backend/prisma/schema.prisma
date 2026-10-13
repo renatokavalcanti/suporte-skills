@@ -179,6 +179,7 @@ model Professional {
   refreshTokens  RefreshToken[]
   auditLogs      AuditLog[]
   newsReadStates NewsReadState[]
+  closedMeasurements MonthlyMeasurement[] @relation("MeasurementClosedBy")
 
   @@index([active])
   @@index([role])
@@ -540,7 +541,8 @@ model Client {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  tickets Ticket[]
+  tickets      Ticket[]
+  measurements MonthlyMeasurement[]
 
   @@index([active])
   @@map("clients")
@@ -575,6 +577,8 @@ model Ticket {
   clientId String @map("client_id")
   client   Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
 
+  measurementItems MonthlyMeasurementItem[]
+
   @@index([clientId, closeDate])
   @@index([clientId, openDate])
   @@index([status])
@@ -596,4 +600,69 @@ model UnmappedTicket {
 
   @@index([accountId])
   @@map("unmapped_tickets")
+}
+
+// ---------------------------------------------------------------------------
+// Medicoes Mensais (D-029): consolida, por cliente/mes, os chamados atendidos
+// (comprovacao de servico para faturamento). O MES e' interpretado em
+// BUSINESS_TIMEZONE; a referencia e' close_date + is_billable=true. A medicao
+// FECHADA e' imutavel: os itens sao um SNAPSHOT do fechamento.
+// ---------------------------------------------------------------------------
+
+enum MeasurementStatus {
+  DRAFT
+  CLOSED
+}
+
+model MonthlyMeasurement {
+  id      String @id @default(cuid())
+  clientId String @map("client_id")
+  client  Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  year    Int
+  // 1..12
+  month   Int
+  status  MeasurementStatus @default(DRAFT)
+
+  ticketCount       Int @default(0) @map("ticket_count")
+  timeSpentMinutes  Int @default(0) @map("time_spent_minutes")
+  // Base do % SLA: itens com SLA avaliado (slaCompliant != null) e os conformes.
+  slaEvaluatedCount Int @default(0) @map("sla_evaluated_count")
+  slaCompliantCount Int @default(0) @map("sla_compliant_count")
+
+  closedById String?       @map("closed_by_id")
+  closedBy   Professional? @relation("MeasurementClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  closedAt   DateTime?     @map("closed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  items MonthlyMeasurementItem[]
+
+  @@unique([clientId, year, month])
+  @@index([year, month])
+  @@index([status])
+  @@map("monthly_measurements")
+}
+
+model MonthlyMeasurementItem {
+  id            String             @id @default(cuid())
+  measurementId String             @map("measurement_id")
+  measurement   MonthlyMeasurement @relation(fields: [measurementId], references: [id], onDelete: Cascade)
+  // Referencia ao chamado (SetNull: o snapshot sobrevive se o chamado sumir).
+  ticketId String? @map("ticket_id")
+  ticket   Ticket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+
+  // Snapshot imutavel dos campos relevantes no fechamento.
+  zohoTicketId     String    @map("zoho_ticket_id")
+  ticketNumber     String?   @map("ticket_number")
+  title            String
+  status           String
+  closeDate        DateTime? @map("close_date")
+  timeSpentMinutes Int       @default(0) @map("time_spent_minutes")
+  slaCompliant     Boolean?  @map("sla_compliant")
+  isBillable       Boolean   @default(true) @map("is_billable")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@index([measurementId])
+  @@map("monthly_measurement_items")
 }

@@ -21,6 +21,8 @@ NewsItem 1─N NewsReadState N─1 Professional   (N:N)
 Release 1─N ReleaseItem
 Client 1─N Ticket
 UnmappedTicket  (fila: chamados do Zoho sem Client mapeado)
+Client 1─N MonthlyMeasurement 1─N MonthlyMeasurementItem
+Ticket 1─N MonthlyMeasurementItem (opcional, SetNull)
 ```
 
 Decisão **D-003**: `users` e `professionals` são a **mesma tabela**
@@ -136,6 +138,21 @@ Fila de chamados do Zoho que **ainda não foram vinculados a um `Client`** (D-02
 payload cru para não perder dados nem "adivinhar" o cliente — o vínculo é feito manualmente
 (`POST /tickets/unmapped/:id/link`). Índice: `account_id`.
 
+### monthly_measurements
+`id, client_id, year, month (1..12), status [DRAFT|CLOSED], ticket_count,
+time_spent_minutes, sla_evaluated_count, sla_compliant_count, closed_by_id (nullable),
+closed_at (nullable), timestamps`
+Medição Mensal (D-029): consolida por **cliente/mês** os chamados faturados (comprovação de
+serviço). Único: `(client_id, year, month)`. Índices: `(year, month)`, `status`.
+`closed_by_id` referencia `professionals` (`onDelete: SetNull`).
+
+### monthly_measurement_items
+`id, measurement_id, ticket_id (nullable), zoho_ticket_id, ticket_number (nullable), title,
+status (texto), close_date (nullable), time_spent_minutes, sla_compliant (nullable),
+is_billable, created_at`
+**Snapshot imutável** dos chamados no fechamento (D-029). `ticket_id` referencia `tickets`
+com `onDelete: SetNull` — o snapshot sobrevive se o chamado sumir. Índice: `measurement_id`.
+
 ### app_settings
 `key (PK), value (jsonb), timestamps`
 Configurações editáveis pela interface (D-023). Hoje guarda `key = 'ai'` com as preferências
@@ -156,11 +173,11 @@ devolvida pela API.
 | RoadmapType | CERTIFICATION, RENEWAL, COURSE, TRAINING, PROJECT, LAB |
 | RoadmapPriority | CRITICAL, HIGH, MEDIUM, LOW |
 | RoadmapStatus | BACKLOG, PLANNED, IN_PROGRESS, COMPLETED, CANCELLED |
-| AuditAction | CREATE, UPDATE, DELETE |
-| NewsConnectorType | RSS, ATOM, MANUAL |
+| AuditAction | CREATE, UPDATE, DELETE || NewsConnectorType | RSS, ATOM, MANUAL |
 | NewsKind | RELEASE, CERTIFICATION, FEATURE, SECURITY, EVENT, GENERAL |
 | NewsFocus | FEATURE, CERTIFICATION, SECURITY, RELEASE, OTHER |
 | ReleaseCategory | FEATURE, IMPROVEMENT, FIX, SECURITY, INFRA, OTHER |
+| MeasurementStatus | DRAFT, CLOSED |
 
 ## 4. Status de certificação (derivado — não é coluna)
 
@@ -195,3 +212,4 @@ Calculado por `CertificationStatusService` a partir de `expires_at` e de
 | `20261002180000_roadmap_attachment` | Colunas de anexo (`attachment_*`) em `roadmap_items` (PDF do comprovante do item; D-026). |
 | `20261009201718_add_tickets_clients` | Tabelas `clients` e `tickets` (espelho dos chamados do Zoho Desk + Medições Mensais; D-029). |
 | `20261013163255_unmapped_tickets` | Tabela `unmapped_tickets` (fila de chamados do Zoho sem cliente mapeado; D-029). |
+| `20261013163918_monthly_measurements` | Tabelas `monthly_measurements`/`monthly_measurement_items` (Medições Mensais; D-029). |

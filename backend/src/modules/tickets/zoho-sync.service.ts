@@ -276,6 +276,20 @@ export class ZohoSyncService {
       : null;
 
     if (!client) {
+      // Se o chamado ja foi vinculado manualmente (existe Ticket), nao o
+      // devolve para a fila: apenas mantem o espelho atualizado (D-029).
+      const alreadyMapped = await this.prisma.ticket.findUnique({
+        where: { zohoTicketId: mapped.zohoTicketId },
+        select: { id: true },
+      });
+      if (alreadyMapped) {
+        await this.prisma.ticket.update({
+          where: { id: alreadyMapped.id },
+          data: { ...mapped, lastSyncedAt: new Date() },
+        });
+        return { kind: 'updated', modifiedAt: mapped.zohoModifiedAt };
+      }
+
       await this.prisma.unmappedTicket.upsert({
         where: { zohoTicketId: mapped.zohoTicketId },
         create: {
