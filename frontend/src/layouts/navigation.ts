@@ -1,16 +1,20 @@
 import {
   Award,
   BarChart3,
+  Building,
   Building2,
+  ClipboardList,
   Cpu,
   LayoutDashboard,
   Map,
   Newspaper,
   Settings,
   Tag,
+  Ticket,
   Users,
   type LucideIcon,
 } from 'lucide-react';
+import { TICKETS_ENABLED } from '@/config/features';
 import type { ProfessionalRole } from '@/types/entities';
 
 export interface NavItem {
@@ -73,6 +77,29 @@ export const navItems: NavItem[] = [
     icon: BarChart3,
     roles: ['ADMIN', 'MANAGER'],
   },
+  // Modulo Tickets (D-029): so' aparece para a gestao e com a flag ligada.
+  ...(TICKETS_ENABLED
+    ? ([
+        {
+          to: '/clientes',
+          label: 'Clientes',
+          icon: Building,
+          roles: ['ADMIN', 'MANAGER'],
+        },
+        {
+          to: '/tickets',
+          label: 'Tickets',
+          icon: Ticket,
+          roles: ['ADMIN', 'MANAGER'],
+        },
+        {
+          to: '/medicoes',
+          label: 'Medições',
+          icon: ClipboardList,
+          roles: ['ADMIN', 'MANAGER'],
+        },
+      ] satisfies NavItem[])
+    : []),
   {
     to: '/releases',
     label: 'Releases',

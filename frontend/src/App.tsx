@@ -16,6 +16,10 @@ import { ImportsPage } from '@/features/imports/imports-page';
 import { RoadmapPage } from '@/features/roadmap/roadmap-page';
 import { MyRoadmapPage } from '@/features/roadmap/my-roadmap-page';
 import { ReportsPage } from '@/features/reports/reports-page';
+import { ClientsPage } from '@/features/tickets/clients-page';
+import { TicketsPage } from '@/features/tickets/tickets-page';
+import { MeasurementsPage } from '@/features/tickets/measurements-page';
+import { TICKETS_ENABLED } from '@/config/features';
 import { SettingsPage } from '@/pages/settings-page';
 import { NotFoundPage } from '@/pages/not-found-page';
 
@@ -77,6 +81,34 @@ export function App() {
             </RequireRole>
           }
         />
+        {TICKETS_ENABLED && (
+          <>
+            <Route
+              path="clientes"
+              element={
+                <RequireRole roles={['ADMIN', 'MANAGER']}>
+                  <ClientsPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="tickets"
+              element={
+                <RequireRole roles={['ADMIN', 'MANAGER']}>
+                  <TicketsPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="medicoes"
+              element={
+                <RequireRole roles={['ADMIN', 'MANAGER']}>
+                  <MeasurementsPage />
+                </RequireRole>
+              }
+            />
+          </>
+        )}
         <Route path="configuracoes" element={<SettingsPage />} />
         <Route
           path="importar"
