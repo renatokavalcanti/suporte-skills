@@ -32,6 +32,27 @@ git fetch --tags origin && git checkout -f main   # .env/data/certs/backups perm
 
 ---
 
+# Release — 0.9.3 (D-033) — menu lateral em submenus
+
+**Escopo:** agrupa itens relacionados do menu lateral em **submenus retráteis** — **"Catálogo"**
+(Profissionais, Fabricantes, Tecnologias, Certificações) e **"GSS Qualidade"** (Clientes, Tickets,
+Medições, Contratos, Relatórios de Chamados). **Somente frontend** — sem migration nem API.
+
+- **Frontend:** `layouts/navigation.ts` (tipo `NavGroup`/`NavEntry`, helper `isNavGroup`,
+  `visibleNavItems` filtrando por papel e descartando grupo vazio) e `layouts/sidebar.tsx`
+  (grupo retrátil com chevron/`aria-expanded`, expande sozinho na rota ativa, mantém o estado;
+  drawer mobile igual).
+- **Testes:** sem mudança de API; `typecheck` e `build` limpos. Correção no aceite: **contagem de
+  releases do estado DEMO (13 → 16)**, defasada em relação ao seed.
+- **Controller:** nenhum. Sem `app_settings`, sem migration.
+
+**Deploy:** `bash scripts/deploy.sh` (cria a release `0.9.3` a partir de
+`scripts/releases/0.9.3.json`). Sem migration. Validar com `bash scripts/smoke.sh`.
+
+**Rollback:** `git checkout -f 20c0bad && docker compose up -d --build` (20c0bad = v0.9.2).
+
+---
+
 # Release — 0.9.2 (D-032) — lançamentos de tempo
 
 **Escopo:** corrige a leitura dos **lançamentos de tempo** do Zoho Desk (endpoint

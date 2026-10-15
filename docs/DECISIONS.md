@@ -646,6 +646,38 @@ vinculados manualmente nunca buscavam os lançamentos.
 
 ---
 
+## D-033 — Menu lateral em submenus: Catálogo e GSS Qualidade
+**Data:** 15/10/2026
+**Decisão:** o menu lateral deixa de ser uma **lista plana** e passa a agrupar os itens
+relacionados em **submenus retráteis** (acordeão): **"Catálogo"** (Profissionais, Fabricantes,
+Tecnologias, Certificações) e **"GSS Qualidade"** (Clientes, Tickets, Medições, Contratos,
+Relatórios de Chamados).
+**Contexto:** com os módulos pós-MVP, o menu chegou a **13 itens** e ficou visualmente longo,
+dificultando a leitura e empurrando itens para baixo da dobra em telas menores. Os itens de
+Tickets/Chamados (D-029/D-030) já formavam um bloco coeso (o módulo "GSS Qualidade" — Gestão de
+Serviços de Suporte), e o catálogo de cadastros forma outro. Agrupá-los reduz a altura sem
+esconder nenhuma área.
+**Decisões:**
+1. **Modelo de navegação** aditivo em `layouts/navigation.ts`: novo tipo `NavGroup` (com `label`,
+   `icon`, `roles` e `children: NavItem[]`); `NavItem` permanece igual. `NavEntry = NavItem | NavGroup`
+   e o helper `isNavGroup` faz o estreitamento de tipo.
+2. **Visibilidade por papel preservada**: `visibleNavItems` filtra as folhas por papel e **descarta
+   o grupo inteiro** quando nenhum filho é visível (ex.: o CONSULTANT não vê o Catálogo).
+3. **Comportamento (recomendado)**: o submenu **abre automaticamente** quando a rota atual pertence
+   a ele (via `useLocation`), tem **chevron com `aria-expanded`** e **lembra o estado** aberto/fechado
+   durante a sessão; no **drawer mobile** o comportamento é idêntico.
+4. **Escopo**: apenas o agrupamento (Catálogo e GSS Qualidade). Demais itens (Dashboard, Tec News,
+   Roadmap/Meu roadmap, Relatórios, Releases, Configurações) seguem soltos nesta entrega.
+5. **Sem backend**: ajuste **exclusivamente de frontend** — sem migration, endpoint ou permissão
+   nova; a autorização continua no backend (as rotas do grupo já eram ADMIN/MANAGER).
+6. **Consistência da suíte**: a contagem de releases do estado DEMO no `scripts/acceptance.sh`
+   foi **corrigida de 13 para 16** (o seed já produzia mais releases do que o aceite esperava —
+   defasagem anterior a esta entrega).
+**Consequências:** menu mais curto e legível; nenhuma funcionalidade escondida (só aninhada);
+mudança puramente visual, retrocompatível e sem dependência nova. **Versão: `0.9.3`.**
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.

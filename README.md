@@ -215,7 +215,7 @@ para execução local). Principais:
 
 ## Status
 
-**Versão atual: `0.9.2`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
+**Versão atual: `0.9.3`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
 relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módulos pós-MVP:
 
 | Decisão | Entrega |
@@ -234,11 +234,13 @@ relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módul
 | D-030 | **Módulo Chamados**: configuração do Zoho pela interface (OAuth), lançamentos de tempo, contratos e Relatórios Financeiro/Cliente — opt-in |
 | D-031 | **Fila de não mapeados**: vínculo em lote (por conta/seleção), limpeza automática e nome da conta — ajuste aditivo no módulo Chamados |
 | D-032 | **Lançamentos de tempo**: endpoint correto (`/timeEntry`), espelho no vínculo pela fila e reimportação ("Atualizar horas") |
+| D-033 | **Menu lateral em submenus**: agrupa itens relacionados em **"Catálogo"** (Profissionais, Fabricantes, Tecnologias, Certificações) e **"GSS Qualidade"** (Clientes, Tickets, Medições, Contratos, Relatórios de Chamados) — submenus retráteis, sem mudança de API |
 
 Typecheck e build limpos em backend e frontend; imagem Docker publicada na VM
 (10.0.0.200) com HTTPS. A suíte de aceite cobre os blocos 11f (D-024), 11g (D-025), 11h
 (D-026), 11i (D-029), 11j (D-030), 11k (D-031) e 11l (D-032) e o estado DEMO de referência (ver [`docs/QA.md`](./docs/QA.md)); o deploy
-em ambiente com dados reais é validado pelo `smoke.sh` (não-destrutivo). Os releases dos módulos
+em ambiente com dados reais é validado pelo `smoke.sh` (não-destrutivo). A **D-033** (menu lateral
+em submenus) é **somente frontend**, sem migration nem endpoint novo. Os releases dos módulos
 Tickets e Chamados seguem o runbook em [`docs/RELEASE.md`](./docs/RELEASE.md); o guia técnico do
 módulo está em [`docs/CHAMADOS.md`](./docs/CHAMADOS.md).
 

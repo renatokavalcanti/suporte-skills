@@ -1,0 +1,11 @@
+{
+  "version": "0.9.3",
+  "title": "Menu lateral em submenus: Catálogo e GSS Qualidade",
+  "summary": "O menu lateral deixa de ser uma lista longa e passa a agrupar os itens relacionados em submenus retráteis: \"Catálogo\" (Profissionais, Fabricantes, Tecnologias, Certificações) e \"GSS Qualidade\" (Clientes, Tickets, Medições, Contratos, Relatórios de Chamados). Os submenus abrem automaticamente quando uma rota do grupo está ativa e lembram o estado aberto durante a sessão. Ajuste de frontend, sem migration nem mudança de API (D-033).",
+  "releasedAt": "2026-10-15T18:00:00.000Z",
+  "current": true,
+  "items": [
+    { "category": "IMPROVEMENT", "description": "Menu lateral com submenus retráteis: \"Catálogo\" (Profissionais, Fabricantes, Tecnologias, Certificações) e \"GSS Qualidade\" (Clientes, Tickets, Medições, Contratos, Relatórios de Chamados) (D-033)", "position": 0 },
+    { "category": "IMPROVEMENT", "description": "Submenus abrem sozinhos quando a rota atual pertence ao grupo, com chevron/aria-expanded, e mantêm o estado aberto/fechado durante a sessão", "position": 1 }
+  ]
+}

@@ -7,9 +7,11 @@ import {
   Cpu,
   FileText,
   LayoutDashboard,
+  Library,
   Map,
   Newspaper,
   Settings,
+  ShieldCheck,
   Tag,
   Ticket,
   Users,
@@ -27,7 +29,22 @@ export interface NavItem {
   roles?: ProfessionalRole[];
 }
 
-export const navItems: NavItem[] = [
+/** Grupo de itens exibido como submenu retrátil no menu lateral. */
+export interface NavGroup {
+  label: string;
+  icon: LucideIcon;
+  /** Quando definido, o grupo só aparece para estes papéis. */
+  roles?: ProfessionalRole[];
+  children: NavItem[];
+}
+
+export type NavEntry = NavItem | NavGroup;
+
+export function isNavGroup(entry: NavEntry): entry is NavGroup {
+  return 'children' in entry;
+}
+
+export const navItems: NavEntry[] = [
   {
     to: '/',
     label: 'Dashboard',
@@ -36,29 +53,36 @@ export const navItems: NavItem[] = [
     roles: ['ADMIN', 'MANAGER'],
   },
   {
-    to: '/profissionais',
-    label: 'Profissionais',
-    icon: Users,
+    label: 'Catálogo',
+    icon: Library,
     roles: ['ADMIN', 'MANAGER'],
-  },
-  {
-    to: '/fabricantes',
-    label: 'Fabricantes',
-    icon: Building2,
-    roles: ['ADMIN', 'MANAGER'],
-  },
-  {
-    to: '/tecnologias',
-    label: 'Tecnologias',
-    icon: Cpu,
-    roles: ['ADMIN', 'MANAGER'],
-  },
-  {
-    to: '/certificacoes',
-    label: 'Certificações',
-    icon: Award,
-    roles: ['ADMIN', 'MANAGER'],
-  },
+    children: [
+      {
+        to: '/profissionais',
+        label: 'Profissionais',
+        icon: Users,
+        roles: ['ADMIN', 'MANAGER'],
+      },
+      {
+        to: '/fabricantes',
+        label: 'Fabricantes',
+        icon: Building2,
+        roles: ['ADMIN', 'MANAGER'],
+      },
+      {
+        to: '/tecnologias',
+        label: 'Tecnologias',
+        icon: Cpu,
+        roles: ['ADMIN', 'MANAGER'],
+      },
+      {
+        to: '/certificacoes',
+        label: 'Certificações',
+        icon: Award,
+        roles: ['ADMIN', 'MANAGER'],
+      },
+    ],
+  } satisfies NavGroup,
   { to: '/tec-news', label: 'Tec News', icon: Newspaper },
   {
     to: '/roadmap',
@@ -78,40 +102,48 @@ export const navItems: NavItem[] = [
     icon: BarChart3,
     roles: ['ADMIN', 'MANAGER'],
   },
-  // Modulo Tickets (D-029): so' aparece para a gestao e com a flag ligada.
+  // Módulo Tickets/Chamados (D-029/D-030): agrupado sob "GSS Qualidade" e
+  // exibido só para a gestão, com a flag ligada.
   ...(TICKETS_ENABLED
     ? ([
         {
-          to: '/clientes',
-          label: 'Clientes',
-          icon: Building,
+          label: 'GSS Qualidade',
+          icon: ShieldCheck,
           roles: ['ADMIN', 'MANAGER'],
-        },
-        {
-          to: '/tickets',
-          label: 'Tickets',
-          icon: Ticket,
-          roles: ['ADMIN', 'MANAGER'],
-        },
-        {
-          to: '/medicoes',
-          label: 'Medições',
-          icon: ClipboardList,
-          roles: ['ADMIN', 'MANAGER'],
-        },
-        {
-          to: '/contratos',
-          label: 'Contratos',
-          icon: FileText,
-          roles: ['ADMIN', 'MANAGER'],
-        },
-        {
-          to: '/relatorios-chamados',
-          label: 'Relatórios de Chamados',
-          icon: BarChart3,
-          roles: ['ADMIN', 'MANAGER'],
-        },
-      ] satisfies NavItem[])
+          children: [
+            {
+              to: '/clientes',
+              label: 'Clientes',
+              icon: Building,
+              roles: ['ADMIN', 'MANAGER'],
+            },
+            {
+              to: '/tickets',
+              label: 'Tickets',
+              icon: Ticket,
+              roles: ['ADMIN', 'MANAGER'],
+            },
+            {
+              to: '/medicoes',
+              label: 'Medições',
+              icon: ClipboardList,
+              roles: ['ADMIN', 'MANAGER'],
+            },
+            {
+              to: '/contratos',
+              label: 'Contratos',
+              icon: FileText,
+              roles: ['ADMIN', 'MANAGER'],
+            },
+            {
+              to: '/relatorios-chamados',
+              label: 'Relatórios de Chamados',
+              icon: BarChart3,
+              roles: ['ADMIN', 'MANAGER'],
+            },
+          ],
+        } satisfies NavGroup,
+      ] satisfies NavEntry[])
     : []),
   {
     to: '/releases',
@@ -122,6 +154,18 @@ export const navItems: NavItem[] = [
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ];
 
-export function visibleNavItems(role: ProfessionalRole | undefined): NavItem[] {
-  return navItems.filter((item) => !item.roles || (role && item.roles.includes(role)));
+export function visibleNavItems(role: ProfessionalRole | undefined): NavEntry[] {
+  const allowed = (roles?: ProfessionalRole[]) =>
+    !roles || (role !== undefined && roles.includes(role));
+
+  return navItems
+    .map((entry): NavEntry | null => {
+      if (isNavGroup(entry)) {
+        if (!allowed(entry.roles)) return null;
+        const children = entry.children.filter((child) => allowed(child.roles));
+        return children.length ? { ...entry, children } : null;
+      }
+      return allowed(entry.roles) ? entry : null;
+    })
+    .filter((entry): entry is NavEntry => entry !== null);
 }

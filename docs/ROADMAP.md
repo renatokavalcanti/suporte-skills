@@ -111,6 +111,13 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > passa a espelhar os lançamentos e há **reimportação** (`POST /tickets/sync/time-entries`) para os
 > chamados já espelhados. Nome do agente resolvido em `GET /agents/{id}`. Bloco 11l; versão: `0.9.2`.
 
+> **Ajuste pós-MVP (D-033) — menu lateral em submenus:** o menu deixa de ser uma lista longa e passa
+> a agrupar itens relacionados em **submenus retráteis** — **"Catálogo"** (Profissionais, Fabricantes,
+> Tecnologias, Certificações) e **"GSS Qualidade"** (Clientes, Tickets, Medições, Contratos, Relatórios
+> de Chamados). Os grupos abrem sozinhos quando a rota atual pertence a eles e lembram o estado na
+> sessão. **Somente frontend** (`layouts/navigation.ts` e `layouts/sidebar.tsx`); sem migration nem
+> API. Versão: `0.9.3`.
+
 ## Critérios de aceite da Fase 1 (histórico)
 
 1. `docker compose up` sobe `web` + `api` + `db` do zero.

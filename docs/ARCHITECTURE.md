@@ -202,8 +202,10 @@ distintos entre si, e `CORS_ORIGIN` vazio cai no valor padrão.
   gancho de sessão expirada.
 - `hooks/use-auth.tsx`, `hooks/use-theme.tsx`, `hooks/use-permissions.ts`
   (sessão, tema e permissões — inclui `canEditProfessional`).
-- `layouts/`: AppShell + Sidebar + Topbar (sidebar com os 8 itens do menu, drawer
-  no mobile) e `layouts/navigation.ts` (itens visíveis por papel).
+- `layouts/`: AppShell + Sidebar + Topbar e `layouts/navigation.ts` (itens visíveis por
+  papel). O menu agrupa itens relacionados em **submenus retráteis** (D-033): `NavGroup`
+  (`Catálogo`, `GSS Qualidade`) com `children`; a sidebar expande/recolhe o grupo, **abre
+  sozinho** quando a rota atual pertence a ele e mantém o estado na sessão (drawer no mobile).
 - `components/`: primitivas UI (Button, Card, Input, Select, Badge, Table, Tabs,
   Dialog, Skeleton, Spinner) e estados de feedback (Loading/Empty/Error).
 - `components/protected-route.tsx` (sessão) e `components/require-role.tsx`

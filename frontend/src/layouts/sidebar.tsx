@@ -1,7 +1,12 @@
-import { useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
-import { X } from 'lucide-react';
-import { visibleNavItems } from './navigation';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { ChevronDown, X } from 'lucide-react';
+import {
+  isNavGroup,
+  visibleNavItems,
+  type NavGroup,
+  type NavItem,
+} from './navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { APP_VERSION } from '@/config/version';
 import { cn } from '@/lib/utils';
@@ -24,34 +29,102 @@ function Brand() {
   );
 }
 
+function matchesPath(pathname: string, to: string) {
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
+function NavLinkRow({
+  item,
+  onNavigate,
+  nested,
+}: {
+  item: NavItem;
+  onNavigate?: () => void;
+  nested?: boolean;
+}) {
+  const Icon = item.icon;
+  return (
+    <NavLink
+      to={item.to}
+      end={item.end}
+      onClick={onNavigate}
+      className={({ isActive }) =>
+        cn(
+          'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+          nested && 'py-1.5',
+          isActive
+            ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100',
+        )
+      }
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      <span>{item.label}</span>
+    </NavLink>
+  );
+}
+
+function NavGroupRow({
+  group,
+  onNavigate,
+}: {
+  group: NavGroup;
+  onNavigate?: () => void;
+}) {
+  const { pathname } = useLocation();
+  const hasActiveChild = group.children.some((child) => matchesPath(pathname, child.to));
+  const [open, setOpen] = useState(hasActiveChild);
+
+  // Abre automaticamente quando uma rota do grupo está ativa.
+  useEffect(() => {
+    if (hasActiveChild) setOpen(true);
+  }, [hasActiveChild]);
+
+  const Icon = group.icon;
+  const chevron = (expanded: boolean) =>
+    cn('h-4 w-4 shrink-0 transition-transform', expanded && 'rotate-180');
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className={cn(
+          'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+          hasActiveChild
+            ? 'text-blue-700 dark:text-blue-300'
+            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100',
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        <span className="flex-1 text-left">{group.label}</span>
+        <ChevronDown className={chevron(open)} />
+      </button>
+      {open && (
+        <div className="mt-1 ml-3 space-y-1 border-l border-slate-200 pl-3 dark:border-slate-800">
+          {group.children.map((child) => (
+            <NavLinkRow key={child.to} item={child} onNavigate={onNavigate} nested />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
   const items = visibleNavItems(user?.role);
 
   return (
-    <nav className="flex-1 space-y-1 px-3 py-2">
-      {items.map((item) => {
-        const Icon = item.icon;
-        return (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100',
-              )
-            }
-          >
-            <Icon className="h-4 w-4 shrink-0" />
-            <span>{item.label}</span>
-          </NavLink>
-        );
-      })}
+    <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
+      {items.map((entry) =>
+        isNavGroup(entry) ? (
+          <NavGroupRow key={entry.label} group={entry} onNavigate={onNavigate} />
+        ) : (
+          <NavLinkRow key={entry.to} item={entry} onNavigate={onNavigate} />
+        ),
+      )}
     </nav>
   );
 }

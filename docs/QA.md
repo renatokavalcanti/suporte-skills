@@ -376,6 +376,19 @@ O **bloco 11l** (2 verificações) cobre a **reimportação dos lançamentos de 
 validada contra o **Zoho Desk de produção**; o parâmetro `hoursSpent`/`minutesSpent`/`secondsSpent`
 vem como **texto** e é somado em minutos (`ticket #626` → 4 lançamentos = **300 min**).
 
+## 5m. Menu lateral em submenus (D-033)
+
+Alteração **exclusivamente de frontend** (`layouts/navigation.ts` e `layouts/sidebar.tsx`), sem
+endpoint, migration ou permissão nova. O menu agrupa os itens relacionados em **submenus
+retráteis**: **"Catálogo"** (Profissionais, Fabricantes, Tecnologias, Certificações) e **"GSS
+Qualidade"** (Clientes, Tickets, Medições, Contratos, Relatórios de Chamados). Verificações:
+`visibleNavItems` continua **filtrando por papel** e **descarta o grupo** quando nenhum filho é
+visível (o CONSULTANT não vê o Catálogo); o submenu **expande sozinho** quando a rota atual
+pertence ao grupo, expõe **`aria-expanded`** e mantém o estado na sessão; o **drawer mobile**
+funciona igual. Validação por `typecheck` e `build` (ambos limpos) — a navegação não é coberta
+pela suíte de aceite (que é de API). Nesta entrega também foi **corrigida a contagem de releases
+do estado DEMO** no aceite (13 → 16), defasada em relação ao seed.
+
 ## 6. Limitações conhecidas (aceitas no MVP)
 
 1. **Estado em memória**: o limitador de login e o cache não usam store compartilhado —

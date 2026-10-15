@@ -540,12 +540,24 @@ async function main(): Promise<void> {
       title: 'Lançamentos de tempo: correção do endpoint e reimportação',
       summary: 'Corrige a leitura dos lançamentos de tempo do Zoho Desk (endpoint correto), busca os lançamentos ao vincular um chamado pela fila e adiciona a ação "Atualizar horas" para reimportar os lançamentos dos chamados já espelhados (D-032).',
       releasedAt: new Date('2026-10-13T20:00:00.000Z'),
-      current: true,
+      current: false,
       items: [
         { category: 'FIX', description: 'Leitura dos lançamentos de tempo no endpoint correto (/tickets/{id}/timeEntry); a forma anterior respondia 404 e os lançamentos não apareciam (D-032)' },
         { category: 'FIX', description: 'Ao vincular um chamado pela fila de não mapeados, os lançamentos de tempo passam a ser espelhados' },
         { category: 'FEATURE', description: 'Ação "Atualizar horas" (ADMIN) / POST /tickets/sync/time-entries para reimportar os lançamentos dos chamados já espelhados' },
         { category: 'IMPROVEMENT', description: 'Nome do agente (responsável pelo lançamento) resolvido no Zoho Desk (GET /agents/{id})' },
+      ],
+    },
+    {
+      id: 'rel-0-9-3',
+      version: '0.9.3',
+      title: 'Menu lateral em submenus: Catálogo e GSS Qualidade',
+      summary: 'O menu lateral deixa de ser uma lista longa e agrupa os itens relacionados em submenus retráteis: "Catálogo" (Profissionais, Fabricantes, Tecnologias, Certificações) e "GSS Qualidade" (Clientes, Tickets, Medições, Contratos, Relatórios de Chamados). Os submenus abrem automaticamente quando a rota atual pertence ao grupo e lembram o estado aberto durante a sessão (D-033).',
+      releasedAt: new Date('2026-10-15T18:00:00.000Z'),
+      current: true,
+      items: [
+        { category: 'IMPROVEMENT', description: 'Menu lateral com submenus retráteis: "Catálogo" (Profissionais, Fabricantes, Tecnologias, Certificações) e "GSS Qualidade" (Clientes, Tickets, Medições, Contratos, Relatórios de Chamados) (D-033)' },
+        { category: 'IMPROVEMENT', description: 'Submenus abrem sozinhos quando a rota atual pertence ao grupo, com chevron/aria-expanded, e mantêm o estado aberto/fechado durante a sessão' },
       ],
     },
   ];
