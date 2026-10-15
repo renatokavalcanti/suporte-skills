@@ -34,10 +34,12 @@ export const settingsService = {
     const { data } = await api.put<EmailSettingsView>('/settings/email', payload);
     return data;
   },
-  async testEmail(to?: string): Promise<{ ok: true; message: string }> {
+  async testEmail(
+    payload: EmailSettingsPayload & { to?: string } = {},
+  ): Promise<{ ok: true; message: string }> {
     const { data } = await api.post<{ ok: true; message: string }>(
       '/settings/email/test',
-      to ? { to } : {},
+      payload,
     );
     return data;
   },

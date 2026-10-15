@@ -32,6 +32,25 @@ git fetch --tags origin && git checkout -f main   # .env/data/certs/backups perm
 
 ---
 
+# Release — 0.9.6 (D-036) — testar e-mail antes de habilitar
+
+**Escopo:** na tela **Configurações → Envio de e-mail**, o botão **"Enviar teste"** passa a usar os
+valores preenchidos no formulário (sem salvar) e funciona **mesmo com o envio desabilitado** —
+dá para validar SMTP/Graph antes de ligar o envio. **Sem migration.**
+
+- **Backend:** `email-settings.service.ts` (`sendable` + `resolveWithOverrides`),
+  `mailer.service.ts` (exige `sendable`), `TestEmailSettingsDto extends UpdateEmailSettingsDto`,
+  `settings.controller.ts` (teste com overrides).
+- **Frontend:** `email-settings-card.tsx` (teste envia o formulário; botão habilita pelo
+  preenchimento) e `settings.service.ts`.
+- **Testes:** backend **81/81** (+3). **Aceite:** estado DEMO passa a **19 releases**.
+
+**Deploy:** `bash scripts/deploy.sh`. Sem migration. Valide com `bash scripts/smoke.sh`.
+
+**Rollback:** `git checkout -f 897c91b && docker compose up -d --build` (897c91b = v0.9.5).
+
+---
+
 # Release — 0.9.5 (D-035) — detalhe do chamado e re-associação
 
 **Escopo:** na lista de **Tickets**, clicar no chamado abre um **modal** com os dados + os

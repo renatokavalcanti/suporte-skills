@@ -130,6 +130,11 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > `PATCH /tickets/:id/client`, `POST /tickets/:id/unlink` e `POST /tickets/:id/refresh-time-entries`;
 > `GET /tickets/:id` passa a incluir `timeEntries`. Sem migration. Versão: `0.9.5`.
 
+> **Ajuste pós-MVP (D-036) — testar e-mail antes de habilitar:** o **"Enviar teste"** usa os valores
+> do formulário (overrides transitórios, nada persistido) e funciona **mesmo com o envio
+> desabilitado**; o backend separa **"testável"** (transporte + remetente) de **"habilitado"**.
+> Sem migration. Versão: `0.9.6`.
+
 ## Critérios de aceite da Fase 1 (histórico)
 
 1. `docker compose up` sobe `web` + `api` + `db` do zero.

@@ -1,0 +1,11 @@
+{
+  "version": "0.9.6",
+  "title": "E-mail: testar envio antes de habilitar",
+  "summary": "Na tela de Configurações → Envio de e-mail, o botão \"Enviar teste\" passa a usar os valores preenchidos no formulário (sem precisar salvar) e funciona mesmo com o envio desabilitado — dá para validar o servidor SMTP (ou o Microsoft Graph) antes de ligar o envio. O backend aplica os campos como overrides transitórios ao resolver a configuração (nada é persistido). (D-036)",
+  "releasedAt": "2026-10-15T23:30:00.000Z",
+  "current": true,
+  "items": [
+    { "category": "IMPROVEMENT", "description": "Teste de envio de e-mail antes de habilitar/salvar: o botão usa os valores do formulário (host/remetente/credenciais) como overrides transitórios (D-036)", "position": 0 },
+    { "category": "IMPROVEMENT", "description": "Backend: separa \"testável\" (transporte + remetente) de \"habilitado\"; o envio de negócio (Relatório Financeiro) continua exigindo o envio habilitado", "position": 1 }
+  ]
+}

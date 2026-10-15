@@ -66,6 +66,17 @@ export function EmailSettingsCard() {
   const invalidate = () =>
     void queryClient.invalidateQueries({ queryKey: ['settings', 'email'] });
 
+  // Testavel com os valores do formulario (nao exige salvar nem habilitar) — D-036.
+  const formSendable =
+    form.fromAddress.trim() !== '' &&
+    (form.transport === 'GRAPH'
+      ? Boolean(
+          form.graphTenantId.trim() &&
+            form.graphClientId.trim() &&
+            (graphSecret || data?.graphClientSecretSet),
+        )
+      : Boolean(form.smtpHost.trim() && form.smtpPort));
+
   const save = useMutation({
     mutationFn: () =>
       settingsService.updateEmail({
@@ -84,7 +95,12 @@ export function EmailSettingsCard() {
   });
 
   const test = useMutation({
-    mutationFn: () => settingsService.testEmail(),
+    mutationFn: () =>
+      settingsService.testEmail({
+        ...form,
+        ...(smtpPassword ? { smtpPassword } : {}),
+        ...(graphSecret ? { graphClientSecret: graphSecret } : {}),
+      }),
     onSuccess: (result) =>
       toast({ title: 'Teste enviado', description: result.message, variant: 'success' }),
     onError: (error) =>
@@ -238,12 +254,18 @@ export function EmailSettingsCard() {
               )}
             </div>
 
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Você pode <strong>enviar um teste</strong> antes de habilitar: ele usa os
+              valores preenchidos acima, sem precisar salvar. O teste vai para o e-mail
+              do remetente.
+            </p>
+
             <div className="flex flex-wrap justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => test.mutate()}
-                disabled={test.isPending || save.isPending || !data.configured}
+                disabled={test.isPending || save.isPending || !formSendable}
               >
                 {test.isPending ? <Spinner className="h-4 w-4" /> : <Send className="h-4 w-4" />}
                 Enviar teste

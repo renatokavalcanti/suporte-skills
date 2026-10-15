@@ -580,12 +580,24 @@ async function main(): Promise<void> {
       title: 'Tickets: detalhe do chamado e re-associação de cliente',
       summary: 'A lista de Tickets ganha um modal de detalhe (clique no chamado) com os lançamentos de tempo e o total de horas; o ADMIN pode trocar o cliente de um chamado mapeado, desassociá-lo (voltar à fila) e reimportar as horas daquele chamado (D-035).',
       releasedAt: new Date('2026-10-15T22:00:00.000Z'),
-      current: true,
+      current: false,
       items: [
         { category: 'FEATURE', description: 'Modal de detalhe do chamado na lista de Tickets: dados do chamado + lançamentos de tempo (data, técnico, horas, descrição, faturável) e total de horas (D-035)' },
         { category: 'FEATURE', description: 'Re-associação: trocar o cliente de um chamado já mapeado (PATCH /tickets/:id/client)' },
         { category: 'FEATURE', description: 'Desassociação: devolver o chamado à fila de não mapeados (POST /tickets/:id/unlink)' },
         { category: 'FEATURE', description: 'Ação "Atualizar horas deste chamado" (POST /tickets/:id/refresh-time-entries)' },
+      ],
+    },
+    {
+      id: 'rel-0-9-6',
+      version: '0.9.6',
+      title: 'E-mail: testar envio antes de habilitar',
+      summary: 'O botão "Enviar teste" usa os valores preenchidos no formulário (sem precisar salvar) e funciona mesmo com o envio desabilitado, permitindo validar SMTP/Graph antes de ligar o envio (D-036).',
+      releasedAt: new Date('2026-10-15T23:30:00.000Z'),
+      current: true,
+      items: [
+        { category: 'IMPROVEMENT', description: 'Teste de envio de e-mail antes de habilitar/salvar: o botão usa os valores do formulário como overrides transitórios (D-036)' },
+        { category: 'IMPROVEMENT', description: 'Backend: separa "testável" (transporte + remetente) de "habilitado"; o envio de negócio (Relatório Financeiro) continua exigindo o envio habilitado' },
       ],
     },
   ];

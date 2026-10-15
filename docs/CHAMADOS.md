@@ -231,7 +231,7 @@ Endpoints completos em [API.md](./API.md). Resumo:
 | **Financeiro** | `GET /ticket-reports/financial/{preview,attachment.pdf,eml}`; `POST /ticket-reports/financial/send` |
 | **Cliente** | `GET /ticket-reports/client/{preview,pdf}` |
 | **Config Zoho** | `GET/PUT /settings/zoho`; `GET /settings/zoho/auth-url`; `GET /settings/zoho/callback` (público); `POST /settings/zoho/{test,sync,disconnect}`; `GET /settings/zoho/sync-log` |
-| **Config e-mail** | `GET/PUT /settings/email`; `POST /settings/email/test` |
+| **Config e-mail** | `GET/PUT /settings/email`; `POST /settings/email/test` (aceita overrides — testa antes de habilitar, D-036) |
 | **Identidade visual** | `GET/PUT /settings/branding` |
 
 RBAC: **ADMIN** edita Configurações; **ADMIN/MANAGER** usam o resto. **CONSULTANT** → `403`.

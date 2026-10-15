@@ -207,7 +207,7 @@ credenciais (senha SMTP, client secret do Graph) são **cifradas em repouso** e 
 |--------|------|-----------|
 | GET | `/settings/email` | Configuração efetiva (sem segredos): `enabled`, `transport` (`SMTP|GRAPH`), remetente, SMTP (`host`/`port`/`secure`/`user`) e Graph (`tenantId`/`clientId`). |
 | PUT | `/settings/email` | Atualiza campos (parciais). `smtpPassword`/`graphClientSecret` gravam cifrado; `clearSmtpPassword`/`clearGraphClientSecret` removem. |
-| POST | `/settings/email/test` | Envia um e-mail de teste (`to` opcional; ausente usa o remetente). `200` em sucesso; `503`/`400` com o motivo. |
+| POST | `/settings/email/test` | Envia um e-mail de teste. Aceita `to` (opcional; ausente usa o remetente) **e**, como *overrides* transitórios, os mesmos campos do `PUT` — permite **testar antes de salvar/habilitar** (D-036). `200` em sucesso; `400` quando faltam transporte/remetente; `503` em falha de envio. |
 
 ### Identidade Visual (D-030)
 

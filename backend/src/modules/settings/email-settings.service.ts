@@ -34,6 +34,8 @@ interface StoredEmailSettings {
 
 export interface ResolvedEmailSettings {
   configured: boolean;
+  /** Ha meios suficientes para enviar (independe de `enabled`) — D-036. */
+  sendable: boolean;
   enabled: boolean;
   transport: EmailTransport;
   fromName: string;
@@ -112,7 +114,32 @@ export class EmailSettingsService implements OnModuleInit {
   }
 
   getResolved(): ResolvedEmailSettings {
-    const stored = this.cache;
+    return this.resolve(this.cache);
+  }
+
+  /**
+   * Resolve a configuracao efetiva aplicando *overrides* transitorios (sem
+   * persistir). Usado pelo **teste de envio**, que pode rodar **antes** de
+   * habilitar o envio (D-036).
+   */
+  resolveWithOverrides(
+    overrides: UpdateEmailSettingsDto,
+  ): ResolvedEmailSettings {
+    const next = this.merge(this.cache, overrides);
+    return this.resolve(next, {
+      smtpPassword: overrides.smtpPassword?.trim()
+        ? overrides.smtpPassword
+        : undefined,
+      graphClientSecret: overrides.graphClientSecret?.trim()
+        ? overrides.graphClientSecret
+        : undefined,
+    });
+  }
+
+  private resolve(
+    stored: StoredEmailSettings,
+    plain: { smtpPassword?: string; graphClientSecret?: string } = {},
+  ): ResolvedEmailSettings {
     const transport: EmailTransport = stored.transport ?? 'SMTP';
 
     let smtpPassword = '';
@@ -135,30 +162,38 @@ export class EmailSettingsService implements OnModuleInit {
         secretSource = 'settings';
       }
     }
+    if (plain.smtpPassword) smtpPassword = plain.smtpPassword;
+    if (plain.graphClientSecret) graphClientSecret = plain.graphClientSecret;
 
     const fromAddress = stored.fromAddress?.trim() ?? '';
+    const smtpHost = stored.smtpHost?.trim() ?? '';
+    const smtpPort = stored.smtpPort ?? 587;
+    const graphTenantId = stored.graphTenantId?.trim() ?? '';
+    const graphClientId = stored.graphClientId?.trim() ?? '';
     const enabled = stored.enabled ?? false;
-    const configured =
-      enabled &&
+
+    // "Testavel/enviável": basta ter transporte + remetente (nao exige `enabled`).
+    const sendable =
       fromAddress !== '' &&
       (transport === 'GRAPH'
-        ? Boolean(stored.graphTenantId && stored.graphClientId && graphClientSecret)
-        : Boolean(stored.smtpHost && stored.smtpPort));
+        ? Boolean(graphTenantId && graphClientId && graphClientSecret)
+        : Boolean(smtpHost && smtpPort));
 
     return {
-      configured,
+      configured: enabled && sendable,
+      sendable,
       enabled,
       transport,
       fromName: stored.fromName?.trim() ?? 'Suporte Informática',
       fromAddress,
       secretSource,
-      smtpHost: stored.smtpHost?.trim() ?? '',
-      smtpPort: stored.smtpPort ?? 587,
+      smtpHost,
+      smtpPort,
       smtpSecure: stored.smtpSecure ?? false,
       smtpUser: stored.smtpUser?.trim() ?? '',
       smtpPassword,
-      graphTenantId: stored.graphTenantId?.trim() ?? '',
-      graphClientId: stored.graphClientId?.trim() ?? '',
+      graphTenantId,
+      graphClientId,
       graphClientSecret,
     };
   }
@@ -191,7 +226,27 @@ export class EmailSettingsService implements OnModuleInit {
     }
 
     const before = this.redact(this.cache);
-    const next: StoredEmailSettings = { ...this.cache };
+    const next = this.merge(this.cache, dto);
+
+    await this.persist(next);
+    await this.audit.record({
+      actorId: actor.id,
+      entity: 'app_settings',
+      entityId: EMAIL_SETTING_KEY,
+      action: 'UPDATE',
+      before,
+      after: this.redact(next),
+    });
+
+    return this.getView();
+  }
+
+  /** Aplica os campos do DTO sobre uma base de configuracao (sem persistir). */
+  private merge(
+    base: StoredEmailSettings,
+    dto: UpdateEmailSettingsDto,
+  ): StoredEmailSettings {
+    const next: StoredEmailSettings = { ...base };
 
     if (dto.enabled !== undefined) next.enabled = dto.enabled;
     if (dto.transport !== undefined) next.transport = dto.transport;
@@ -226,17 +281,7 @@ export class EmailSettingsService implements OnModuleInit {
       );
     }
 
-    await this.persist(next);
-    await this.audit.record({
-      actorId: actor.id,
-      entity: 'app_settings',
-      entityId: EMAIL_SETTING_KEY,
-      action: 'UPDATE',
-      before,
-      after: this.redact(next),
-    });
-
-    return this.getView();
+    return next;
   }
 
   private async persist(value: StoredEmailSettings): Promise<void> {

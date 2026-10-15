@@ -71,10 +71,19 @@ export class SettingsController {
   @Post('email/test')
   @HttpCode(200)
   async testEmail(@Body() dto: TestEmailSettingsDto) {
-    const settings = this.emailSettings.getResolved();
+    // Overrides transitorios: testa os valores informados sem salvar (D-036),
+    // inclusive **antes** de habilitar o envio.
+    const settings = this.emailSettings.resolveWithOverrides(dto);
     const to = dto.to?.trim() || settings.fromAddress;
     if (!to) {
       throw new BadRequestException('Informe o destinatario do e-mail de teste');
+    }
+    if (!settings.sendable) {
+      throw new BadRequestException(
+        settings.transport === 'GRAPH'
+          ? 'Preencha tenant, client id, client secret e o remetente para testar'
+          : 'Preencha o servidor SMTP e o remetente para testar',
+      );
     }
     const message: MailMessage = {
       from: { name: settings.fromName, address: settings.fromAddress },

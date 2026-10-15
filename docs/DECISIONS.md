@@ -745,6 +745,29 @@ Sem dependência nova. **Versão: `0.9.5`.**
 
 ---
 
+## D-036 — E-mail: testar o envio antes de habilitar
+**Data:** 15/10/2026
+**Decisão:** permitir **testar o envio de e-mail usando os valores preenchidos no formulário**,
+sem precisar salvar e **mesmo com o envio desabilitado** (`enabled=false`).
+**Contexto:** o botão "Enviar teste" só habilitava quando a configuração já estava **salva e
+habilitada** (`configured`), obrigando a ligar o envio (e arriscar disparos reais) antes de
+saber se as credenciais funcionavam.
+**Decisões:**
+1. **Teste com overrides transitórios**: `POST /settings/email/test` aceita, opcionalmente, os
+   **mesmos campos** de `PUT /settings/email` (`TestEmailSettingsDto extends UpdateEmailSettingsDto`);
+   o backend resolve a configuração efetiva com esses valores **em memória** (nada é persistido).
+2. **Separar "testável" de "habilitado"**: novo `sendable` = transporte + remetente preenchidos
+   (SMTP: host+porta; Graph: tenant+clientId+secret). `configured = enabled && sendable`.
+   O envio de **negócio** (Relatório Financeiro) continua exigindo `configured`; o **teste** exige
+   apenas `sendable`.
+3. **Frontend**: o botão "Enviar teste" envia o formulário atual (incluindo a senha/secreta digitada,
+   se houver) e habilita quando o formulário está completo — não depende de salvar. Texto de ajuda
+   deixa claro que o teste usa os valores acima.
+**Consequências:** dá para validar SMTP/Graph **antes** de ligar o envio, reduzindo o risco de
+configurar errado. Sem migration, sem dependência nova. **Versão: `0.9.6`.**
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.

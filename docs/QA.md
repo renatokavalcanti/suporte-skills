@@ -415,6 +415,15 @@ responde **`503`** sem o Zoho configurado. Backend **78/78**. O `GET /tickets/:i
 exibe o total; as ações são exibidas só para **ADMIN**. Leitura segue **ADMIN/MANAGER**
 (confirmada pelo `smoke` — as rotas novas são cobertas por RBAC nas demais verificações).
 
+## 5p. Testar e-mail antes de habilitar (D-036)
+
+Verificações de **backend** (unitárias): `resolveWithOverrides` devolve `sendable=true` com
+transporte + remetente preenchidos **mesmo com `enabled=false`** (`configured=false`), usa a senha
+informada no override e mantém `sendable=false` quando falta o servidor; no Graph, exige tenant +
+client id + secret. Backend **81/81**. O envio de negócio (Relatório Financeiro) continua exigindo
+`configured` (`enabled && sendable`). No frontend, o botão **"Enviar teste"** habilita quando o
+formulário está completo (não exige salvar). A entrega real depende de credenciais do usuário.
+
 ## 6. Limitações conhecidas (aceitas no MVP)
 
 1. **Estado em memória**: o limitador de login e o cache não usam store compartilhado —

@@ -145,7 +145,9 @@ export class MailerService {
   constructor(private readonly config: ConfigService) {}
 
   async send(message: MailMessage, settings: ResolvedEmailSettings): Promise<void> {
-    if (!settings.configured) {
+    // `sendable` (transporte + remetente) basta para o envio; o `enabled` e'
+    // exigido apenas pelos fluxos de negocio (ex.: Relatorio Financeiro, D-036).
+    if (!settings.sendable) {
       throw new ServiceUnavailableException('Envio de e-mail nao configurado');
     }
     if (message.to.length === 0) {
