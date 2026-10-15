@@ -139,6 +139,10 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > Let's Encrypt** (HTTPS automático) via `docker-compose.cloud.yml`; **db/api/web não expostos** à
 > internet (rede interna do compose); o on-prem segue inalterado. Guia em `docs/CLOUD.md`. Versão: `0.9.7`.
 
+> **Ajuste pós-MVP (D-038) — indicador de ambiente:** a interface passa a **exibir o ambiente**
+> (PRD/HML/DEV) com um selo de cor no topo e um aviso na tela inicial. Definido por
+> **`APP_ENVIRONMENT`** (backend + build da SPA). Sem migration. Versão: `0.9.8`.
+
 ## Critérios de aceite da Fase 1 (histórico)
 
 1. `docker compose up` sobe `web` + `api` + `db` do zero.

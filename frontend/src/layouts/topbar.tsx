@@ -2,6 +2,7 @@ import { LogOut, Menu, Moon, Sun } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EnvironmentBadge } from '@/components/environment-badge';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
 import { roleLabels } from '@/utils/labels';
@@ -28,6 +29,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
+        <EnvironmentBadge />
         <Button
           variant="ghost"
           size="icon"

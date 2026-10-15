@@ -1,5 +1,19 @@
+/** Ambiente de execucao da aplicacao (D-038): exibido na interface. */
+export type AppEnvironment = 'PRD' | 'HML' | 'DEV';
+
+/**
+ * Normaliza `APP_ENVIRONMENT` (PRD/HML/DEV). Qualquer valor ausente ou
+ * desconhecido cai em `DEV` (comportamento seguro para desenvolvimento).
+ */
+export function toEnvironment(value: string | undefined): AppEnvironment {
+  const normalized = (value ?? '').trim().toUpperCase();
+  return normalized === 'PRD' || normalized === 'HML' ? normalized : 'DEV';
+}
+
 export interface AppConfiguration {
   env: string;
+  /** Ambiente (PRD/HML/DEV) exibido na interface — D-038. */
+  environment: AppEnvironment;
   port: number;
   /** URL publica da API (base da Redirect URI do OAuth do Zoho). */
   publicUrl: string;
@@ -92,6 +106,7 @@ export default (): AppConfiguration => {
 
   return {
     env: env.NODE_ENV ?? 'development',
+    environment: toEnvironment(env.APP_ENVIRONMENT),
     port: toInt(env.API_PORT, 4000),
     publicUrl: (env.PUBLIC_API_URL ?? 'http://localhost:4000').replace(/\/+$/, ''),
     publicWebUrl: (

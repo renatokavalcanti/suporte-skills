@@ -796,6 +796,28 @@ válido, mantendo o on-prem intacto. Requer **DNS A** apontando para a VM e o **
 
 ---
 
+## D-038 — Indicador de ambiente na interface (PRD/HML/DEV)
+**Data:** 15/10/2026
+**Decisão:** exibir na interface **em qual ambiente** a aplicação está rodando, com um **selo de
+cor no topo** (sempre visível) e um **aviso na tela inicial**. O ambiente é definido por
+**`APP_ENVIRONMENT`** (`PRD` = produção/Azure, `HML` = homologação/VM local, `DEV` = local).
+**Contexto:** passamos a ter **três instâncias** (Azure pública, VM local e desktop). Sem um
+indicador visual, é fácil operar na instância errada. Escopo **deliberadamente restrito** ao
+rótulo (a área de **consumo/Azure Cost Management ficou fora**, por decisão do usuário).
+**Decisões:**
+1. **Uma variável, dois consumidores**: `APP_ENVIRONMENT` vai ao **backend** (env) e ao **build da
+   SPA** (`VITE_APP_ENVIRONMENT`, repassado pelo `docker-compose.yml`), evitando duplicar a fonte.
+2. **Normalização segura**: qualquer valor ausente/desconhecido vira **`DEV`** (não quebra nada em
+   ambientes que ainda não setaram a variável).
+3. **Backend**: `environment` no `GET /health` e no log de boot.
+4. **Frontend**: componente `EnvironmentBadge` (cor por ambiente — PRD vermelho, HML âmbar, DEV
+   verde) no **topo** e um **aviso no Dashboard**.
+5. **Aditivo**: sem migration, sem dependência nova, sem mudança nos demais módulos.
+**Ressalva registrada:** a instância **HML** (`10.0.0.200`) hoje contém **dados reais** — ela
+espelha a produção até o **PRD** (Azure) virar a fonte de verdade. **Versão: `0.9.8`.**
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.

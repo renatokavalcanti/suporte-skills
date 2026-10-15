@@ -3,6 +3,8 @@ import { PageHeader } from '@/components/page-header';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/feedback';
+import { EnvironmentBadge } from '@/components/environment-badge';
+import { APP_ENVIRONMENT, ENVIRONMENT_META } from '@/config/environment';
 import { dashboardService } from '@/services/dashboard.service';
 import { KpiCards } from './kpi-cards';
 import { StatusDonut } from './status-donut';
@@ -49,6 +51,14 @@ export function DashboardPage() {
         title="Dashboard"
         description="Visão geral da capacidade técnica da equipe."
       />
+
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+        <EnvironmentBadge />
+        <span>
+          Você está no ambiente{' '}
+          <strong>{ENVIRONMENT_META[APP_ENVIRONMENT].description}</strong>.
+        </span>
+      </div>
 
       {isLoading && <DashboardSkeleton />}
 

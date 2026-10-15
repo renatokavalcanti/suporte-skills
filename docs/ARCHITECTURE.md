@@ -186,14 +186,16 @@ Detalhes, regras e mapa de arquivos: **[CHAMADOS.md](./CHAMADOS.md)**.
 `@nestjs/config` com `load` (configuration.ts) e `validate` (env.validation.ts).
 Variáveis principais: `DATABASE_URL`, `API_PORT`, `JWT_ACCESS_SECRET`,
 `JWT_REFRESH_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `CORS_ORIGIN`,
-`CERT_EXPIRING_DAYS`, `BUSINESS_TIMEZONE`, `AUTH_LOGIN_MAX_ATTEMPTS`,
+`CERT_EXPIRING_DAYS`, `BUSINESS_TIMEZONE`, `APP_ENVIRONMENT`, `AUTH_LOGIN_MAX_ATTEMPTS`,
 `AUTH_LOGIN_WINDOW_MINUTES`, `NEWS_SYNC_ENABLED`, `NEWS_SYNC_INTERVAL_MINUTES`,
 `NEWS_FETCH_TIMEOUT_MS`, `NEWS_MAX_ITEMS_PER_SOURCE`, `NEWS_DIGEST_ENABLED`,
 `NEWS_DIGEST_WINDOW_DAYS`, `NEWS_DIGEST_MAX_ITEMS`, `AI_ENABLED`, `AI_BASE_URL`,
 `AI_API_KEY`, `AI_MODEL`, `AI_TIMEOUT_MS`, `SETTINGS_ENCRYPTION_KEY`,
 `UPLOADS_DIR`, `MAX_UPLOAD_MB`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`.
 Em `NODE_ENV=production` a validação exige segredos JWT com ≥ 32 caracteres e
-distintos entre si, e `CORS_ORIGIN` vazio cai no valor padrão.
+distintos entre si, e `CORS_ORIGIN` vazio cai no valor padrão. `APP_ENVIRONMENT`
+(`PRD`/`HML`/`DEV`) é exibido na interface (D-038); o mesmo valor vira
+`VITE_APP_ENVIRONMENT` no build da SPA (repassado pelo `docker-compose.yml`).
 
 ## 7. Frontend
 

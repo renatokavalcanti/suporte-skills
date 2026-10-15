@@ -19,7 +19,7 @@ rotas `@Public()`.
 
 | Método | Rota | Auth | Descrição |
 |--------|------|------|-----------|
-| GET | `/health` | público | Status da API e do banco. |
+| GET | `/health` | público | Status da API e do banco; inclui `environment` (`PRD`/`HML`/`DEV`, D-038). |
 | POST | `/auth/login` | público | Login; devolve `accessToken` + `user`; seta cookie de refresh (`429` após excesso de falhas). |
 | POST | `/auth/refresh` | público (cookie) | Rotaciona refresh e emite novo access token (reuso revoga a sessão). |
 | POST | `/auth/logout` | público (cookie) | Revoga refresh e limpa cookie. |

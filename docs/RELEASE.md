@@ -32,6 +32,26 @@ git fetch --tags origin && git checkout -f main   # .env/data/certs/backups perm
 
 ---
 
+# Release — 0.9.8 (D-038) — indicador de ambiente (PRD/HML/DEV)
+
+**Escopo:** a interface passa a **exibir o ambiente** (PRD/HML/DEV). **Sem migration.**
+
+- **Backend:** `APP_ENVIRONMENT` (config + `GET /health` + log de boot).
+- **Frontend:** `config/environment.ts`, `components/environment-badge.tsx` (cor por ambiente) no
+  **topo** e no **Dashboard**.
+- **Build/infra:** `docker-compose.yml` repassa `APP_ENVIRONMENT` à API e `VITE_APP_ENVIRONMENT` ao
+  build da SPA (arg no `frontend/Dockerfile`).
+- **Por ambiente:** `.env` do HML → `APP_ENVIRONMENT=HML`; `.env` do PRD (Azure) → `PRD`; local → `DEV`.
+- **Testes:** backend **86/86**. **Aceite:** estado DEMO passa a **21 releases**.
+
+**Deploy:** no HML (`deploy.sh`) e no PRD (`docker compose -f docker-compose.yml -f
+docker-compose.cloud.yml up -d --build`). O `web` precisa ser **reconstruído** (o valor entra no
+build da SPA). Valide com `bash scripts/smoke.sh`.
+
+**Rollback:** HML → `git checkout -f f641f72`; PRD → mesmo commit.
+
+---
+
 # Release — 0.9.7 (D-037) — publicação na nuvem (Azure)
 
 **Escopo:** ambiente de nuvem numa VM na Azure com **HTTPS real (Let's Encrypt)**. **Sem migration.**

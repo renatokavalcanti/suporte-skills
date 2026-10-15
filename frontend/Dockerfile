@@ -14,6 +14,10 @@ COPY . .
 ARG VITE_TICKETS_ENABLED=false
 ENV VITE_TICKETS_ENABLED=$VITE_TICKETS_ENABLED
 
+# Ambiente (PRD/HML/DEV) exibido na interface (D-038).
+ARG VITE_APP_ENVIRONMENT=DEV
+ENV VITE_APP_ENVIRONMENT=$VITE_APP_ENVIRONMENT
+
 RUN npm run build
 
 # ---------------------------------------------------------------------------

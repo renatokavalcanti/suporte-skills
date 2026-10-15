@@ -1,0 +1,12 @@
+{
+  "version": "0.9.8",
+  "title": "Indicador de ambiente (PRD/HML/DEV)",
+  "summary": "A aplicação passa a exibir em qual ambiente está rodando: um selo com cor no topo (sempre visível) e um aviso na tela inicial. O ambiente vem da variável APP_ENVIRONMENT — PRD (produção, Azure), HML (homologação, VM local) e DEV (local) —, repassada ao backend e embutida na SPA no build. (D-038)",
+  "releasedAt": "2026-10-16T02:00:00.000Z",
+  "current": true,
+  "items": [
+    { "category": "FEATURE", "description": "Selo de ambiente (PRD/HML/DEV) no topo da aplicação, com cor por ambiente (D-038)", "position": 0 },
+    { "category": "FEATURE", "description": "Aviso do ambiente na tela inicial (Dashboard)", "position": 1 },
+    { "category": "IMPROVEMENT", "description": "Ambiente definido por APP_ENVIRONMENT (backend + build da SPA) e exposto em GET /health", "position": 2 }
+  ]
+}

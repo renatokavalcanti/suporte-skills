@@ -215,7 +215,7 @@ para execução local). Principais:
 
 ## Status
 
-**Versão atual: `0.9.7`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
+**Versão atual: `0.9.8`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
 relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módulos pós-MVP:
 
 | Decisão | Entrega |
@@ -239,6 +239,7 @@ relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módul
 | D-035 | **Detalhe do chamado + re-associação**: modal com os lançamentos de tempo/total; ADMIN troca o cliente, desassocia (volta à fila) e reimporta as horas do chamado |
 | D-036 | **Testar e-mail antes de habilitar**: o "Enviar teste" usa os valores do formulário (overrides transitórios) e não exige salvar/habilitar |
 | D-037 | **Publicação na nuvem (Azure)**: `docker-compose.cloud.yml` com **Caddy + Let's Encrypt** (HTTPS automático); banco/API não expostos. Guia em `docs/CLOUD.md` |
+| D-038 | **Indicador de ambiente (PRD/HML/DEV)**: selo de cor no topo + aviso na tela inicial; definido por `APP_ENVIRONMENT` |
 
 Typecheck e build limpos em backend e frontend; imagem Docker publicada na VM
 (10.0.0.200) com HTTPS. A suíte de aceite cobre os blocos 11f (D-024), 11g (D-025), 11h

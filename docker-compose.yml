@@ -31,6 +31,8 @@ services:
     environment:
       NODE_ENV: production
       API_PORT: 4000
+      # Ambiente (PRD/HML/DEV) exibido na interface (D-038).
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-DEV}
       DATABASE_URL: postgresql://${POSTGRES_USER:-suporte}:${POSTGRES_PASSWORD:-suporte}@db:5432/${POSTGRES_DB:-suporte_skills}?schema=public
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-troque-este-segredo-de-acesso-com-no-minimo-32-caracteres}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-troque-este-segredo-de-refresh-com-no-minimo-32-caracteres}
@@ -103,6 +105,8 @@ services:
       args:
         # Modulo Tickets (D-029): ligar a SPA so' no release (VITE_TICKETS_ENABLED=true).
         VITE_TICKETS_ENABLED: ${VITE_TICKETS_ENABLED:-false}
+        # Ambiente (PRD/HML/DEV) exibido na interface (D-038).
+        VITE_APP_ENVIRONMENT: ${APP_ENVIRONMENT:-DEV}
     container_name: suporte-skills-web
     restart: unless-stopped
     depends_on:

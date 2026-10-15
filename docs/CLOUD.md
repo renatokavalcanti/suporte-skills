@@ -44,6 +44,7 @@ cd suporte-skills
 cp .env.cloud.example .env
 #    -> DOMAIN, ACME_EMAIL, PUBLIC_*_URL, POSTGRES_PASSWORD e os segredos
 #       (gere: openssl rand -base64 48)
+#    -> APP_ENVIRONMENT=PRD (exibe o selo do ambiente na interface, D-038)
 $EDITOR .env
 
 # 3) Subir o stack (base + override de nuvem)

@@ -606,11 +606,24 @@ async function main(): Promise<void> {
       title: 'Publicação na nuvem (Azure) com HTTPS Let\'s Encrypt',
       summary: 'Ambiente de nuvem numa VM na Azure: um Caddy à frente do stack emite e renova o certificado Let\'s Encrypt do domínio e faz o proxy HTTPS. O banco e a API não ficam expostos; o on-prem segue inalterado (D-037).',
       releasedAt: new Date('2026-10-15T23:59:00.000Z'),
-      current: true,
+      current: false,
       items: [
         { category: 'INFRA', description: 'Ambiente de nuvem (Azure) via docker-compose.cloud.yml: Caddy na borda com Let\'s Encrypt (HTTPS automático) e SPA/API em HTTP na rede interna (D-037)' },
         { category: 'INFRA', description: 'db/api/web deixam de publicar porta no host na nuvem — Postgres e API não ficam expostos à internet' },
         { category: 'INFRA', description: 'Documentação do deploy na nuvem em docs/CLOUD.md + .env.cloud.example' },
+      ],
+    },
+    {
+      id: 'rel-0-9-8',
+      version: '0.9.8',
+      title: 'Indicador de ambiente (PRD/HML/DEV)',
+      summary: 'A aplicação exibe em qual ambiente está rodando: selo com cor no topo e aviso na tela inicial. O ambiente vem de APP_ENVIRONMENT (PRD = produção/Azure, HML = homologação/VM local, DEV = local), repassada ao backend e à SPA no build (D-038).',
+      releasedAt: new Date('2026-10-16T02:00:00.000Z'),
+      current: true,
+      items: [
+        { category: 'FEATURE', description: 'Selo de ambiente (PRD/HML/DEV) no topo da aplicação, com cor por ambiente (D-038)' },
+        { category: 'FEATURE', description: 'Aviso do ambiente na tela inicial (Dashboard)' },
+        { category: 'IMPROVEMENT', description: 'Ambiente definido por APP_ENVIRONMENT (backend + build da SPA) e exposto em GET /health' },
       ],
     },
   ];

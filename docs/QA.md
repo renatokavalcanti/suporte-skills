@@ -424,6 +424,15 @@ client id + secret. Backend **81/81**. O envio de negócio (Relatório Financeir
 `configured` (`enabled && sendable`). No frontend, o botão **"Enviar teste"** habilita quando o
 formulário está completo (não exige salvar). A entrega real depende de credenciais do usuário.
 
+## 5q. Indicador de ambiente (D-038)
+
+Verificações de **backend** (unitárias): `toEnvironment` normaliza `PRD`/`HML`/`DEV` e cai em `DEV`
+para valor ausente/desconhecido; `GET /health` inclui `environment` (e segue `degraded` quando o
+banco falha). Backend **86/86**. No frontend, o selo (`EnvironmentBadge`) e o aviso do Dashboard
+usam `VITE_APP_ENVIRONMENT`; o valor é embutido no build da SPA a partir de `APP_ENVIRONMENT`
+(repassado pelo `docker-compose.yml`). Sem migration. Validação visual por ambiente: PRD (Azure),
+HML (VM local) e DEV (local) mostram o rótulo correspondente.
+
 ## 6. Limitações conhecidas (aceitas no MVP)
 
 1. **Estado em memória**: o limitador de login e o cache não usam store compartilhado —

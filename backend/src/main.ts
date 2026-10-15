@@ -39,7 +39,10 @@ async function bootstrap(): Promise<void> {
   await app.listen(port);
 
   const logger = new Logger('Bootstrap');
-  logger.log(`Suporte Skills API ouvindo em http://localhost:${port}/api/v1`);
+  const environment = config.get<string>('environment') ?? 'DEV';
+  logger.log(
+    `Suporte Skills API ouvindo em http://localhost:${port}/api/v1 (ambiente ${environment})`,
+  );
 }
 
 void bootstrap();
