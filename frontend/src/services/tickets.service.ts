@@ -82,4 +82,32 @@ export const ticketsService = {
     );
     return data;
   },
+  /** Troca o cliente de um chamado ja mapeado (D-035). */
+  async reassignClient(
+    id: string,
+    clientId: string,
+  ): Promise<{ id: string; zohoTicketId: string; clientId: string }> {
+    const { data } = await api.patch<{
+      id: string;
+      zohoTicketId: string;
+      clientId: string;
+    }>(`/tickets/${id}/client`, { clientId });
+    return data;
+  },
+  /** Desassocia o chamado (devolve a fila de nao mapeados) — D-035. */
+  async unlink(id: string): Promise<{ id: string; zohoTicketId: string }> {
+    const { data } = await api.post<{ id: string; zohoTicketId: string }>(
+      `/tickets/${id}/unlink`,
+    );
+    return data;
+  },
+  /** Reimporta os lancamentos de tempo de um chamado (D-035). */
+  async refreshTicketTimeEntries(
+    id: string,
+  ): Promise<{ entries: number; errors: number }> {
+    const { data } = await api.post<{ entries: number; errors: number }>(
+      `/tickets/${id}/refresh-time-entries`,
+    );
+    return data;
+  },
 };

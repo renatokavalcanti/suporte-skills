@@ -25,6 +25,7 @@ import { ticketsService } from '@/services/tickets.service';
 import { extractApiError } from '@/services/api';
 import { formatDate } from '@/utils/labels';
 import { UnmappedDialog } from './unmapped-dialog';
+import { TicketDetailDialog } from './ticket-detail-dialog';
 
 const billableOptions = [
   { value: 'true', label: 'Faturáveis' },
@@ -50,6 +51,7 @@ export function TicketsPage() {
   const [billable, setBillable] = useState('');
   const debouncedSearch = useDebouncedValue(search);
   const [unmappedOpen, setUnmappedOpen] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const clientsQuery = useQuery({
     queryKey: ['clients', 'options'],
@@ -242,7 +244,11 @@ export function TicketsPage() {
               </TableHeader>
               <TableBody>
                 {data.data.map((ticket) => (
-                  <TableRow key={ticket.id}>
+                  <TableRow
+                    key={ticket.id}
+                    className="cursor-pointer"
+                    onClick={() => setDetailId(ticket.id)}
+                  >
                     <TableCell className="whitespace-nowrap text-xs text-slate-500">
                       {ticket.ticketNumber ?? ticket.zohoTicketId}
                     </TableCell>
@@ -275,6 +281,7 @@ export function TicketsPage() {
       </Card>
 
       <UnmappedDialog open={unmappedOpen} onClose={() => setUnmappedOpen(false)} />
+      <TicketDetailDialog ticketId={detailId} onClose={() => setDetailId(null)} />
     </>
   );
 }

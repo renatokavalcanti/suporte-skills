@@ -39,6 +39,29 @@ const TICKET_SELECT = {
 
 type TicketRow = Prisma.TicketGetPayload<{ select: typeof TICKET_SELECT }>;
 
+/** Campos do lancamento de tempo exibidos no resumo do chamado (D-035). */
+const TIME_ENTRY_SELECT = {
+  id: true,
+  ownerName: true,
+  executedAt: true,
+  minutes: true,
+  description: true,
+  isBillable: true,
+} satisfies Prisma.TimeEntrySelect;
+
+/** Detalhe do chamado: dados do chamado + lancamentos de tempo (D-035). */
+const TICKET_DETAIL_SELECT = {
+  ...TICKET_SELECT,
+  timeEntries: {
+    orderBy: { executedAt: 'asc' as const },
+    select: TIME_ENTRY_SELECT,
+  },
+} satisfies Prisma.TicketSelect;
+
+type TicketDetailRow = Prisma.TicketGetPayload<{
+  select: typeof TICKET_DETAIL_SELECT;
+}>;
+
 const SORTABLE = [
   'closeDate',
   'openDate',
@@ -91,10 +114,10 @@ export class TicketsService {
     return { data, meta: buildMeta(total, query) };
   }
 
-  async getById(id: string): Promise<TicketRow> {
+  async getById(id: string): Promise<TicketDetailRow> {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id },
-      select: TICKET_SELECT,
+      select: TICKET_DETAIL_SELECT,
     });
     if (!ticket) throw new NotFoundException('Chamado nao encontrado');
     return ticket;

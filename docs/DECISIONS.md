@@ -716,6 +716,35 @@ dependência nova. **Versão: `0.9.4`.**
 
 ---
 
+## D-035 — Tickets: detalhe do chamado e re-associação de cliente
+**Data:** 15/10/2026
+**Decisão:** na lista de **Tickets**, abrir um **modal de detalhe** ao clicar no chamado (dados do
+chamado + **lançamentos de tempo** + total de horas) e permitir ao **ADMIN** **trocar o cliente**
+de um chamado já mapeado, **desassociá-lo** (devolvendo à fila de não mapeados) e **reimportar as
+horas** daquele chamado.
+**Contexto:** o vínculo com o cliente só existia na **fila de não mapeados** (`unmapped_tickets`);
+uma vez mapeado, o chamado saía da fila e **não havia como corrigir** um vínculo errado. Também
+não havia, na interface, como **ver as atividades** de um chamado (as horas apareciam só como um
+total na lista) — sem visão dos lançamentos individuais (data, técnico, descrição, faturável).
+**Decisões:**
+1. **Re-associação**: `PATCH /tickets/:id/client` (`{ clientId }`) troca o cliente do chamado
+   mapeado, mantendo o espelho e os lançamentos; remove eventuais linhas obsoletas da fila.
+2. **Desassociação**: `POST /tickets/:id/unlink` **devolve** o chamado à fila (recria a linha em
+   `unmapped_tickets` a partir dos campos já espelhados, para um novo vínculo não degradar os
+   dados) e **remove o espelho** (os lançamentos caem em cascata; são reimportados no novo vínculo).
+3. **Detalhe**: `GET /tickets/:id` passa a incluir `timeEntries` (ordenados por execução); a lista
+   **não** carrega os lançamentos (mantém o payload leve).
+4. **Reimportação por chamado**: `POST /tickets/:id/refresh-time-entries` (ADMIN) reusa o
+   `afterTicketWrite` (D-032) para um único chamado — útil no modal.
+5. **Permissão**: as três ações são **ADMIN** (mesma regra do vínculo); a **leitura** do detalhe
+   segue **ADMIN/MANAGER**. Tudo **auditado**.
+6. **Sem migration**: os modelos já existiam (`Ticket.clientId`, `TimeEntry`).
+**Consequências:** dá para **corrigir vínculos** sem apagar dados manualmente, e a operação passa a
+**enxergar as atividades** de cada chamado. `onDelete: Restrict`/`Cascade` já suportavam o fluxo.
+Sem dependência nova. **Versão: `0.9.5`.**
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.

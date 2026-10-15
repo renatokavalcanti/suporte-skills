@@ -1,0 +1,13 @@
+{
+  "version": "0.9.5",
+  "title": "Tickets: detalhe do chamado e re-associação de cliente",
+  "summary": "Na lista de Tickets, clicar no chamado abre um modal com o resumo das atividades — os lançamentos de tempo (data, técnico, horas, descrição, faturável) e o total de horas, além dos dados do chamado. O ADMIN também pode trocar o cliente de um chamado já mapeado ou desassociá-lo (devolvendo à fila de não mapeados), e reimportar as horas daquele chamado. (D-035)",
+  "releasedAt": "2026-10-15T22:00:00.000Z",
+  "current": true,
+  "items": [
+    { "category": "FEATURE", "description": "Modal de detalhe do chamado na lista de Tickets: dados do chamado + lançamentos de tempo (data, técnico, horas, descrição, faturável) e total de horas (D-035)", "position": 0 },
+    { "category": "FEATURE", "description": "Re-associação: trocar o cliente de um chamado já mapeado (PATCH /tickets/:id/client)", "position": 1 },
+    { "category": "FEATURE", "description": "Desassociação: devolver o chamado à fila de não mapeados (POST /tickets/:id/unlink)", "position": 2 },
+    { "category": "FEATURE", "description": "Ação \"Atualizar horas deste chamado\" (POST /tickets/:id/refresh-time-entries)", "position": 3 }
+  ]
+}

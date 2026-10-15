@@ -124,6 +124,12 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > busca os lançamentos de tempo em **paralelo** e o teto por execução sobe para 1000; o nginx
 > aguarda **300 s** em `/api/`. Sem migration. Versão: `0.9.4`.
 
+> **Ajuste pós-MVP (D-035) — detalhe do chamado e re-associação:** clicar no chamado abre um **modal**
+> com os **lançamentos de tempo** e o total de horas; o ADMIN pode **trocar o cliente**, **desassociar**
+> (volta à fila de não mapeados) e **reimportar as horas** daquele chamado. Rotas novas
+> `PATCH /tickets/:id/client`, `POST /tickets/:id/unlink` e `POST /tickets/:id/refresh-time-entries`;
+> `GET /tickets/:id` passa a incluir `timeEntries`. Sem migration. Versão: `0.9.5`.
+
 ## Critérios de aceite da Fase 1 (histórico)
 
 1. `docker compose up` sobe `web` + `api` + `db` do zero.

@@ -33,6 +33,7 @@ interface UnmappedRow {
 interface Calls {
   ticketUpsert: any[];
   ticketUpdate: any[];
+  ticketDelete: any[];
   unmappedUpsert: any[];
   unmappedDeleteMany: any[];
   unmappedDelete: any[];
@@ -48,6 +49,8 @@ interface HarnessOptions {
   tickets?: Array<{ id: string; zohoTicketId: string }>;
   timeEntries?: unknown[];
   agentName?: (agentId: string) => string | null;
+  /** Ticket devolvido por `findUnique({ where: { id } })` (D-035). */
+  ticketById?: (id: string) => unknown;
   /** Pagina devolvida por `listTickets` (default: o `batch` fixo). */
   listTickets?: (params: { limit: number; from: number }) => ZohoTicketPayload[];
   /** Estado inicial salvo em `app_settings.zoho_sync` (para o cursor, D-034). */
@@ -62,6 +65,7 @@ function harness(
   const calls: Calls = {
     ticketUpsert: [],
     ticketUpdate: [],
+    ticketDelete: [],
     unmappedUpsert: [],
     unmappedDeleteMany: [],
     unmappedDelete: [],
@@ -91,8 +95,12 @@ function harness(
       },
     },
     ticket: {
-      findUnique: async (a: any) =>
-        options.ticketExists?.(a.where.zohoTicketId) ? { id: 't1' } : null,
+      findUnique: async (a: any) => {
+        if (a.where.id !== undefined) {
+          return (options.ticketById ?? (() => null))(a.where.id);
+        }
+        return options.ticketExists?.(a.where.zohoTicketId) ? { id: 't1' } : null;
+      },
       findMany: async () => options.tickets ?? [],
       upsert: async (a: any) => {
         calls.ticketUpsert.push(a);
@@ -104,7 +112,15 @@ function harness(
       },
       update: async (a: any) => {
         calls.ticketUpdate.push(a);
-        return { id: 't1' };
+        return {
+          id: a.where.id,
+          zohoTicketId: 'Z-1',
+          clientId: a.data?.clientId ?? 'c1',
+        };
+      },
+      delete: async (a: any) => {
+        calls.ticketDelete.push(a);
+        return { id: a.where.id };
       },
     },
     timeEntry: {
@@ -376,4 +392,79 @@ test('refreshTimeEntries: 503 quando o Zoho não está configurado (D-032)', asy
   );
 
   await assert.rejects(() => service.refreshTimeEntries(actor), ServiceUnavailableException);
+});
+
+test('reassignTicket: troca o cliente e limpa a fila (D-035)', async () => {
+  const { service, calls } = harness([], () => null, {
+    ticketById: (id) =>
+      id === 't1' ? { id: 't1', zohoTicketId: 'Z-1', clientId: 'old-client' } : null,
+  });
+
+  const result = await service.reassignTicket('t1', 'new-client', actor);
+
+  assert.equal(result.clientId, 'new-client');
+  assert.equal(calls.ticketUpdate[0].data.clientId, 'new-client');
+  assert.equal(calls.unmappedDeleteMany.length, 1);
+  assert.equal(calls.unmappedDeleteMany[0].where.zohoTicketId, 'Z-1');
+});
+
+test('reassignTicket: 404 quando o chamado não existe (D-035)', async () => {
+  const { service } = harness([], () => null, { ticketById: () => null });
+  await assert.rejects(
+    () => service.reassignTicket('nope', 'new-client', actor),
+    NotFoundException,
+  );
+});
+
+test('unlinkTicket: devolve o chamado à fila e remove o espelho (D-035)', async () => {
+  const { service, calls } = harness([], () => null, {
+    ticketById: (id) =>
+      id === 't1'
+        ? {
+            id: 't1',
+            zohoTicketId: 'Z-626',
+            clientId: 'c1',
+            ticketNumber: '626',
+            title: 'VPN',
+            status: 'Closed',
+            statusType: 'Closed',
+            priority: null,
+            category: null,
+            assigneeName: 'Ana',
+            assigneeId: null,
+            contactId: null,
+            departmentId: null,
+            accountId: 'acc-1',
+            accountName: 'ACME',
+            technologyName: null,
+            openDate: new Date('2026-01-01T00:00:00Z'),
+            closeDate: null,
+            timeSpentMinutes: 30,
+            slaCompliant: null,
+            isBillable: true,
+          }
+        : null,
+  });
+
+  const result = await service.unlinkTicket('t1', actor);
+
+  assert.equal(result.zohoTicketId, 'Z-626');
+  assert.equal(calls.unmappedUpsert[0].create.zohoTicketId, 'Z-626');
+  assert.equal(calls.unmappedUpsert[0].create.raw.id, 'Z-626');
+  assert.equal(calls.ticketDelete.length, 1);
+});
+
+test('refreshTicketTimeEntries: 503 sem o Zoho configurado (D-035)', async () => {
+  const service = new ZohoSyncService(
+    {} as unknown as PrismaService,
+    noopAudit,
+    { isConfigured: () => false } as unknown as ZohoCredentialsService,
+    {} as unknown as ZohoClientService,
+    {} as unknown as ZohoSettingsService,
+  );
+
+  await assert.rejects(
+    () => service.refreshTicketTimeEntries('t1', actor),
+    ServiceUnavailableException,
+  );
 });

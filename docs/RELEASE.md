@@ -32,6 +32,26 @@ git fetch --tags origin && git checkout -f main   # .env/data/certs/backups perm
 
 ---
 
+# Release — 0.9.5 (D-035) — detalhe do chamado e re-associação
+
+**Escopo:** na lista de **Tickets**, clicar no chamado abre um **modal** com os dados + os
+**lançamentos de tempo** (data, técnico, horas, descrição, faturável) e o **total**; o **ADMIN**
+pode **trocar o cliente** de um chamado mapeado, **desassociá-lo** (volta à fila de não mapeados) e
+**reimportar as horas** daquele chamado. **Sem migration**.
+
+- **Backend:** `tickets.service.ts` (`GET /tickets/:id` com `timeEntries`),
+  `zoho-sync.service.ts` (`reassignTicket`, `unlinkTicket`, `refreshTicketTimeEntries`),
+  `tickets.controller.ts` (`PATCH /tickets/:id/client`, `POST /tickets/:id/unlink`,
+  `POST /tickets/:id/refresh-time-entries`). **ADMIN**; tudo auditado.
+- **Frontend:** `features/tickets/ticket-detail-dialog.tsx` + linha clicável em `tickets-page.tsx`.
+- **Testes:** backend **78/78** (+4). **Aceite:** estado DEMO passa a **18 releases**.
+
+**Deploy:** `bash scripts/deploy.sh`. Sem migration. Valide com `bash scripts/smoke.sh`.
+
+**Rollback:** `git checkout -f 1d602be && docker compose up -d --build` (1d602be = v0.9.4).
+
+---
+
 # Release — 0.9.4 (D-034) — sincronização de chamados
 
 **Escopo:** corrige o espelhamento dos chamados do Zoho Desk. A **listagem** `GET /tickets` **não

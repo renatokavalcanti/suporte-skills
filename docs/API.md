@@ -259,7 +259,10 @@ espelhamento do Zoho entra na Fase 3.
 | PATCH | `/clients/:id/status` | ADMIN/MANAGER | Ativa/desativa (`{ active }`). |
 | DELETE | `/clients/:id` | ADMIN/MANAGER | Desativação (soft delete, `204`). |
 | GET | `/tickets` | ADMIN/MANAGER | Lista paginada de chamados espelhados. Filtros: `clientId`, `status`, `search` (título/número), `from`/`to` (**período por `close_date`**, ISO `YYYY-MM-DD`, inclusivo), `billable`, `sort`, `order`. Cada item traz `client { id, name }`. |
-| GET | `/tickets/:id` | ADMIN/MANAGER | Detalhe do chamado. `404` se não existir. |
+| GET | `/tickets/:id` | ADMIN/MANAGER | Detalhe do chamado, incluindo `timeEntries` (lançamentos de tempo ordenados por execução) — D-035. `404` se não existir. |
+| PATCH | `/tickets/:id/client` | ADMIN | **Re-associação** (D-035): troca o cliente do chamado mapeado (`{ clientId }`). Mantém o espelho e os lançamentos; `404` se o chamado/cliente não existir. |
+| POST | `/tickets/:id/unlink` | ADMIN | **Desassociação** (D-035): devolve o chamado à fila de não mapeados e remove o espelho (os lançamentos caem em cascata). Devolve `{ id, zohoTicketId }`. |
+| POST | `/tickets/:id/refresh-time-entries` | ADMIN | **Reimporta os lançamentos de tempo** de um único chamado (D-035). Devolve `{ entries, errors }`; `503` quando o Zoho não está configurado. |
 
 > `status` é **texto livre** (rótulo do Zoho). `close_date` é a data de referência da medição
 > mensal. Toda escrita de cliente é auditada em `audit_logs` (`entity: "clients"`).
@@ -272,7 +275,7 @@ nem registradas em log). Requer `TICKETS_ENABLED=true`; as rotas abaixo são res
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| POST | `/tickets/sync` | Sincroniza agora (manual). Upsert idempotente por `zohoTicketId`, incremental por `modifiedTime`. Devolve o resumo `{ startedAt, finishedAt, fetched, created, updated, unmapped, errors, status }`. `503` quando o Zoho não está configurado. |
+| POST | `/tickets/sync` | Sincroniza agora (manual). Upsert idempotente por `zohoTicketId`; percorre a listagem por **cursor de paginação** (a listagem do Zoho não devolve `modifiedTime` — D-034). Devolve o resumo `{ startedAt, finishedAt, fetched, created, updated, unmapped, errors, status }`. `503` quando o Zoho não está configurado. |
 | POST | `/tickets/sync/time-entries` | (ADMIN) **Reimporta os lançamentos de tempo** de todos os chamados espelhados (D-032). Devolve `{ tickets, entries, errors }`; `503` quando o Zoho não está configurado. |
 | GET | `/tickets/sync/status` | `{ syncEnabled, configured, lastRun }` (última execução: data, status e contagens). Nunca expõe credenciais. |
 | GET | `/tickets/unmapped` | Lista paginada da fila de chamados **sem cliente mapeado** (payload cru preservado). |
@@ -285,10 +288,10 @@ nem registradas em log). Requer `TICKETS_ENABLED=true`; as rotas abaixo são res
 > (`entity: "zoho_sync"`) e a última execução fica em `app_settings` (key `zoho_sync`).
 >
 > Por chamado espelhado, a sincronização também busca os **lançamentos de tempo**
-> (`GET /tickets/{id}/timeEntries`), grava cada um em `time_entries` (minutos inteiros, agente,
-> `executedTime`, `isBillable`) e recalcula `time_spent_minutes` como a **soma** (D-030). Os
-> campos de conta/contato/departamento/responsável e a **tecnologia** (campo personalizado
-> configurável em Configurações) também são preenchidos no `Ticket`.
+> (`GET /tickets/{id}/timeEntry`, **singular** — D-032), grava cada um em `time_entries` (minutos
+> inteiros, agente, `executedTime`, `isBillable`) e recalcula `time_spent_minutes` como a **soma**
+> (D-030). Os campos de conta/contato/departamento/responsável e a **tecnologia** (campo
+> personalizado configurável em Configurações) também são preenchidos no `Ticket`.
 
 #### Contratos de serviço (D-030)
 

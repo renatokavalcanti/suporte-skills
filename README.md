@@ -215,7 +215,7 @@ para execução local). Principais:
 
 ## Status
 
-**Versão atual: `0.9.4`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
+**Versão atual: `0.9.5`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
 relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módulos pós-MVP:
 
 | Decisão | Entrega |
@@ -236,6 +236,7 @@ relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módul
 | D-032 | **Lançamentos de tempo**: endpoint correto (`/timeEntry`), espelho no vínculo pela fila e reimportação ("Atualizar horas") |
 | D-033 | **Menu lateral em submenus**: agrupa itens relacionados em **"Catálogo"** (Profissionais, Fabricantes, Tecnologias, Certificações) e **"GSS Qualidade"** (Clientes, Tickets, Medições, Contratos, Relatórios de Chamados) — submenus retráteis, sem mudança de API |
 | D-034 | **Sincronização de chamados**: cursor de paginação por offset (a listagem do Zoho não devolve `modifiedTime`), busca paralela dos lançamentos de tempo, teto por execução 1000 e `proxy_read_timeout` do nginx em 300 s |
+| D-035 | **Detalhe do chamado + re-associação**: modal com os lançamentos de tempo/total; ADMIN troca o cliente, desassocia (volta à fila) e reimporta as horas do chamado |
 
 Typecheck e build limpos em backend e frontend; imagem Docker publicada na VM
 (10.0.0.200) com HTTPS. A suíte de aceite cobre os blocos 11f (D-024), 11g (D-025), 11h

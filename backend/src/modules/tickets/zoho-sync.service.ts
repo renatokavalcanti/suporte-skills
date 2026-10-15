@@ -466,6 +466,169 @@ export class ZohoSyncService {
     return result;
   }
 
+  /**
+   * Troca o cliente de um chamado ja mapeado (re-associacao, D-035). Mantem o
+   * espelho e os lancamentos; so muda o vinculo.
+   */
+  async reassignTicket(
+    id: string,
+    clientId: string,
+    actor: AuthenticatedUser,
+  ): Promise<{ id: string; zohoTicketId: string; clientId: string }> {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id },
+      select: { id: true, zohoTicketId: true, clientId: true },
+    });
+    if (!ticket) throw new NotFoundException('Chamado nao encontrado');
+    await this.assertClient(clientId);
+
+    const updated = await this.prisma.ticket.update({
+      where: { id },
+      data: { clientId },
+      select: { id: true, zohoTicketId: true, clientId: true },
+    });
+
+    // Remove eventual linha obsoleta da fila para o mesmo chamado (D-031).
+    await this.prisma.unmappedTicket.deleteMany({
+      where: { zohoTicketId: updated.zohoTicketId },
+    });
+
+    await this.audit.record({
+      actorId: actor.id,
+      entity: 'tickets',
+      entityId: id,
+      action: 'UPDATE',
+      before: { clientId: ticket.clientId },
+      after: { action: 'reassign', clientId },
+    });
+
+    return updated;
+  }
+
+  /**
+   * Desassocia um chamado mapeado (D-035): devolve o chamado para a fila de nao
+   * mapeados e remove o espelho (os lancamentos de tempo caem em cascata). A
+   * linha da fila e' reconstruida com os campos ja espelhados, para que um novo
+   * vinculo nao degrade os dados.
+   */
+  async unlinkTicket(
+    id: string,
+    actor: AuthenticatedUser,
+  ): Promise<{ id: string; zohoTicketId: string }> {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        zohoTicketId: true,
+        clientId: true,
+        ticketNumber: true,
+        title: true,
+        status: true,
+        statusType: true,
+        priority: true,
+        category: true,
+        assigneeName: true,
+        assigneeId: true,
+        contactId: true,
+        departmentId: true,
+        accountId: true,
+        accountName: true,
+        technologyName: true,
+        openDate: true,
+        closeDate: true,
+        timeSpentMinutes: true,
+        slaCompliant: true,
+        isBillable: true,
+      },
+    });
+    if (!ticket) throw new NotFoundException('Chamado nao encontrado');
+
+    const technologyField = this.technologyField();
+    const raw: Record<string, unknown> = {
+      id: ticket.zohoTicketId,
+      ticketNumber: ticket.ticketNumber,
+      subject: ticket.title,
+      status: ticket.status,
+      statusType: ticket.statusType,
+      priority: ticket.priority,
+      category: ticket.category,
+      assigneeName: ticket.assigneeName,
+      assigneeId: ticket.assigneeId,
+      contactId: ticket.contactId,
+      departmentId: ticket.departmentId,
+      accountId: ticket.accountId,
+      accountName: ticket.accountName,
+      createdTime: ticket.openDate.toISOString(),
+      closedTime: ticket.closeDate ? ticket.closeDate.toISOString() : null,
+      timeSpent: ticket.timeSpentMinutes,
+      slaCompliant: ticket.slaCompliant,
+      isBillable: ticket.isBillable,
+    };
+    if (technologyField && ticket.technologyName) {
+      raw.cf = { [technologyField]: ticket.technologyName };
+    }
+
+    await this.prisma.unmappedTicket.upsert({
+      where: { zohoTicketId: ticket.zohoTicketId },
+      create: {
+        zohoTicketId: ticket.zohoTicketId,
+        accountId: ticket.accountId,
+        accountName: ticket.accountName,
+        subject: ticket.title,
+        raw: raw as Prisma.InputJsonValue,
+      },
+      update: {
+        accountId: ticket.accountId,
+        accountName: ticket.accountName,
+        subject: ticket.title,
+        lastSeenAt: new Date(),
+      },
+    });
+
+    // Apaga o espelho; os lancamentos de tempo sao removidos em cascata.
+    await this.prisma.ticket.delete({ where: { id } });
+
+    await this.audit.record({
+      actorId: actor.id,
+      entity: 'tickets',
+      entityId: id,
+      action: 'DELETE',
+      before: { zohoTicketId: ticket.zohoTicketId, clientId: ticket.clientId },
+      after: { action: 'unlink', requeued: true },
+    });
+
+    return { id, zohoTicketId: ticket.zohoTicketId };
+  }
+
+  /** Reimporta os lancamentos de tempo de um unico chamado (D-035). */
+  async refreshTicketTimeEntries(
+    id: string,
+    actor: AuthenticatedUser,
+  ): Promise<{ entries: number; errors: number }> {
+    if (!this.credentials.isConfigured()) {
+      throw new ServiceUnavailableException('Sincronizacao com o Zoho desativada');
+    }
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id },
+      select: { id: true, zohoTicketId: true },
+    });
+    if (!ticket) throw new NotFoundException('Chamado nao encontrado');
+
+    this.agentNameCache.clear();
+    const imported = await this.afterTicketWrite(ticket.id, ticket.zohoTicketId);
+    const result = { entries: imported ?? 0, errors: imported === null ? 1 : 0 };
+
+    await this.audit.record({
+      actorId: actor.id,
+      entity: 'tickets',
+      entityId: id,
+      action: 'UPDATE',
+      after: { action: 'refresh_time_entries', ...result },
+    });
+
+    return result;
+  }
+
   private async assertClient(clientId: string): Promise<void> {
     const client = await this.prisma.client.findUnique({
       where: { id: clientId },

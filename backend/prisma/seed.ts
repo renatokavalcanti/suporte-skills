@@ -566,12 +566,26 @@ async function main(): Promise<void> {
       title: 'Sincronização de chamados: cursor de paginação e busca paralela',
       summary: 'Corrige o espelhamento dos chamados do Zoho Desk: a listagem não devolve `modifiedTime`, então o watermark ficava nulo e a sincronização relia sempre os mesmos 200. Agora percorre a listagem por offset (cursor persistido), busca os lançamentos de tempo em paralelo e o teto por execução sobe para 1000; o nginx aguarda até 300 s (D-034).',
       releasedAt: new Date('2026-10-15T20:00:00.000Z'),
-      current: true,
+      current: false,
       items: [
         { category: 'FIX', description: 'Espelhamento completo: a listagem do Zoho não devolve `modifiedTime`, então o watermark nunca avançava e a base parava nos primeiros 200 chamados; agora a paginação por cursor varre o conjunto inteiro (D-034)' },
         { category: 'IMPROVEMENT', description: 'Busca dos lançamentos de tempo em paralelo (concorrência limitada), reduzindo o tempo de sincronização' },
         { category: 'IMPROVEMENT', description: 'Teto padrão por execução (ZOHO_MAX_TICKETS_PER_RUN) passa de 200 para 1000' },
         { category: 'FIX', description: 'nginx: proxy_read_timeout de 300 s na rota /api/ (antes 60 s) — a sincronização longa deixava de retornar 504 ao navegador enquanto o backend concluía' },
+      ],
+    },
+    {
+      id: 'rel-0-9-5',
+      version: '0.9.5',
+      title: 'Tickets: detalhe do chamado e re-associação de cliente',
+      summary: 'A lista de Tickets ganha um modal de detalhe (clique no chamado) com os lançamentos de tempo e o total de horas; o ADMIN pode trocar o cliente de um chamado mapeado, desassociá-lo (voltar à fila) e reimportar as horas daquele chamado (D-035).',
+      releasedAt: new Date('2026-10-15T22:00:00.000Z'),
+      current: true,
+      items: [
+        { category: 'FEATURE', description: 'Modal de detalhe do chamado na lista de Tickets: dados do chamado + lançamentos de tempo (data, técnico, horas, descrição, faturável) e total de horas (D-035)' },
+        { category: 'FEATURE', description: 'Re-associação: trocar o cliente de um chamado já mapeado (PATCH /tickets/:id/client)' },
+        { category: 'FEATURE', description: 'Desassociação: devolver o chamado à fila de não mapeados (POST /tickets/:id/unlink)' },
+        { category: 'FEATURE', description: 'Ação "Atualizar horas deste chamado" (POST /tickets/:id/refresh-time-entries)' },
       ],
     },
   ];

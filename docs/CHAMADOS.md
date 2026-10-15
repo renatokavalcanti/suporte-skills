@@ -224,7 +224,7 @@ Endpoints completos em [API.md](./API.md). Resumo:
 | Grupo | Rotas |
 |-------|-------|
 | **Clientes** | `GET/POST/PUT/PATCH/DELETE /clients` |
-| **Chamados** | `GET /tickets`, `GET /tickets/:id`, `GET /tickets/unmapped`, `POST /tickets/unmapped/:id/link`, `GET /tickets/unmapped/groups`, `POST /tickets/unmapped/link`, `GET /tickets/sync/status`, `POST /tickets/sync`, `POST /tickets/sync/time-entries` |
+| **Chamados** | `GET /tickets`, `GET /tickets/:id` (com lançamentos), `GET /tickets/unmapped`, `POST /tickets/unmapped/:id/link`, `GET /tickets/unmapped/groups`, `POST /tickets/unmapped/link`, `PATCH /tickets/:id/client` (trocar cliente), `POST /tickets/:id/unlink` (desassociar), `POST /tickets/:id/refresh-time-entries`, `GET /tickets/sync/status`, `POST /tickets/sync`, `POST /tickets/sync/time-entries` |
 | **Medições (D-029)** | `/measurements` (+ `close/reopen`, `export.csv|pdf`) |
 | **Contratos** | `GET/POST/PUT/PATCH/DELETE /contracts` |
 | **Relatórios** | `GET /ticket-reports/preview`; `POST /ticket-reports`; `GET /ticket-reports[/:id]` |

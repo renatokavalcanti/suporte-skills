@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -93,5 +94,34 @@ export class TicketsController {
   @Get(':id')
   get(@Param('id') id: string) {
     return this.service.getById(id);
+  }
+
+  /** Re-associacao: troca o cliente de um chamado ja mapeado (D-035). */
+  @Patch(':id/client')
+  @Roles(Role.ADMIN)
+  reassignClient(
+    @Param('id') id: string,
+    @Body() dto: LinkUnmappedDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.sync.reassignTicket(id, dto.clientId, user);
+  }
+
+  /** Desassociacao: devolve o chamado a fila de nao mapeados (D-035). */
+  @Post(':id/unlink')
+  @Roles(Role.ADMIN)
+  unlink(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.sync.unlinkTicket(id, user);
+  }
+
+  /** Reimporta os lancamentos de tempo de um unico chamado (D-035). */
+  @Post(':id/refresh-time-entries')
+  @Roles(Role.ADMIN)
+  @HttpCode(200)
+  refreshTicketTimeEntries(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.sync.refreshTicketTimeEntries(id, user);
   }
 }

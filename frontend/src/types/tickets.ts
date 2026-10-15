@@ -9,6 +9,15 @@ export interface Client {
   _count: { tickets: number };
 }
 
+export interface TimeEntry {
+  id: string;
+  ownerName: string | null;
+  executedAt: string;
+  minutes: number;
+  description: string | null;
+  isBillable: boolean;
+}
+
 export interface Ticket {
   id: string;
   zohoTicketId: string;
@@ -19,6 +28,7 @@ export interface Ticket {
   priority: string | null;
   category: string | null;
   assigneeName: string | null;
+  technologyName: string | null;
   openDate: string;
   closeDate: string | null;
   timeSpentMinutes: number;
@@ -29,6 +39,8 @@ export interface Ticket {
   createdAt: string;
   updatedAt: string;
   client: { id: string; name: string };
+  /** Presente no detalhe (GET /tickets/:id) — D-035. */
+  timeEntries?: TimeEntry[];
 }
 
 export interface UnmappedTicket {

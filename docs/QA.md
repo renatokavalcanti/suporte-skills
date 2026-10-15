@@ -405,6 +405,16 @@ lançamentos de tempo **em paralelo** (concorrência 4) e teto por execução **
 cursor). A leitura ao vivo do Zoho não roda na suíte (seria não determinística); é validada
 manualmente na VM.
 
+## 5o. Detalhe do chamado e re-associação (D-035)
+
+Verificações de **backend** (unitárias, harness com mocks): `reassignTicket` troca o `clientId` e
+limpa eventuais linhas obsoletas da fila; `404` quando o chamado não existe; `unlinkTicket` recria
+a linha da fila a partir dos campos espelhados e remove o espelho; `refreshTicketTimeEntries`
+responde **`503`** sem o Zoho configurado. Backend **78/78**. O `GET /tickets/:id` passou a incluir
+`timeEntries` (sem migration). No frontend, o modal (clique na linha) monta os dados + lançamentos e
+exibe o total; as ações são exibidas só para **ADMIN**. Leitura segue **ADMIN/MANAGER**
+(confirmada pelo `smoke` — as rotas novas são cobertas por RBAC nas demais verificações).
+
 ## 6. Limitações conhecidas (aceitas no MVP)
 
 1. **Estado em memória**: o limitador de login e o cache não usam store compartilhado —
