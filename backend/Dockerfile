@@ -35,6 +35,9 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/src ./src
 COPY package.json package-lock.json ./
+# tsconfig e' exigido pelo `npm run seed` (ts-node) no profile de ferramentas;
+# sem ele o ts-node cai no padrao e o seed falha ao importar modulos de src.
+COPY --from=build /app/tsconfig.json /app/tsconfig.build.json ./
 
 EXPOSE 4000
 CMD ["node", "dist/main.js"]
