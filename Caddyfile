@@ -1,0 +1,25 @@
+# ---------------------------------------------------------------------------
+# Caddyfile - termina o TLS (Let's Encrypt) no ambiente de nuvem (D-037).
+#
+# O dominio e o e-mail do ACME vem do .env (DOMAIN / ACME_EMAIL). O Caddy emite
+# e renova o certificado automaticamente (HTTP-01 na porta 80) e faz o proxy
+# para o servico "web" (que serve a SPA e a API em HTTP, na rede do compose).
+# ---------------------------------------------------------------------------
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	reverse_proxy web:80 {
+		header_up X-Forwarded-Proto https
+	}
+
+	log {
+		output file /data/access.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}

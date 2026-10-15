@@ -135,6 +135,10 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > desabilitado**; o backend separa **"testável"** (transporte + remetente) de **"habilitado"**.
 > Sem migration. Versão: `0.9.6`.
 
+> **Infra (D-037) — publicação na nuvem (Azure):** ambiente de nuvem numa VM na Azure com **Caddy +
+> Let's Encrypt** (HTTPS automático) via `docker-compose.cloud.yml`; **db/api/web não expostos** à
+> internet (rede interna do compose); o on-prem segue inalterado. Guia em `docs/CLOUD.md`. Versão: `0.9.7`.
+
 ## Critérios de aceite da Fase 1 (histórico)
 
 1. `docker compose up` sobe `web` + `api` + `db` do zero.

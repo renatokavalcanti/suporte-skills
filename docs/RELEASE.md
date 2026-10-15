@@ -32,6 +32,20 @@ git fetch --tags origin && git checkout -f main   # .env/data/certs/backups perm
 
 ---
 
+# Release — 0.9.7 (D-037) — publicação na nuvem (Azure)
+
+**Escopo:** ambiente de nuvem numa VM na Azure com **HTTPS real (Let's Encrypt)**. **Sem migration.**
+
+- **Nuvem:** `docker-compose.cloud.yml` (override) + `Caddyfile` + `frontend/nginx.cloud.conf`
+  + `.env.cloud.example`. O Caddy termina o TLS e faz o proxy HTTP para `web`; `db`/`api`/`web`
+  não publicam porta no host.
+- **On-prem:** **inalterado** (segue com `docker-compose.yml` e certificado autoassinado).
+- **Guia:** [`docs/CLOUD.md`](./CLOUD.md).
+- **Deploy (nuvem):** `docker compose -f docker-compose.yml -f docker-compose.cloud.yml up -d --build`.
+- **Aceite:** estado DEMO passa a **20 releases**.
+
+---
+
 # Release — 0.9.6 (D-036) — testar e-mail antes de habilitar
 
 **Escopo:** na tela **Configurações → Envio de e-mail**, o botão **"Enviar teste"** passa a usar os

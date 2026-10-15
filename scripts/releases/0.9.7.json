@@ -1,0 +1,12 @@
+{
+  "version": "0.9.7",
+  "title": "Publicação na nuvem (Azure) com HTTPS Let's Encrypt",
+  "summary": "Ambiente de nuvem numa VM na Azure: um Caddy à frente do stack emite e renova automaticamente o certificado Let's Encrypt do domínio e faz o proxy HTTPS para a aplicação. O banco e a API não ficam expostos (rede interna do compose) e o ambiente on-prem segue inalterado. Publicado via docker-compose.cloud.yml, sem migration e sem dependência no runtime da aplicação. (D-037)",
+  "releasedAt": "2026-10-15T23:59:00.000Z",
+  "current": true,
+  "items": [
+    { "category": "INFRA", "description": "Ambiente de nuvem (Azure) via docker-compose.cloud.yml: Caddy na borda com Let's Encrypt (HTTPS automático) e SPA/API servidas em HTTP na rede interna (D-037)", "position": 0 },
+    { "category": "INFRA", "description": "db/api/web deixam de publicar porta no host na nuvem — Postgres e API não ficam expostos à internet", "position": 1 },
+    { "category": "INFRA", "description": "Documentação do deploy na nuvem em docs/CLOUD.md + .env.cloud.example", "position": 2 }
+  ]
+}

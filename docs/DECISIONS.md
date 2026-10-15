@@ -768,6 +768,34 @@ configurar errado. Sem migration, sem dependência nova. **Versão: `0.9.6`.**
 
 ---
 
+## D-037 — Publicação na nuvem (Azure) com Let's Encrypt
+**Data:** 15/10/2026
+**Decisão:** publicar o Suporte Skills num **ambiente de nuvem** (VM na Azure) com **HTTPS real
+(Let's Encrypt)** terminado por um **Caddy** à frente do stack, **sem alterar** o ambiente on-prem.
+**Contexto:** o on-prem roda via `docker compose` com certificado **autoassinado** e acesso só na
+LAN. Na nuvem o serviço fica **exposto à internet**, então precisa de **TLS confiável** e do
+**mínimo de superfície** (banco/API não expostos).
+**Decisões:**
+1. **Override de compose separado** — `docker-compose.cloud.yml` (usado com
+   `-f docker-compose.yml -f docker-compose.cloud.yml`). O `docker-compose.yml` **não muda**, então
+   o on-prem segue idêntico.
+2. **Caddy como borda TLS** (`caddy:2-alpine`): emite e **renova** automaticamente o certificado
+   do `DOMAIN` (desafio HTTP-01 na porta 80) e faz o proxy para o serviço `web`.
+3. **`web` serve só HTTP na nuvem** (`frontend/nginx.cloud.conf`, montado sobre
+   `/etc/nginx/conf.d/default.conf`): o TLS fica no Caddy (sem TLS duplicado). Mantém o proxy da API
+   com os timeouts da D-034.
+4. **`db`/`api`/`web` não publicam porta no host** (só a rede interna do compose) — Postgres e API
+   **nunca** expostos. Usa-se `ports: !override []` (Compose moderno).
+5. **Config por ambiente**: `DOMAIN`/`ACME_EMAIL` no `.env` (o `Caddyfile` usa `{$DOMAIN}`/
+   `{$ACME_EMAIL}`) e `PUBLIC_API_URL`/`PUBLIC_WEB_URL` no domínio HTTPS. Exemplo em
+   `.env.cloud.example`.
+6. **Sem migration** e **sem dependência** no runtime da aplicação (Caddy é só um container).
+**Consequências:** um segundo ambiente (nuvem) reproduzível por `git` + `docker compose` com HTTPS
+válido, mantendo o on-prem intacto. Requer **DNS A** apontando para a VM e o **NSG** liberando
+80/443. Documentado em **[CLOUD.md](./CLOUD.md)**. **Versão: `0.9.7`.**
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.

@@ -594,10 +594,23 @@ async function main(): Promise<void> {
       title: 'E-mail: testar envio antes de habilitar',
       summary: 'O botão "Enviar teste" usa os valores preenchidos no formulário (sem precisar salvar) e funciona mesmo com o envio desabilitado, permitindo validar SMTP/Graph antes de ligar o envio (D-036).',
       releasedAt: new Date('2026-10-15T23:30:00.000Z'),
-      current: true,
+      current: false,
       items: [
         { category: 'IMPROVEMENT', description: 'Teste de envio de e-mail antes de habilitar/salvar: o botão usa os valores do formulário como overrides transitórios (D-036)' },
         { category: 'IMPROVEMENT', description: 'Backend: separa "testável" (transporte + remetente) de "habilitado"; o envio de negócio (Relatório Financeiro) continua exigindo o envio habilitado' },
+      ],
+    },
+    {
+      id: 'rel-0-9-7',
+      version: '0.9.7',
+      title: 'Publicação na nuvem (Azure) com HTTPS Let\'s Encrypt',
+      summary: 'Ambiente de nuvem numa VM na Azure: um Caddy à frente do stack emite e renova o certificado Let\'s Encrypt do domínio e faz o proxy HTTPS. O banco e a API não ficam expostos; o on-prem segue inalterado (D-037).',
+      releasedAt: new Date('2026-10-15T23:59:00.000Z'),
+      current: true,
+      items: [
+        { category: 'INFRA', description: 'Ambiente de nuvem (Azure) via docker-compose.cloud.yml: Caddy na borda com Let\'s Encrypt (HTTPS automático) e SPA/API em HTTP na rede interna (D-037)' },
+        { category: 'INFRA', description: 'db/api/web deixam de publicar porta no host na nuvem — Postgres e API não ficam expostos à internet' },
+        { category: 'INFRA', description: 'Documentação do deploy na nuvem em docs/CLOUD.md + .env.cloud.example' },
       ],
     },
   ];

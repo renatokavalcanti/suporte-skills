@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------------------
+# Suporte Skills - override para o ambiente de NUVEM (Azure VM) - D-037.
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.cloud.yml up -d --build
+#
+# Diferencas em relacao ao docker-compose.yml (on-prem):
+#   - db/api/web NAO publicam porta no host (ficam so' na rede interna);
+#   - o servico "web" serve apenas HTTP (frontend/nginx.cloud.conf);
+#   - um "caddy" (Let's Encrypt) publica 80/443 e faz o proxy para o web.
+#
+# Variaveis de ambiente usadas (no .env): DOMAIN e ACME_EMAIL.
+# ---------------------------------------------------------------------------
+services:
+  db:
+    ports: !override []
+
+  api:
+    ports: !override []
+
+  web:
+    ports: !override []
+    volumes:
+      - ./frontend/nginx.cloud.conf:/etc/nginx/conf.d/default.conf:ro
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: suporte-skills-caddy
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN:?defina DOMAIN no .env}
+      ACME_EMAIL: ${ACME_EMAIL:?defina ACME_EMAIL no .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
