@@ -118,6 +118,12 @@ documentação e apresentar o bloco *FASE X — CONCLUÍDA*.
 > sessão. **Somente frontend** (`layouts/navigation.ts` e `layouts/sidebar.tsx`); sem migration nem
 > API. Versão: `0.9.3`.
 
+> **Correção pós-MVP (D-034) — sincronização de chamados:** a listagem do Zoho não devolve
+> `modifiedTime`, então o watermark ficava nulo e a sincronização relia sempre os mesmos 200
+> chamados. Passa a percorrer a listagem por **cursor de offset** (persistido, reiniciado no fim),
+> busca os lançamentos de tempo em **paralelo** e o teto por execução sobe para 1000; o nginx
+> aguarda **300 s** em `/api/`. Sem migration. Versão: `0.9.4`.
+
 ## Critérios de aceite da Fase 1 (histórico)
 
 1. `docker compose up` sobe `web` + `api` + `db` do zero.

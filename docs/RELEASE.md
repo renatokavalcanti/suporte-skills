@@ -32,6 +32,31 @@ git fetch --tags origin && git checkout -f main   # .env/data/certs/backups perm
 
 ---
 
+# Release — 0.9.4 (D-034) — sincronização de chamados
+
+**Escopo:** corrige o espelhamento dos chamados do Zoho Desk. A **listagem** `GET /tickets` **não
+devolve `modifiedTime`**, então o watermark ficava sempre nulo e a sincronização relia sempre os
+primeiros **200** chamados (a base tem **611**). Agora a sincronização percorre a listagem por
+**cursor de offset** (persistido em `app_settings.zoho_sync.cursorFrom`, reiniciado ao chegar ao
+fim), busca os **lançamentos de tempo em paralelo** (concorrência 4) e o teto por execução sobe de
+200 para **1000**. O **nginx** passa a aguardar **300 s** na rota `/api/` (antes 60 s), eliminando
+o **504** que o navegador mostrava enquanto o backend concluía. **Sem migration** (o cursor é
+JSON em `app_settings`). **Síncrono** (o `POST` continua devolvendo o resumo).
+
+- **Backend:** `zoho-sync.service.ts` (cursor `cursorFrom`/`cursorComplete` + `mapWithConcurrency`),
+  `config/configuration.ts` e `zoho-settings.service.ts` (`maxTicketsPerRun` 1000).
+- **nginx:** `proxy_read_timeout`/`proxy_send_timeout` 300 s em `frontend/nginx.conf`.
+- **Testes:** backend **74/74** (novo teste de avanço de cursor).
+- **Aceite:** estado DEMO passa a **17 releases**.
+
+**Deploy:** `bash scripts/deploy.sh` (a SPA/nginx é reconstruída). Sem migration. Depois do deploy,
+rode **"Sincronizar agora"** (ou `POST /tickets/sync`); a base será varrida ao longo de poucas
+execuções (o cursor avança a cada uma). Valide com `bash scripts/smoke.sh`.
+
+**Rollback:** `git checkout -f 7e897d6 && docker compose up -d --build` (7e897d6 = v0.9.3).
+
+---
+
 # Release — 0.9.3 (D-033) — menu lateral em submenus
 
 **Escopo:** agrupa itens relacionados do menu lateral em **submenus retráteis** — **"Catálogo"**

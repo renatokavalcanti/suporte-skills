@@ -678,6 +678,44 @@ mudança puramente visual, retrocompatível e sem dependência nova. **Versão: 
 
 ---
 
+## D-034 — Sincronização de chamados: cursor de paginação e busca paralela
+**Data:** 15/10/2026
+**Decisão:** substituir o **watermark por `modifiedTime`** da sincronização do Zoho Desk por um
+**cursor de paginação por offset persistido** (`app_settings.zoho_sync.cursorFrom`), que avança a
+cada execução e **reinicia ao chegar ao fim** da listagem; buscar os **lançamentos de tempo em
+paralelo** (concorrência limitada) e elevar o teto por execução para 1000; e **aumentar o
+`proxy_read_timeout` do nginx** para 300 s na rota `/api/`.
+**Contexto:** no uso real, o espelho **parava nos primeiros ~200** chamados (a base tem **~611**)
+e a sincronização terminava com **erro** no navegador. Investigação na API do Zoho Desk mostrou
+que a **listagem** (`GET /tickets`) **não devolve `modifiedTime`** (retorna `createdTime`,
+`closedTime`, etc.), então o mapper gravava `zohoModifiedAt = null` em todos, o estado salvava
+`lastModifiedAt: null` e a sincronização **reenviava sempre `from=0..200`** — nunca avançava.
+Além disso, cada chamado faz **1 chamada a `/tickets/{id}/timeEntry`** (D-032), e a execução
+sequencial de 200 chamados levava **~173 s** — acima do `proxy_read_timeout` **padrão do nginx
+(60 s)**, que devolvia **504** ao navegador enquanto o backend concluía com **0 erros**.
+**Decisões:**
+1. **Cursor de paginação** (`cursorFrom`, `cursorComplete`): a sincronização percorre a listagem
+   por offset, avança o cursor até o teto por execução e o reinicia ao encontrar uma página
+   incompleta (fim do conjunto). O **incremental por data é abandonado** — a API não expõe um
+   campo de modificação confiável; cada varredura completa mantém o espelho atualizado.
+2. **Busca paralela** dos lançamentos de tempo (`mapWithConcurrency`, concorrência **4**),
+   preservando a correção (busca sempre as horas; **não** se pula por heurística, para não
+   arriscar o faturamento). Mantém-se sob o limite de requisições da API do Zoho.
+3. **Teto por execução** (`ZOHO_MAX_TICKETS_PER_RUN`) **200 → 1000**, para uma varredura caber
+   em uma execução nas bases atuais.
+4. **nginx**: `proxy_read_timeout`/`proxy_send_timeout` de **300 s** na rota `/api/`; o Sync
+   continua **síncrono** (o endpoint devolve o resumo) — com o cursor e a paralelização, uma
+   varredura completa cabe no tempo do proxy. A opção de sync assíncrono com progresso fica como
+   evolução futura.
+5. **Sem migration**: nenhum campo novo no banco; o cursor é guardado no JSON de estado
+   (`app_settings`). `lastModifiedAt` fica **depreciado** (mantido só por compatibilidade).
+**Consequências:** o espelho passa a conter **toda** a base (varrida ao longo de poucas
+execuções) e a sincronização **termina sem erro** no navegador. Custo: sem filtro incremental,
+cada varredura relê os chamados do trecho percorrido (idempotente por `zohoTicketId`). Sem
+dependência nova. **Versão: `0.9.4`.**
+
+---
+
 ## Premissas de baixo impacto (adotadas)
 
 - `professional_type`: CLT, PJ, INTERN, PARTNER, TEMPORARY.

@@ -137,7 +137,7 @@ export class ZohoSettingsService implements OnModuleInit {
         syncEnabled: false,
         syncIntervalMinutes: 360,
         fetchTimeoutMs: 15000,
-        maxTicketsPerRun: 200,
+        maxTicketsPerRun: 1000,
         apiBaseUrlOverride: '',
         accountsBaseUrlOverride: '',
         clientId: '',

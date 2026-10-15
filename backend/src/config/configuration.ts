@@ -170,7 +170,7 @@ export default (): AppConfiguration => {
         syncEnabled: env.ZOHO_SYNC_ENABLED === 'true',
         syncIntervalMinutes: toInt(env.ZOHO_SYNC_INTERVAL_MINUTES, 360),
         fetchTimeoutMs: toInt(env.ZOHO_FETCH_TIMEOUT_MS, 15000),
-        maxTicketsPerRun: toInt(env.ZOHO_MAX_TICKETS_PER_RUN, 200),
+        maxTicketsPerRun: toInt(env.ZOHO_MAX_TICKETS_PER_RUN, 1000),
         apiBaseUrlOverride: (env.ZOHO_API_BASE_URL ?? '').trim().replace(/\/+$/, ''),
         accountsBaseUrlOverride: (env.ZOHO_ACCOUNTS_BASE_URL ?? '')
           .trim()

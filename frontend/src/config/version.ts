@@ -2,4 +2,4 @@
  * Versao exibida na interface. Deve acompanhar a release marcada como
  * "atual" na area de Releases.
  */
-export const APP_VERSION = '0.9.3';
+export const APP_VERSION = '0.9.4';

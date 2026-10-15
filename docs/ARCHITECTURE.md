@@ -110,7 +110,7 @@ Módulo do atendimento/faturamento, **opt-in** (`TICKETS_ENABLED`). Camadas:
 - **Configurações** em `app_settings` (`zoho`, `email`, `branding`, `zoho_sync`), editáveis por
   ADMIN, com segredos **cifrados** (AES-256-GCM) — ver `shared/crypto/`.
 - **Cliente Zoho** (`modules/tickets/zoho/*`): data centers, credenciais, OAuth "Conectar",
-  testar, sync incremental e log.
+  testar, sync por **cursor de paginação** (a listagem não devolve `modifiedTime`, D-034) e log.
 - **Relatórios** (`modules/tickets/reports/*`): métricas B2 + faturamento B3 (`billing.ts`),
   prévia e `generated_reports` (auditoria).
 - **Saída** — `shared/reporting/pdf.ts` (PDF sem dependência, com cabeçalho/rodapé repetidos e

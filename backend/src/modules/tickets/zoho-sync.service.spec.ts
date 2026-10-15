@@ -48,6 +48,10 @@ interface HarnessOptions {
   tickets?: Array<{ id: string; zohoTicketId: string }>;
   timeEntries?: unknown[];
   agentName?: (agentId: string) => string | null;
+  /** Pagina devolvida por `listTickets` (default: o `batch` fixo). */
+  listTickets?: (params: { limit: number; from: number }) => ZohoTicketPayload[];
+  /** Estado inicial salvo em `app_settings.zoho_sync` (para o cursor, D-034). */
+  initialState?: Record<string, unknown>;
 }
 
 function harness(
@@ -66,7 +70,10 @@ function harness(
   };
   const prisma = {
     appSetting: {
-      findUnique: async () => null,
+      findUnique: async (a: any) =>
+        a.where.key === 'zoho_sync' && options.initialState
+          ? { key: 'zoho_sync', value: options.initialState }
+          : null,
       upsert: async (a: any) => {
         calls.appSettingUpsert.push(a);
         return a;
@@ -137,7 +144,8 @@ function harness(
   } as unknown as PrismaService;
 
   const zoho = {
-    listTickets: async () => batch,
+    listTickets: async (params: { limit: number; from: number }) =>
+      options.listTickets ? options.listTickets(params) : batch,
     listTimeEntries: async () => options.timeEntries ?? [],
     getAccountName: async (accountId: string) =>
       options.accountName?.(accountId) ?? null,
@@ -177,10 +185,41 @@ test('syncAll: cria o chamado mapeado e enfileira o não mapeado', async () => {
   assert.equal(calls.ticketUpsert[0].create.zohoTicketId, 'Z-1');
   assert.equal(calls.ticketUpsert[0].create.clientId, 'client-1');
   assert.equal(calls.unmappedUpsert[0].create.zohoTicketId, 'Z-2');
-  assert.equal(
-    calls.appSettingUpsert[0].create.value.lastModifiedAt,
-    '2026-10-03T10:00:00.000Z',
-  );
+  // Lote menor que a pagina => fim do conjunto: o cursor volta ao inicio (D-034).
+  const saved = calls.appSettingUpsert[0].create.value as {
+    cursorFrom: number;
+    cursorComplete: boolean;
+  };
+  assert.equal(saved.cursorComplete, true);
+  assert.equal(saved.cursorFrom, 0);
+});
+
+test('syncAll: avança o cursor quando o lote enche a página (D-034)', async () => {
+  const page: ZohoTicketPayload[] = Array.from({ length: 100 }, (_, i) => ({
+    id: `Z-${i}`,
+    subject: 'x',
+    status: 'Open',
+    accountId: 'acc-9',
+  }));
+  const froms: number[] = [];
+  const { service, calls } = harness([], () => null, {
+    initialState: { cursorFrom: 3 },
+    listTickets: ({ from }) => {
+      froms.push(from);
+      return page;
+    },
+  });
+
+  const summary = await service.syncAll('admin-1');
+
+  assert.equal(summary.fetched, 100); // limitado por maxTicketsPerRun (100 no mock)
+  assert.equal(froms[0], 3); // retoma do cursor salvo
+  const saved = calls.appSettingUpsert[0].create.value as {
+    cursorFrom: number;
+    cursorComplete: boolean;
+  };
+  assert.equal(saved.cursorComplete, false);
+  assert.equal(saved.cursorFrom, 103); // 3 + 100: continua na próxima execução
 });
 
 test('syncAll: limpa a fila quando o chamado já foi vinculado (D-031)', async () => {

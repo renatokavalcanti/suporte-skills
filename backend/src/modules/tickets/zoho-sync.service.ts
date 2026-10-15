@@ -26,6 +26,13 @@ import { ZohoSettingsService } from './zoho/zoho-settings.service';
 
 const SYNC_STATE_KEY = 'zoho_sync';
 const PAGE_SIZE = 100;
+/**
+ * Chamados processados em paralelo por execucao (D-034). Cada chamado mapeado
+ * faz uma chamada a `/tickets/{id}/timeEntry`; paralelizar derruba o tempo total
+ * sem estourar o tempo do proxy. Mantido baixo para respeitar o limite de
+ * requisicoes da API do Zoho.
+ */
+const SYNC_CONCURRENCY = 4;
 
 export interface ZohoSyncSummary {
   startedAt: string;
@@ -56,7 +63,15 @@ interface ZohoSyncState {
   updated?: number;
   unmapped?: number;
   errors?: number;
+  /**
+   * @deprecated Watermark por `modifiedTime`, que a listagem do Zoho nao
+   * devolve. Substituido pelo cursor `cursorFrom` na D-034.
+   */
   lastModifiedAt?: string | null;
+  /** Cursor de paginacao por offset (D-034): proxima pagina a buscar. */
+  cursorFrom?: number;
+  /** True quando a ultima execucao alcancou o fim do conjunto (D-034). */
+  cursorComplete?: boolean;
   /** Ultimas execucoes (mais recente primeiro), visiveis em Configuracoes. */
   history?: ZohoSyncLogEntry[];
 }
@@ -113,6 +128,30 @@ function text(value: unknown): string | null {
 }
 
 /**
+ * Executa `worker` sobre `items` com no maximo `limit` em paralelo, preservando
+ * a ordem do resultado (D-034). O `worker` deve tratar os proprios erros.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let index = 0;
+  const size = Math.max(1, Math.min(limit, items.length));
+  const runners = Array.from({ length: size }, async () => {
+    for (;;) {
+      const current = index;
+      index += 1;
+      if (current >= items.length) return;
+      results[current] = await worker(items[current], current);
+    }
+  });
+  await Promise.all(runners);
+  return results;
+}
+
+/**
  * Espelhamento (somente leitura) dos chamados do Zoho Desk para o banco local
  * (D-029). Opt-in e idempotente: upsert por `zohoTicketId`. Chamados sem
  * `Client` mapeado vao para a fila `unmapped_tickets` (nao se adivinha o
@@ -149,7 +188,13 @@ export class ZohoSyncService {
     return (await this.loadState()).history ?? [];
   }
 
-  /** Sincroniza todos os chamados modificados desde a ultima execucao. */
+  /**
+   * Espelha os chamados do Zoho Desk percorrendo a listagem por **offset**
+   * (cursor persistido em `app_settings`). Como a listagem nao devolve
+   * `modifiedTime`, o incremental por data nao e' confiavel: cada execucao
+   * avanca o cursor (ate' `ZOHO_MAX_TICKETS_PER_RUN`) e o reinicia ao chegar ao
+   * fim, garantindo que a base inteira seja varrida (D-034).
+   */
   async syncAll(actorId: string | null = null): Promise<ZohoSyncSummary> {
     if (!this.credentials.isConfigured()) {
       throw new ServiceUnavailableException('Sincronizacao com o Zoho desativada');
@@ -168,45 +213,63 @@ export class ZohoSyncService {
     };
 
     const previous = await this.loadState();
-    const watermark = previous.lastModifiedAt ?? null;
-    let lastModified: Date | null = watermark ? new Date(watermark) : null;
-
     const maxPerRun = this.credentials.maxTicketsPerRun();
     const accountNames = new Map<string, string | null>();
     this.agentNameCache.clear();
-    let from = 0;
+
+    // A listagem do Zoho NAO devolve `modifiedTime` (era o campo usado no
+    // watermark antigo), entao o incremental ficava preso nos primeiros 200.
+    // Aqui percorremos o conjunto por **offset**: cada execucao avanca o cursor
+    // e, ao chegar ao fim da listagem, ele reinicia do zero (proxima varredura).
+    // Assim a base inteira e' espelhada ao longo de poucas execucoes (D-034).
+    let from = previous.cursorFrom ?? 0;
+    let cycleComplete = false;
 
     try {
       while (summary.fetched < maxPerRun) {
         const limit = Math.min(PAGE_SIZE, maxPerRun - summary.fetched);
-        const batch = await this.client.listTickets({
-          modifiedSince: watermark,
-          limit,
-          from,
-        });
-        if (batch.length === 0) break;
+        const batch = await this.client.listTickets({ limit, from });
+        if (batch.length === 0) {
+          cycleComplete = true;
+          break;
+        }
 
-        for (const payload of batch) {
-          summary.fetched += 1;
-          try {
-            const result = await this.processTicket(payload, accountNames);
-            if (result.kind === 'created') summary.created += 1;
-            else if (result.kind === 'updated') summary.updated += 1;
-            else summary.unmapped += 1;
-
-            if (result.modifiedAt && (!lastModified || result.modifiedAt > lastModified)) {
-              lastModified = result.modifiedAt;
+        // Processa o lote em paralelo (concorrencia limitada): cada chamado
+        // mapeado busca os lancamentos de tempo, o que domina o tempo total.
+        const results = await mapWithConcurrency(
+          batch,
+          SYNC_CONCURRENCY,
+          async (payload) => {
+            try {
+              return { ok: true as const, result: await this.processTicket(payload, accountNames) };
+            } catch (error) {
+              return { ok: false as const, payload, error };
             }
-          } catch (error) {
+          },
+        );
+
+        for (const item of results) {
+          summary.fetched += 1;
+          if (item.ok) {
+            if (item.result.kind === 'created') summary.created += 1;
+            else if (item.result.kind === 'updated') summary.updated += 1;
+            else summary.unmapped += 1;
+          } else {
             summary.errors.push({
-              ticketId: String(payload.id),
-              message: error instanceof Error ? error.message : String(error),
+              ticketId: String(item.payload.id),
+              message:
+                item.error instanceof Error
+                  ? item.error.message
+                  : String(item.error),
             });
           }
         }
 
         from += batch.length;
-        if (batch.length < limit) break;
+        if (batch.length < limit) {
+          cycleComplete = true;
+          break;
+        }
       }
     } catch (error) {
       summary.status = 'ERROR';
@@ -216,7 +279,7 @@ export class ZohoSyncService {
     }
 
     summary.finishedAt = new Date().toISOString();
-    const newWatermark = lastModified ? lastModified.toISOString() : watermark;
+    const nextCursor = cycleComplete ? 0 : from;
 
     const logEntry: ZohoSyncLogEntry = {
       at: summary.finishedAt,
@@ -237,7 +300,8 @@ export class ZohoSyncService {
       updated: summary.updated,
       unmapped: summary.unmapped,
       errors: summary.errors.length,
-      lastModifiedAt: newWatermark,
+      cursorFrom: nextCursor,
+      cursorComplete: cycleComplete,
       history,
     });
 

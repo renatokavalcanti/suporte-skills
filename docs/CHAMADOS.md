@@ -13,8 +13,9 @@ O módulo transforma o atendimento registrado no **Zoho Desk** em **comprovaçã
 faturamento** para os clientes da Suporte Informática. Em duas metades:
 
 1. **Espelho (somente leitura) do Zoho Desk.** Os chamados e seus **lançamentos de tempo** são
-   copiados para o banco local. Nada é escrito no Zoho. O espelho é **incremental** (por
-   `modifiedTime`) e **idempotente** (upsert pelo id interno do chamado).
+   copiados para o banco local. Nada é escrito no Zoho. O espelho percorre a listagem por
+   **paginação por cursor** (a listagem da API não devolve `modifiedTime`, ver **D-034**) e é
+   **idempotente** (upsert pelo id interno do chamado).
 2. **Relatórios por cliente/período.** Sobre o espelho + os **contratos**, o sistema calcula as
    métricas de atendimento (B2) e o **faturamento** (B3: franquia, horas adicionais, política de
    saldo), e produz:
@@ -24,8 +25,8 @@ faturamento** para os clientes da Suporte Informática. Em duas metades:
      de contrato.
 
 ```text
- Zoho Desk ──(OAuth, leitura)──► [ ZohoClient ] ──► Sync (incremental)
-        GET /tickets, /tickets/{id}/timeEntries          │
+ Zoho Desk ──(OAuth, leitura)──► [ ZohoClient ] ──► Sync (paginação por cursor)
+        GET /tickets, /tickets/{id}/timeEntry            │
                                                           ▼
                         ┌──────────── tickets ─────────────┐
                         │  clientes (Client)  contratos    │
@@ -136,22 +137,28 @@ etc.). O **banco sobrepõe o ambiente**.
 
 ### 5.4 Sincronização
 
-- `tickets/zoho-sync.service.ts` — orquestra o sync: busca `GET /tickets` com
-  `sortBy=modifiedTime` e marca d'água em `zoho_sync.lastModifiedAt`; para cada chamado,
+- `tickets/zoho-sync.service.ts` — orquestra o sync: busca `GET /tickets` por **paginação por
+  offset**, com **cursor** persistido em `zoho_sync.cursorFrom` (avança a cada execução até o teto
+  e **reinicia ao chegar ao fim** — a listagem da API **não devolve `modifiedTime`**, então o
+  incremental por data foi abandonado na **D-034**); para cada chamado,
   **upsert por `zoho_ticket_id`**; se o `accountId` não casar com nenhum `Client.zoho_account_id`,
   vai para **`unmapped_tickets`** (não se adivinha o cliente) — resolvendo o **nome da conta** em
   `GET /accounts/{id}` (cache por execução) e **removendo a linha** da fila quando o cliente passa
   a existir (D-031). Após gravar o chamado, `afterTicketWrite` busca os lançamentos em
   `GET /tickets/{id}/timeEntry` (**singular** — `timeEntries` responde `404`, D-032), resolve o
   nome do agente (`GET /agents/{id}`), faz upsert por `zoho_time_entry_id`, remove lançamentos
-  que sumiram e **recalcula `time_spent_minutes` = Σ minutos**. Registra o **histórico** (20
-  últimas execuções).
+  que sumiram e **recalcula `time_spent_minutes` = Σ minutos**. Os chamados de cada página são
+  processados **em paralelo** (concorrência limitada, **4**), o que reduz o tempo da execução sem
+  arriscar o faturamento (as horas são sempre buscadas — não se pula por heurística). Registra o
+  **histórico** (20 últimas execuções).
 - `tickets/zoho-sync.scheduler.ts` — `setInterval` conforme a **frequência efetiva** (`MANUAL`
   desliga); roda `syncAll` em background.
 
 Rate limit/robustez: paginação `from`/`limit`, timeout por requisição (`ZOHO_FETCH_TIMEOUT_MS`),
-teto por execução (`ZOHO_MAX_TICKETS_PER_RUN`) e refresh automático do token (com 1 retry em 401
-no fluxo de token).
+teto por execução (`ZOHO_MAX_TICKETS_PER_RUN`, 1000), **concorrência 4** nos lançamentos de tempo
+e refresh automático do token (com 1 retry em 401 no fluxo de token). O **nginx** aguarda até
+**300 s** na rota `/api/` (`proxy_read_timeout`), para a sincronização longa não devolver `504`
+enquanto o backend conclui (D-034).
 
 ### 5.5 Tickets e Clientes (D-029)
 
@@ -284,7 +291,7 @@ Além das gerais (README), as do módulo:
 | `TICKETS_ENABLED` | Liga o módulo (padrão `false`). |
 | `VITE_TICKETS_ENABLED` | Liga o menu/rotas no SPA (build). |
 | `ZOHO_SYNC_ENABLED` / `ZOHO_SYNC_INTERVAL_MINUTES` | Padrões do agendador (a UI sobrepõe a frequência). |
-| `ZOHO_FETCH_TIMEOUT_MS` / `ZOHO_MAX_TICKETS_PER_RUN` | Timeout (15 s) e teto por execução (200). |
+| `ZOHO_FETCH_TIMEOUT_MS` / `ZOHO_MAX_TICKETS_PER_RUN` | Timeout (15 s) e teto por execução (1000). |
 | `ZOHO_CLIENT_ID`/`_SECRET`/`_REFRESH_TOKEN`/`_ORG_ID` | Credenciais (fallback; a UI tem prioridade). |
 | `ZOHO_API_BASE_URL` / `ZOHO_ACCOUNTS_BASE_URL` | **Override** de domínio (vazio = derivado do data center; útil p/ mock). |
 | `SETTINGS_ENCRYPTION_KEY` | Segredo da cifra (fallback `JWT_ACCESS_SECRET`). |
@@ -309,7 +316,9 @@ Além das gerais (README), as do módulo:
 
 ## 11. Sincronização
 
-- **Incremental:** só o que mudou desde a última execução (`modifiedTime`).
+- **Paginação por cursor:** percorre a listagem por offset (`zoho_sync.cursorFrom`), avançando a
+  cada execução e reiniciando ao chegar ao fim — a listagem da API **não devolve `modifiedTime`**,
+  então não há filtro incremental por data; cada varredura completa refresca o espelho (D-034).
 - **Idempotente:** rodar de novo não duplica (upsert por id interno).
 - **Não mapeados** vão para `unmapped_tickets`; vincule na tela **Tickets > Não mapeados**
   — **um a um**, **por conta** (todos os chamados da conta) ou **por seleção** (vários de uma vez)
@@ -317,8 +326,9 @@ Além das gerais (README), as do módulo:
   **sai da fila automaticamente**; o **nome da conta** é resolvido sob demanda (`GET /accounts/{id}`).
 - **Log:** histórico em `app_settings` (`zoho_sync.history`), exposto em
   `GET /settings/zoho/sync-log` e na tela de Configurações.
-- **Rate limit:** paginação + timeout; o teto por execução (`ZOHO_MAX_TICKETS_PER_RUN`) evita
-  varreduras longas.
+- **Rate limit:** paginação + timeout, **concorrência 4** nos lançamentos de tempo e teto por
+  execução (`ZOHO_MAX_TICKETS_PER_RUN`, 1000). O nginx aguarda até **300 s** (`proxy_read_timeout`)
+  na rota `/api/` (D-034).
 
 ## 12. Segurança
 

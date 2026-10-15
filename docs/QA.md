@@ -387,7 +387,23 @@ visível (o CONSULTANT não vê o Catálogo); o submenu **expande sozinho** quan
 pertence ao grupo, expõe **`aria-expanded`** e mantém o estado na sessão; o **drawer mobile**
 funciona igual. Validação por `typecheck` e `build` (ambos limpos) — a navegação não é coberta
 pela suíte de aceite (que é de API). Nesta entrega também foi **corrigida a contagem de releases
-do estado DEMO** no aceite (13 → 16), defasada em relação ao seed.
+do estado DEMO** no aceite (13 → 16; passa a 17 na D-034), defasada em relação ao seed.
+
+## 5n. Sincronização de chamados — cursor e paralelização (D-034)
+
+Diagnóstico em produção (VM): a listagem `GET /tickets` do Zoho Desk **não devolve `modifiedTime`**
+(confirmado chamando a API: as chaves trazem `createdTime`, `closedTime`, mas não `modifiedTime`).
+Por isso o `zoho_modified_at` ficava **nulo em 100%** dos chamados, o estado salvava
+`lastModifiedAt: null` e a sincronização **relia sempre os primeiros 200** (a base tem **611**).
+Além disso, o sync levava **~173 s** (uma chamada a `/timeEntry` por chamado), acima do
+`proxy_read_timeout` **padrão do nginx (60 s)**, que devolvia **504** ao navegador enquanto o
+backend concluía com **0 erros**.
+
+Correções (D-034): cursor de paginação por offset (`cursorFrom`, reiniciado no fim), busca dos
+lançamentos de tempo **em paralelo** (concorrência 4) e teto por execução **200 → 1000**;
+`proxy_read_timeout` do nginx em **300 s** na rota `/api/`. Backend **74/74** (novo teste de
+cursor). A leitura ao vivo do Zoho não roda na suíte (seria não determinística); é validada
+manualmente na VM.
 
 ## 6. Limitações conhecidas (aceitas no MVP)
 

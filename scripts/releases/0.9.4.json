@@ -1,0 +1,13 @@
+{
+  "version": "0.9.4",
+  "title": "Sincronização de chamados: cursor de paginação e busca paralela",
+  "summary": "Corrige o espelhamento dos chamados do Zoho Desk: a listagem da API não devolve `modifiedTime`, então o watermark ficava sempre nulo e a sincronização relia sempre os mesmos 200 chamados. Agora a sincronização percorre a listagem por offset (cursor persistido, reiniciado ao chegar ao fim), busca os lançamentos de tempo em paralelo (concorrência limitada) e o teto padrão por execução sobe para 1000. O nginx passa a aguardar até 300 s na rota /api/ (antes 60 s), eliminando o 504 enquanto o backend ainda conclui. (D-034)",
+  "releasedAt": "2026-10-15T20:00:00.000Z",
+  "current": true,
+  "items": [
+    { "category": "FIX", "description": "Espelhamento completo: a listagem do Zoho não devolve `modifiedTime`, então o watermark nunca avançava e a base parava nos primeiros 200 chamados; agora a paginação por cursor varre o conjunto inteiro (D-034)", "position": 0 },
+    { "category": "IMPROVEMENT", "description": "Busca dos lançamentos de tempo em paralelo (concorrência limitada), reduzindo o tempo de sincronização", "position": 1 },
+    { "category": "IMPROVEMENT", "description": "Teto padrão por execução (`ZOHO_MAX_TICKETS_PER_RUN`) passa de 200 para 1000", "position": 2 },
+    { "category": "FIX", "description": "nginx: `proxy_read_timeout` de 300 s na rota /api/ (antes 60 s) — a sincronização longa deixava de retornar 504 ao navegador enquanto o backend concluía", "position": 3 }
+  ]
+}

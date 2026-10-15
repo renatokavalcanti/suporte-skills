@@ -198,7 +198,7 @@ para execução local). Principais:
 | `TICKETS_ENABLED` | Liga o módulo **Tickets/Medições Mensais** (padrão `false`; desligado, as rotas do módulo respondem `404`) |
 | `ZOHO_SYNC_ENABLED` | Liga o **espelhamento** dos chamados do Zoho Desk (padrão `false`; só leitura no Zoho; exige as credenciais) |
 | `ZOHO_CLIENT_ID` / `ZOHO_CLIENT_SECRET` / `ZOHO_REFRESH_TOKEN` / `ZOHO_ORG_ID` | Credenciais OAuth do Zoho Desk (só no servidor; nunca devolvidas pela API nem registradas em log) |
-| `ZOHO_SYNC_INTERVAL_MINUTES` / `ZOHO_FETCH_TIMEOUT_MS` / `ZOHO_MAX_TICKETS_PER_RUN` | Cadência (360), timeout (15 s) e teto por execução (200) da sincronização |
+| `ZOHO_SYNC_INTERVAL_MINUTES` / `ZOHO_FETCH_TIMEOUT_MS` / `ZOHO_MAX_TICKETS_PER_RUN` | Cadência (360), timeout (15 s) e teto por execução (1000) da sincronização |
 | `ZOHO_API_BASE_URL` / `ZOHO_ACCOUNTS_BASE_URL` | Bases do Zoho Desk / contas (padrões oficiais; ajustáveis para teste) |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | Credenciais do ADMIN no seed |
 
@@ -215,7 +215,7 @@ para execução local). Principais:
 
 ## Status
 
-**Versão atual: `0.9.3`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
+**Versão atual: `0.9.4`** — MVP concluído (fases 0 a 8: arquitetura, fundação, cadastros,
 relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módulos pós-MVP:
 
 | Decisão | Entrega |
@@ -235,6 +235,7 @@ relacionamentos, roadmap, dashboard, relatórios, importação e QA) e os módul
 | D-031 | **Fila de não mapeados**: vínculo em lote (por conta/seleção), limpeza automática e nome da conta — ajuste aditivo no módulo Chamados |
 | D-032 | **Lançamentos de tempo**: endpoint correto (`/timeEntry`), espelho no vínculo pela fila e reimportação ("Atualizar horas") |
 | D-033 | **Menu lateral em submenus**: agrupa itens relacionados em **"Catálogo"** (Profissionais, Fabricantes, Tecnologias, Certificações) e **"GSS Qualidade"** (Clientes, Tickets, Medições, Contratos, Relatórios de Chamados) — submenus retráteis, sem mudança de API |
+| D-034 | **Sincronização de chamados**: cursor de paginação por offset (a listagem do Zoho não devolve `modifiedTime`), busca paralela dos lançamentos de tempo, teto por execução 1000 e `proxy_read_timeout` do nginx em 300 s |
 
 Typecheck e build limpos em backend e frontend; imagem Docker publicada na VM
 (10.0.0.200) com HTTPS. A suíte de aceite cobre os blocos 11f (D-024), 11g (D-025), 11h
