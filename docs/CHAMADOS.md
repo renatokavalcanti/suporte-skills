@@ -202,6 +202,14 @@ enquanto o backend conclui (D-034).
 - Endpoints em `reports/ticket-reports.service.ts`: `financialPreview`, `financialPdf`,
   `financialEml`, `sendFinancial` (exige `confirm: true`; grava `sentAt`/`sentTo`).
 
+**Pré-requisitos (diagnóstico comum — ver §15):** o relatório é montado a partir do **Contrato**
+do cliente (`planName`, franquia, valores e **`financeEmail`**) e das horas dos chamados fechados no
+período. Sem **contrato ativo cobrindo o período**, a API responde
+`400 "Cliente sem contrato ativo para o periodo"`. Sem **`financeEmail`** no contrato, o preview
+gera normalmente, mas com `to` vazio (não há destinatário a enviar). E é preciso ter o **transporte
+de e-mail configurado/habilitado** (Configurações > Envio de e-mail) — senão o envio responde
+`"Envio de e-mail nao configurado"`.
+
 ### 5.9 Relatório do Cliente
 
 - `tickets/client-report.ts` — **HTML** auto-contido com identidade visual, KPIs, barra de
@@ -381,6 +389,8 @@ pré-deploy ou aplicar `database/rollbacks/chamados_fase1_down.sql`.
 | "Escopos insuficientes" | escopos do consentimento | Reconectar com os escopos corretos. |
 | Envio de e-mail `503` | e-mail não configurado/habilitado | Configurações > Envio de e-mail + "Enviar teste". |
 | Envio `400` | faltou `confirm: true` (ou destinatário) | Confirmar no diálogo / informar o destinatário. |
+| Relatório Financeiro `400` "Cliente sem contrato ativo para o periodo" | cliente **sem contrato** cobrindo o período | Cadastrar um **Contrato** (GSS Qualidade > Contratos) com datas que cubram o período. |
+| Relatório Financeiro gera, mas sem destinatário (`to` vazio) | `financeEmail` em branco no contrato | Preencher o **e-mail financeiro** no contrato. |
 | Horas do chamado = 0 | sem lançamentos no Zoho ou falha ao buscá-los | Ver o log de sync; conferir `/tickets/{id}/timeEntries` no Zoho. |
 | Relatório do cliente com "sem tecnologia" | `technologyField` não configurado | Definir o campo em Configurações > Zoho. |
 | Login `429` "Muitas tentativas" | limitador de login (em memória) | Aguardar a janela ou reiniciar a API; ver `AUTH_LOGIN_MAX_ATTEMPTS`. |
